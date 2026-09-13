@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Nexa ERP - Sistema Administrativo Integral Multiempresa para Pymes Colombianas">
+  <title>Nexa ERP | Rayo Pro Colombia</title>
+
+  <!-- Hojas de Estilo Modulares -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/utilities.css">
+</head>
+<body>
+
+  <!-- Overlay para cierre de sidebar en dispositivos móviles -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+  <div id="app-root">
+    
+    <!-- ====================================================================
+         SIDEBAR LATERAL MODULAR (20 MÓDULOS EN GRUPOS FUNCIONALES)
+         ==================================================================== -->
+    <aside class="app-sidebar" id="app-sidebar">
+      
+      <!-- Encabezado de Marca Dinámico -->
+      <div class="sidebar-brand">
+        <div class="brand-icon" id="sidebar-brand-icon">⚡</div>
+        <div class="brand-info">
+          <div class="brand-title" id="sidebar-brand-name">Rayo Pro</div>
+          <div class="brand-subtitle" id="sidebar-brand-nit">NIT: 901.458.321-4</div>
+        </div>
+      </div>
+
+      <!-- Menú de Navegación por Módulos -->
+      <nav class="sidebar-nav">
+        
+        <!-- PRINCIPAL -->
+        <div class="nav-section-title">Principal</div>
+        <a class="nav-item active" href="#dashboard" data-route="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>1. Dashboard Ejecutivo</span>
+        </a>
+
+        <!-- DOMINIO COMERCIAL -->
+        <div class="nav-section-title">Comercial & Clientes</div>
+        <a class="nav-item" href="#sales-pos" data-route="sales-pos">
+          <span class="nav-icon">🛒</span>
+          <span>7. Ventas / POS Mostrador</span>
+        </a>
+        <a class="nav-item" href="#clients" data-route="clients">
+          <span class="nav-icon">👥</span>
+          <span>2. Clientes (Ficha 360°)</span>
+        </a>
+        <a class="nav-item" href="#shipping" data-route="shipping">
+          <span class="nav-icon">🚚</span>
+          <span>8. Pedidos & Envíos</span>
+        </a>
+
+        <!-- DOMINIO DE INVENTARIO Y FABRICACIÓN -->
+        <div class="nav-section-title">Inventario & Planta</div>
+        <a class="nav-item" href="#products" data-route="products">
+          <span class="nav-icon">📦</span>
+          <span>3. Catálogo de Productos</span>
+        </a>
+        <a class="nav-item" href="#inventory" data-route="inventory">
+          <span class="nav-icon">📑</span>
+          <span>4. Inventario & Kardex</span>
+        </a>
+        <a class="nav-item" href="#production" data-route="production">
+          <span class="nav-icon">⚙️</span>
+          <span>5. Producción & BOM</span>
+        </a>
+
+        <!-- DOMINIO DE COMPRAS Y FINANZAS -->
+        <div class="nav-section-title">Compras & Tesorería</div>
+        <a class="nav-item" href="#purchases" data-route="purchases">
+          <span class="nav-icon">🛍️</span>
+          <span>6. Compras & Proveedores</span>
+        </a>
+        <a class="nav-item" href="#cash" data-route="cash">
+          <span class="nav-icon">💵</span>
+          <span>9. Caja & Arqueos</span>
+        </a>
+        <a class="nav-item" href="#expenses" data-route="expenses">
+          <span class="nav-icon">🏷️</span>
+          <span>10. Gastos Operativos</span>
+        </a>
+        <a class="nav-item" href="#cxc" data-route="cxc">
+          <span class="nav-icon">📈</span>
+          <span>11. Cuentas por Cobrar</span>
+        </a>
+        <a class="nav-item" href="#cxp" data-route="cxp">
+          <span class="nav-icon">📉</span>
+          <span>12. Cuentas por Pagar</span>
+        </a>
+
+        <!-- DOMINIO DE ADMINISTRACIÓN Y CONTROL -->
+        <div class="nav-section-title">Administración & Sistema</div>
+        <a class="nav-item" href="#reports" data-route="reports">
+          <span class="nav-icon">📊</span>
+          <span>15. Reportes Gerenciales</span>
+        </a>
+        <a class="nav-item" href="#users" data-route="users">
+          <span class="nav-icon">🛡️</span>
+          <span>13. Usuarios & Permisos</span>
+        </a>
+        <a class="nav-item" href="#audit" data-route="audit">
+          <span class="nav-icon">🔍</span>
+          <span>14. Auditoría Transaccional</span>
+        </a>
+        <a class="nav-item" href="#settings" data-route="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>16. Configuración General</span>
+        </a>
+        <a class="nav-item" href="#backup" data-route="backup">
+          <span class="nav-icon">💾</span>
+          <span>17. Respaldo & Restaurar</span>
+        </a>
+        <a class="nav-item" href="#importer" data-route="importer">
+          <span class="nav-icon">📥</span>
+          <span>18. Importación Masiva</span>
+        </a>
+        <a class="nav-item" href="#integrations" data-route="integrations">
+          <span class="nav-icon">🔌</span>
+          <span>19. Integraciones & DIAN</span>
+        </a>
+        <a class="nav-item" href="#documents" data-route="documents">
+          <span class="nav-icon">📄</span>
+          <span>20. Plantillas Documentos</span>
+        </a>
+      </nav>
+
+      <!-- Pie del Sidebar -->
+      <div class="sidebar-footer">
+        <div class="d-flex items-center gap-2">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></div>
+          <span style="font-size: 11px; color: #94a3b8;">Nexa Cloud Ready</span>
+        </div>
+        <span style="font-size: 10px; color: #64748b;">v2.6.0-co</span>
+      </div>
+    </aside>
+
+    <!-- ====================================================================
+         ÁREA PRINCIPAL CON TOPBAR Y CONTENEDOR DE VISTAS
+         ==================================================================== -->
+    <main class="app-main">
+      
+      <!-- BARRA SUPERIOR (TOPBAR) -->
+      <header class="app-topbar">
+        
+        <div class="topbar-left">
+          <!-- Botón hamburguesa móvil -->
+          <button class="btn-sidebar-toggle" id="btn-toggle-sidebar" aria-label="Menú">
+            ☰
+          </button>
+
+          <!-- Conmutador Rápido de Empresa Multi-tenant -->
+          <div class="tenant-selector" id="topbar-tenant-selector" title="Clic para cambiar de empresa">
+            <span id="topbar-brand-icon" style="display: inline-flex; align-items: center; justify-content: center;"></span>
+            <span id="topbar-brand-name">Rayo Pro</span>
+            <span style="font-size: 10px; color: var(--text-muted);">▾</span>
+          </div>
+
+          <!-- Búsqueda Global -->
+          <div class="hide-on-mobile" style="position: relative; width: 280px;">
+            <input type="text" id="topbar-global-search" class="form-control" placeholder="Buscar en Nexa... (Ctrl + K)" style="padding-left: 32px; font-size: 12px; cursor: pointer;" readonly>
+            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-light);">🔍</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          
+          <!-- Botón Conmutador de Modo Oscuro / Claro (Apple Glass Style) -->
+          <button class="btn-theme-toggle" id="btn-theme-toggle" title="Alternar Modo Oscuro / Claro" aria-label="Modo Oscuro">
+            <span id="theme-toggle-icon">🌙</span>
+          </button>
+
+          <!-- Indicador de Turno de Caja -->
+          <span class="badge badge-success hide-on-mobile" id="topbar-cash-badge">● Caja Abierta</span>
+
+          <!-- Botón de Acción Rápida POS -->
+          <button class="quick-action-btn" id="btn-topbar-quick-sale">
+            <span>⚡</span>
+            <span class="hide-on-mobile">Venta POS</span>
+          </button>
+
+          <!-- Conmutador Rápido de Rol / Usuario Activo (Anti-Saturación RBAC) -->
+          <div class="user-profile-badge" id="topbar-user-menu-btn" title="Clic para alternar rol o perfil de usuario">
+            <div class="user-avatar" id="topbar-user-avatar">J</div>
+            <div class="user-details hide-on-mobile">
+              <span class="user-name" id="topbar-user-name">Juan Pablo (Superusuario)</span>
+              <span class="user-role" id="topbar-user-role">Administrador ▾</span>
+            </div>
+          </div>
+
+        </div>
+
+      </header>
+
+      <!-- CONTENEDOR DINÁMICO DE VISTAS MODULARES SPA -->
+      <div class="app-content" id="view-container">
+        <!-- Renderizado dinámico vía JavaScript por módulo -->
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Script Principal Modular ES6 -->
+  <script type="module" src="js/app.js"></script>
+
+</body>
+</html>
