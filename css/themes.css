@@ -1,0 +1,349 @@
+/**
+ * Nexa ERP - Temas y Reglas Dinámicas de Marca Multiempresa
+ * Optimización Integral de Contraste para Modo Oscuro y Modo Claro (Apple Human Interface Guidelines)
+ */
+
+/* ==========================================================================
+   MODO OSCURO PREMIUM (APPLE OLEO DARK THEME - ALTO CONTRASTE)
+   ========================================================================== */
+body.dark-mode {
+  /* Fondos y Superficies Apple Dark */
+  --bg-app: #090a0c;                         /* Negro profundo iOS */
+  --bg-surface: rgba(26, 27, 30, 0.95);      /* Surface traslúcida */
+  --bg-surface-solid: #18191c;               /* Surface sólida para tarjetas y modales */
+  --bg-card: #1c1d21;
+  --bg-card-hover: #26272c;
+  --bg-sidebar: rgba(16, 17, 20, 0.96);
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --bg-sidebar-active: rgba(10, 132, 255, 0.22);
+  --bg-input: rgba(255, 255, 255, 0.08);
+
+  /* Bordes Hairline iOS Dark de Alta Nitidez */
+  --border-color: rgba(255, 255, 255, 0.14);
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-focus: #0a84ff;
+
+  /* Tipografía iOS Dark con Contraste WCAG AAA Impecable */
+  --text-main: #f8fafc;                      /* Blanco tiza de máxima legibilidad */
+  --text-secondary: #cbd5e1;                 /* Gris plateado claro */
+  --text-muted: #94a3b8;                     /* Gris medio para etiquetas */
+  --text-light: #64748b;
+  --text-white: #ffffff;
+
+  /* Colores de Acento Vibrantes Apple Dark */
+  --brand-primary: #0a84ff;                  /* Azul vibrante iOS Dark */
+  --brand-primary-hover: #409cff;
+  --brand-primary-light: rgba(10, 132, 255, 0.2);
+  --brand-primary-subtle: rgba(10, 132, 255, 0.1);
+
+  --color-success: #32d74b;
+  --color-success-bg: rgba(50, 215, 75, 0.18);
+  --color-warning: #ffd60a;
+  --color-warning-bg: rgba(255, 214, 10, 0.18);
+  --color-danger: #ff453a;
+  --color-danger-bg: rgba(255, 69, 58, 0.2);
+  --color-info: #64d2ff;
+  --color-info-bg: rgba(100, 210, 255, 0.18);
+
+  /* Sombras y Luces en Modo Oscuro */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 16px 45px rgba(0, 0, 0, 0.8);
+  --shadow-sheet: 0 24px 70px rgba(0, 0, 0, 0.9);
+}
+
+/* ==========================================================================
+   REGLAS ESPECÍFICAS DE CONTRASTE EN MODO OSCURO
+   ========================================================================== */
+
+/* Shell: Topbar y Sidebar */
+body.dark-mode .app-topbar,
+body.dark-mode .app-sidebar {
+  background: var(--bg-sidebar);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .brand-icon {
+  background: #000000;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode .tenant-selector {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--text-main);
+}
+body.dark-mode .tenant-selector:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .btn-theme-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+body.dark-mode .btn-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-mode .user-profile-badge:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Tarjetas y Contenedores */
+body.dark-mode .card {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+body.dark-mode .card-header {
+  border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .card-footer {
+  border-top-color: var(--border-color);
+}
+
+body.dark-mode .card-title {
+  color: #ffffff;
+}
+
+body.dark-mode .kpi-card {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .kpi-value {
+  color: #ffffff;
+}
+
+body.dark-mode .kpi-label {
+  color: #94a3b8;
+}
+
+/* Tablas con Legibilidad Completa */
+body.dark-mode .data-table {
+  color: var(--text-main);
+}
+
+body.dark-mode .data-table th {
+  color: #94a3b8;
+  border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .data-table td {
+  color: #e2e8f0;
+  border-bottom-color: var(--border-light);
+}
+
+body.dark-mode .data-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .table-toolbar,
+body.dark-mode .table-pagination {
+  border-color: var(--border-color);
+  color: #94a3b8;
+}
+
+/* Formularios e Inputs en Modo Oscuro */
+body.dark-mode .form-label {
+  color: #e2e8f0;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+  background-color: #1a1b1e;
+  color: #ffffff;
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.3);
+}
+
+body.dark-mode .form-control::placeholder,
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+  color: #64748b;
+}
+
+body.dark-mode .form-select option {
+  background: #18191c;
+  color: #ffffff;
+}
+
+body.dark-mode .form-help {
+  color: #94a3b8;
+}
+
+/* Buscadores */
+body.dark-mode #topbar-global-search,
+body.dark-mode .table-search input {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode #topbar-global-search:focus,
+body.dark-mode .table-search input:focus {
+  background: #18191c;
+  color: #ffffff;
+  border-color: #0a84ff;
+}
+
+/* Botones Secundarios y Controles Segmentados */
+body.dark-mode .btn-secondary {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+body.dark-mode .btn-secondary:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+body.dark-mode .ios-segmented-control {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .ios-segment-btn {
+  color: #cbd5e1;
+}
+
+body.dark-mode .ios-segment-btn.active {
+  background: #2c2c2e;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Modales */
+body.dark-mode .modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+body.dark-mode .modal-dialog {
+  background: #18191c;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  box-shadow: var(--shadow-sheet);
+}
+
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+body.dark-mode .modal-title {
+  color: #ffffff;
+}
+
+body.dark-mode .modal-close {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+body.dark-mode .modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Badges con Colores Vivos y Visibles */
+body.dark-mode .badge-success { background: rgba(50, 215, 75, 0.22); color: #32d74b; border: 1px solid rgba(50, 215, 75, 0.4); }
+body.dark-mode .badge-warning { background: rgba(255, 214, 10, 0.22); color: #ffd60a; border: 1px solid rgba(255, 214, 10, 0.4); }
+body.dark-mode .badge-danger  { background: rgba(255, 69, 58, 0.22);  color: #ff453a; border: 1px solid rgba(255, 69, 58, 0.4); }
+body.dark-mode .badge-info    { background: rgba(10, 132, 255, 0.22); color: #64d2ff; border: 1px solid rgba(10, 132, 255, 0.4); }
+body.dark-mode .badge-neutral { background: rgba(255, 255, 255, 0.12); color: #f1f5f9; border: 1px solid rgba(255, 255, 255, 0.2); }
+body.dark-mode .badge-demo    { background: rgba(255, 159, 10, 0.24); color: #ffd60a; border: 1px solid rgba(255, 159, 10, 0.45); }
+
+/* Alertas de Notificación Legibles */
+body.dark-mode .alert-warning {
+  background-color: rgba(255, 159, 10, 0.15);
+  border-color: rgba(255, 159, 10, 0.35);
+  color: #ffd60a;
+}
+
+body.dark-mode .alert-info {
+  background-color: rgba(10, 132, 255, 0.15);
+  border-color: rgba(10, 132, 255, 0.35);
+  color: #70d7ff;
+}
+
+body.dark-mode .alert-danger {
+  background-color: rgba(255, 69, 58, 0.15);
+  border-color: rgba(255, 69, 58, 0.35);
+  color: #ff6961;
+}
+
+body.dark-mode .alert-success {
+  background-color: rgba(50, 215, 75, 0.15);
+  border-color: rgba(50, 215, 75, 0.35);
+  color: #32d74b;
+}
+
+/* Scrollbar en Modo Oscuro */
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+}
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+/* ==========================================================================
+   REGLAS BASE PARA MODO CLARO (ALTO CONTRASTE NATIVO)
+   ========================================================================== */
+body:not(.dark-mode) .form-label {
+  color: #374151;
+}
+
+body:not(.dark-mode) .data-table th {
+  color: #4b5563;
+}
+
+body:not(.dark-mode) .data-table td {
+  color: #1f2937;
+}
+
+body:not(.dark-mode) .brand-icon {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Indicadores de Demo */
+.badge-demo {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Badges de Estado Estándar */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid rgba(16, 185, 129, 0.2); }
+.badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid rgba(245, 158, 11, 0.2); }
+.badge-danger  { background: var(--color-danger-bg);  color: var(--color-danger);  border: 1px solid rgba(239, 68, 68, 0.2); }
+.badge-info    { background: var(--color-info-bg);    color: var(--color-info);    border: 1px solid rgba(59, 130, 246, 0.2); }
+.badge-neutral { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
