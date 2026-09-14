@@ -35,6 +35,9 @@ class TenantService {
         const found = existingUsers.find(eu => eu.id === u.id);
         if (!found) {
           await DB.add(STORES.USERS, u);
+        } else if (u.id === 'usr_dev' && (found.clave === 'dev.nexa.2026' || !found.clave)) {
+          found.clave = 'Admin.2026';
+          await DB.update(STORES.USERS, found);
         } else if (u.id === 'usr_juan' && found.rol !== 'Gerente') {
           found.rol = 'Gerente';
           found.nombre = 'Juan Pablo (Gerente General)';
