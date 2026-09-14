@@ -93,3 +93,9 @@ INSTRUCCIONES PARA ANTIGRAVITY AL CAMBIAR DE ORDENADOR:
 --------------------------------------------------------------------------------
 - Prueba de ejecucion con deploy.bat
 
+
+--------------------------------------------------------------------------------
+[2026-09-14 17:53] - ACTUALIZACION VIA DEPLOY SCRIPT:
+--------------------------------------------------------------------------------
+- ⚡ ¿Qué se mejoró en deploy.bat?
+
