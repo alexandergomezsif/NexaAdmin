@@ -75,3 +75,9 @@ INSTRUCCIONES PARA ANTIGRAVITY AL CAMBIAR DE ORDENADOR:
 --------------------------------------------------------------------------------
 - Test comprobacion de script actualizador local
 
+
+--------------------------------------------------------------------------------
+[2026-09-14 17:33] - ACTUALIZACION VIA DEPLOY SCRIPT:
+--------------------------------------------------------------------------------
+- Depuracion de repositorio: eliminacion de scripts redundantes e inactivos (build.bat, build.ps1, serve.ps1)
+
