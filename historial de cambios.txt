@@ -1,0 +1,66 @@
+﻿================================================================================
+                    NEXA ERP - HISTORIAL DE CAMBIOS Y SINCRONIZACION
+================================================================================
+Repositorio GitHub: https://github.com/alexandergomezsif/NexaAdmin
+Produccion Web (GitHub Pages): https://alexandergomezsif.github.io/NexaAdmin/
+Ultima Actualizacion: 2026-09-14 17:30 (Hora Colombia)
+================================================================================
+
+--------------------------------------------------------------------------------
+[2026-09-14] - VERSION / COMMIT: 04a3615 & 3ac6828 (Actualizacion desde otro ordenador)
+--------------------------------------------------------------------------------
+1. SEGURIDAD & AUTENTICACION:
+   - Modificada la contrasena maestra del perfil Desarrollador a: 'Admin.2026'.
+   - Actualizado en: js/services/auth-service.js.
+
+2. MODULO DE USUARIOS (Modulo 13):
+   - Anadido boton 'Eliminar' en la tabla de usuarios con confirmacion modal.
+   - Restriccion de seguridad: el usuario con sesion activa no puede auto-eliminarse.
+   - Actualizado en: js/modules/users.js.
+
+3. MODULO DE RESPALDO & SINCRONIZACION (Modulo 17):
+   - Ajustado el sistema de exportacion/importacion JSON.
+   - Los nombres de archivo de respaldo ahora incluyen el usuario activo: NexaERP_Sync_<Usuario>_<Fecha>.json.
+   - La restauracion ahora opera como Upsert/Fusion inteligente para cambios entre terminales.
+   - Actualizado en: js/modules/backup.js.
+
+4. UTILIDADES & SEGURIDAD XSS:
+   - Incorporada la funcion Formatters.escapeHTML(str) para saneamiento de datos externos al importar JSON o renderizar tablas.
+   - Actualizado en: js/utils/formatters.js.
+
+5. OPTIMIZACION DE BUNDLING Y GITHUB PAGES:
+   - Creados scripts de automatizacion de empaquetado: build.ps1 y build.bat.
+   - Empaquetado de modulos ES6 en un unico archivo distribuible: js/bundle.js.
+   - Modificado index.html para enlazar script src='js/bundle.js' garantizando compatibilidad total y carga inmediata en GitHub Pages.
+
+--------------------------------------------------------------------------------
+[2026-09-13] - VERSION / COMMIT: 3668d24 & 7a5bb96 (Version Base Rayo Pro)
+--------------------------------------------------------------------------------
+1. MODO OSCURO & DISENO:
+   - Correccion de contraste en el Modulo de Productos (Listas de Precios P1-P5).
+   - Estilos Apple Glassmorphism con variables semanticas en css/variables.css y css/themes.css.
+   - Correccion de contraste en Arqueo de Caja y resumen de ventas.
+
+2. VENTAS POS & LOGISTICA:
+   - Habilitado modal de Rotulo de Envio oficial con calculo automatico de cajas.
+   - Creacion de clientes en tiempo real desde el boton '+' del POS.
+   - Rotulado seguro de productos ('Productos de mantenimiento y embellecimiento automotriz').
+
+3. SEGMENTACION COMERCIAL DE CLIENTES:
+   - Clasificacion P1 a P5 (Consumidor Final, Taller, Mayorista, Distribuidor, Flotas).
+   - Matriz comercial y sugerencia automatica de cupo de credito y dias de plazo.
+
+4. COBRANZAS & COMUNICACION WHATSAPP:
+   - Boton de cobro en 1 clic hacia WhatsApp Web en Cartera (CxC).
+   - Boton de recordatorio directo en Google Calendar para facturas vencidas.
+   - Resumen ejecutivo del dia por WhatsApp desde el Dashboard y al cierre de turno en Caja.
+
+5. RBAC MULTIEMPRESA & PROTECCION INTELECTUAL:
+   - Separacion estricta entre Desarrollador (acceso total y multiempresa) y Gerente General.
+
+================================================================================
+INSTRUCCIONES PARA ANTIGRAVITY AL CAMBIAR DE ORDENADOR:
+1. Siempre verificar este archivo para saber el estado exacto de la arquitectura.
+2. Cada vez que se implementen mejoras o cambios, actualizar y registrar la entrada aqui con fecha y descripcion.
+3. Hacer git pull origin main al iniciar sesion en un nuevo ordenador para sincronizar el codigo fuente.
+================================================================================
