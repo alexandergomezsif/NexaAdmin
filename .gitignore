@@ -1,0 +1,10 @@
+﻿# Archivos y scripts locales de desarrollador
+deploy.bat
+deploy.ps1
+.deploy-temp/
+*.log
+
+# Temporales de Windows y del sistema
+.DS_Store
+Thumbs.db
+desktop.ini
