@@ -69,3 +69,9 @@ INSTRUCCIONES PARA ANTIGRAVITY AL CAMBIAR DE ORDENADOR:
 3. Hacer git pull origin main al iniciar sesion en un nuevo ordenador para sincronizar el codigo fuente.
 4. NO iniciar procesos en segundo plano de serve.ps1 ni usar puerto 8080.
 ================================================================================
+
+--------------------------------------------------------------------------------
+[2026-09-14 17:31] - ACTUALIZACION VIA DEPLOY SCRIPT:
+--------------------------------------------------------------------------------
+- Test comprobacion de script actualizador local
+
