@@ -3,7 +3,7 @@
 ================================================================================
 Repositorio GitHub: https://github.com/alexandergomezsif/NexaAdmin
 Produccion Web (GitHub Pages): https://alexandergomezsif.github.io/NexaAdmin/
-Ultima Actualizacion: 2026-09-14 17:30 (Hora Colombia)
+Ultima Actualizacion: 2026-09-14 17:35 (Hora Colombia)
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -32,6 +32,10 @@ Ultima Actualizacion: 2026-09-14 17:30 (Hora Colombia)
    - Creados scripts de automatizacion de empaquetado: build.ps1 y build.bat.
    - Empaquetado de modulos ES6 en un unico archivo distribuible: js/bundle.js.
    - Modificado index.html para enlazar script src='js/bundle.js' garantizando compatibilidad total y carga inmediata en GitHub Pages.
+
+6. POLITICA DE EJECUCION Y ENTORNO:
+   - No se usa servidor local ni puerto 8080.
+   - El aplicativo se ejecuta directamente desde GitHub Pages en produccion web o abriendo index.html en local.
 
 --------------------------------------------------------------------------------
 [2026-09-13] - VERSION / COMMIT: 3668d24 & 7a5bb96 (Version Base Rayo Pro)
@@ -63,4 +67,5 @@ INSTRUCCIONES PARA ANTIGRAVITY AL CAMBIAR DE ORDENADOR:
 1. Siempre verificar este archivo para saber el estado exacto de la arquitectura.
 2. Cada vez que se implementen mejoras o cambios, actualizar y registrar la entrada aqui con fecha y descripcion.
 3. Hacer git pull origin main al iniciar sesion en un nuevo ordenador para sincronizar el codigo fuente.
+4. NO iniciar procesos en segundo plano de serve.ps1 ni usar puerto 8080.
 ================================================================================
