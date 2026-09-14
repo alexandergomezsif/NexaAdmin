@@ -233,7 +233,7 @@ export const UsersModule = {
         <div class="form-row mb-3">
           <div class="form-group">
             <label class="form-label">Contraseña de Acceso</label>
-            <input type="text" class="form-control" name="clave" value="${user ? (user.clave || '') : ''}" placeholder="Ej: dev.nexa.2026">
+            <input type="text" class="form-control" name="clave" value="${user ? (user.clave || '') : ''}" placeholder="Ej: Admin.2026">
           </div>
           <div class="form-group">
             <label class="form-label">Estado de la Cuenta</label>

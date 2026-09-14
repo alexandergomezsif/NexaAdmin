@@ -81,3 +81,9 @@ INSTRUCCIONES PARA ANTIGRAVITY AL CAMBIAR DE ORDENADOR:
 --------------------------------------------------------------------------------
 - Depuracion de repositorio: eliminacion de scripts redundantes e inactivos (build.bat, build.ps1, serve.ps1)
 
+
+--------------------------------------------------------------------------------
+[2026-09-14 17:50] - ACTUALIZACION VIA DEPLOY SCRIPT:
+--------------------------------------------------------------------------------
+- Actualizar clave por defecto de desarrollador a Admin.2026 en seed y auto-sync
+
