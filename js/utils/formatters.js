@@ -85,5 +85,19 @@ export const Formatters = {
     if (!str) return 0;
     const clean = str.toString().replace(/[^0-9,-]/g, '').replace(',', '.');
     return parseFloat(clean) || 0;
+  },
+
+  /**
+   * Saneamiento de cadenas HTML para evitar vulnerabilidades XSS
+   * Fundamental al renderizar datos provenientes de JSON externos.
+   */
+  escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 };

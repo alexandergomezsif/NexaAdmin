@@ -7,6 +7,7 @@
 import { DB } from '../services/db-service.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
+import { AuthServiceInstance } from '../services/auth-service.js';
 
 export const BackupModule = {
   async render(container) {
@@ -36,15 +37,15 @@ export const BackupModule = {
           </div>
         </div>
 
-        <!-- RESTAURAR COPIA DE SEGURIDAD -->
+        <!-- RESTAURAR / SINCRONIZAR COPIA DE SEGURIDAD -->
         <div class="card" style="margin-bottom: 0;">
           <div class="card-header">
-            <div class="card-title">📥 Restaurar Respaldo Existente</div>
+            <div class="card-title">📥 Sincronizar / Restaurar JSON</div>
             <span class="badge badge-warning">Cuidado</span>
           </div>
           <div class="card-body">
             <p class="text-xs text-muted mb-4" style="line-height: 1.5;">
-              Permite cargar un archivo de respaldo <code>.json</code> previamente generado para sincronizar o restaurar la información en caso de cambio de terminal o migración.
+              Permite cargar un archivo <code>.json</code> previamente generado. <strong>Nota:</strong> Los datos se fusionarán (Upsert); los registros nuevos se añadirán y los existentes se actualizarán si el JSON contiene una versión más reciente.
             </p>
             
             <div class="form-group mb-3">
@@ -73,9 +74,10 @@ export const BackupModule = {
         const jsonStr = JSON.stringify(backupData, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
+        const currentUser = AuthServiceInstance.getCurrentUser()?.nombre.replace(/\\s+/g, '') || 'Usuario';
         const a = document.createElement('a');
         a.href = url;
-        a.download = `NexaERP_Respaldo_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        a.download = `NexaERP_Sync_${currentUser}_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
