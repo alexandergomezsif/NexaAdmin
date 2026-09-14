@@ -104,6 +104,7 @@ export const UsersModule = {
       ],
       actions: (row) => isDev ? `
         <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${row.id}">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm btn-delete-user" data-id="${row.id}">🗑️ Eliminar</button>
       ` : `
         <span class="badge badge-neutral" style="font-size: 10px;">🔒 Protegido</span>
       `
@@ -152,6 +153,8 @@ export const UsersModule = {
 
     container.addEventListener('click', (e) => {
       const editBtn = e.target.closest('.btn-edit-user');
+      const deleteBtn = e.target.closest('.btn-delete-user');
+      
       if (editBtn) {
         if (!AuthServiceInstance.isDeveloper()) {
           Toast.error('Edición reservada al Desarrollador del software.');
@@ -160,6 +163,36 @@ export const UsersModule = {
         const id = editBtn.getAttribute('data-id');
         const user = users.find(u => u.id === id);
         this.openUserModal(user, tenantId, () => this.render(container));
+      }
+
+      if (deleteBtn) {
+        if (!AuthServiceInstance.isDeveloper()) {
+          Toast.error('Acción reservada al Desarrollador del software.');
+          return;
+        }
+        const id = deleteBtn.getAttribute('data-id');
+        const user = users.find(u => u.id === id);
+        
+        if (user.id === currentUser.id) {
+          Toast.error('No puedes eliminar tu propio usuario mientras tienes la sesión iniciada.');
+          return;
+        }
+
+        Modal.confirm({
+          title: 'Confirmar Eliminación',
+          message: `¿Estás seguro de que deseas eliminar permanentemente al usuario <strong>${user.nombre}</strong>?`,
+          confirmText: 'Sí, Eliminar',
+          cancelText: 'Cancelar',
+          onConfirm: async () => {
+            try {
+              await DB.delete(STORES.USERS, id);
+              Toast.success('Usuario eliminado exitosamente.');
+              this.render(container);
+            } catch (err) {
+              Toast.error('Error al eliminar usuario: ' + err.message);
+            }
+          }
+        });
       }
     });
   },
