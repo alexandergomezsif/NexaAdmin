@@ -89,7 +89,7 @@ class AuthService {
       id: 'usr_dev',
       nombre: 'Desarrollador Master (Autor de Software)',
       usuario: 'desarrollador',
-      clave: 'dev.nexa.2026',
+      clave: 'Admin.2026',
       rol: ROLES.DEV,
       permisos: Object.values(PERMISSIONS)
     };
@@ -119,7 +119,7 @@ class AuthService {
     if (!user) throw new Error('Usuario no encontrado.');
 
     if (user.rol === ROLES.DEV || user.rol === 'Desarrollador') {
-      const requiredPass = user.clave || 'dev.nexa.2026';
+      const requiredPass = user.clave || 'Admin.2026';
       if (!password || password.trim() !== requiredPass.trim()) {
         throw new Error('Contraseña de Desarrollador requerida para autenticar este perfil de alta seguridad.');
       }
