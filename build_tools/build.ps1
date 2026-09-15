@@ -1,4 +1,4 @@
-﻿
+
 $esbuildExe = "esbuild.exe"
 if (-Not (Test-Path $esbuildExe)) {
     Write-Host "Descargando esbuild..."
@@ -8,6 +8,6 @@ if (-Not (Test-Path $esbuildExe)) {
     Remove-Item -Recurse -Force "package", "esbuild.tgz"
 }
 Write-Host "Empaquetando con esbuild..."
-.\esbuild.exe js/app.js --bundle --outfile=js/bundle.js --format=iife
+.\esbuild.exe ../js/app.js --bundle --outfile=../js/bundle.js --format=iife
 Write-Host "Bundle.js actualizado."
 
