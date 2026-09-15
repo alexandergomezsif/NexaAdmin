@@ -220,52 +220,86 @@ export const ReportsModule = {
 
       const header = PrintTemplates.getHeader('INFORME EJECUTIVO DE GESTIÓN GERENCIAL', 'INF-2026-01', new Date().toISOString());
 
-      const reportHtml = `
-        ${header}
+        const maxVal = Math.max(totalVentas, totalGastos, carteraActiva, 1);
+        const wVentas = Math.round((totalVentas / maxVal) * 100);
+        const wGastos = Math.round((totalGastos / maxVal) * 100);
+        const wCartera = Math.round((carteraActiva / maxVal) * 100);
 
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
-          <h3 style="margin: 0 0 10px 0; color: #0f172a; font-size: 15px;">Resumen Ejecutivo del Período</h3>
-          <p style="margin: 0; color: #475569; font-size: 13px;">Consolidado contable de operaciones, ingresos de venta, flujo de inventario y estado financiero para <strong>${tenant.nombreComercial}</strong>.</p>
-        </div>
+        const reportHtml = `
+          ${header}
 
-        <table>
-          <thead>
-            <tr>
-              <th>Indicador Clave de Gestión</th>
-              <th class="text-right">Valor Consolidado (COP)</th>
-              <th>Detalle Operativo</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>Facturación Total Bruta</strong></td>
-              <td class="text-right font-bold" style="color: #0284c7;">${Formatters.currency(totalVentas)}</td>
-              <td>${sales.length} facturas y remisiones emitidas</td>
-            </tr>
-            <tr>
-              <td><strong>Gastos Operativos & Administrativos</strong></td>
-              <td class="text-right font-bold" style="color: #ef4444;">-${Formatters.currency(totalGastos)}</td>
-              <td>Servicios, nómina, combustible y fletes</td>
-            </tr>
-            <tr>
-              <td><strong>Inventario Físico Valorizado</strong></td>
-              <td class="text-right font-bold">${Formatters.currency(invValorizado)}</td>
-              <td>${products.length} referencias en bodegas activas</td>
-            </tr>
-            <tr>
-              <td><strong>Cartera Comercial Pendiente (CXC)</strong></td>
-              <td class="text-right font-bold" style="color: #f59e0b;">${Formatters.currency(carteraActiva)}</td>
-              <td>Créditos comerciales vigentes</td>
-            </tr>
-            <tr style="background: #ecfdf5;">
-              <td><strong>Utilidad Operativa Estimada</strong></td>
-              <td class="text-right font-bold" style="color: #059669; font-size: 15px;">${Formatters.currency(margenEst)}</td>
-              <td>Margen bruto estimado ~42% tras egresos</td>
-            </tr>
-          </tbody>
-        </table>
+          <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <h3 style="margin: 0 0 10px 0; color: #0f172a; font-size: 15px;">Resumen Ejecutivo del Período</h3>
+            <p style="margin: 0; color: #475569; font-size: 13px;">Consolidado contable de operaciones, ingresos de venta, flujo de inventario y estado financiero para <strong>${tenant.nombreComercial}</strong>.</p>
+          </div>
 
-        <div class="doc-footer" style="margin-top: 60px;">
+          <!-- GRÁFICO GERENCIAL INCRUSTADO (HTML/CSS Puro) -->
+          <div style="margin-bottom: 25px; padding: 15px; border: 1px solid #e5e5ea; border-radius: 8px;">
+            <h4 style="margin: 0 0 15px 0; font-size: 13px; color: #1d1d1f; border-bottom: 1px solid #eee; padding-bottom: 8px;">Indicadores Financieros - Gráfico Comparativo</h4>
+            
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+              <div style="width: 120px; font-size: 12px; font-weight: bold; color: #0284c7;">Facturación</div>
+              <div style="flex: 1; background: #e2e8f0; height: 16px; border-radius: 8px; overflow: hidden; margin: 0 10px;">
+                <div style="width: ${wVentas}%; background: #0284c7; height: 100%;"></div>
+              </div>
+              <div style="width: 100px; text-align: right; font-size: 12px; font-weight: bold;">${Formatters.currency(totalVentas)}</div>
+            </div>
+
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+              <div style="width: 120px; font-size: 12px; font-weight: bold; color: #ef4444;">Gastos</div>
+              <div style="flex: 1; background: #e2e8f0; height: 16px; border-radius: 8px; overflow: hidden; margin: 0 10px;">
+                <div style="width: ${wGastos}%; background: #ef4444; height: 100%;"></div>
+              </div>
+              <div style="width: 100px; text-align: right; font-size: 12px; font-weight: bold;">${Formatters.currency(totalGastos)}</div>
+            </div>
+
+            <div style="display: flex; align-items: center;">
+              <div style="width: 120px; font-size: 12px; font-weight: bold; color: #f59e0b;">Cartera CXC</div>
+              <div style="flex: 1; background: #e2e8f0; height: 16px; border-radius: 8px; overflow: hidden; margin: 0 10px;">
+                <div style="width: ${wCartera}%; background: #f59e0b; height: 100%;"></div>
+              </div>
+              <div style="width: 100px; text-align: right; font-size: 12px; font-weight: bold;">${Formatters.currency(carteraActiva)}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Indicador Clave de Gestión</th>
+                <th class="text-right">Valor Consolidado (COP)</th>
+                <th>Detalle Operativo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Facturación Total Bruta</strong></td>
+                <td class="text-right font-bold" style="color: #0284c7;">${Formatters.currency(totalVentas)}</td>
+                <td>${sales.length} facturas y remisiones emitidas</td>
+              </tr>
+              <tr>
+                <td><strong>Gastos Operativos & Administrativos</strong></td>
+                <td class="text-right font-bold" style="color: #ef4444;">-${Formatters.currency(totalGastos)}</td>
+                <td>Servicios, nómina, combustible y fletes</td>
+              </tr>
+              <tr>
+                <td><strong>Inventario Físico Valorizado</strong></td>
+                <td class="text-right font-bold">${Formatters.currency(invValorizado)}</td>
+                <td>${products.length} referencias en bodegas activas</td>
+              </tr>
+              <tr>
+                <td><strong>Cartera Comercial Pendiente (CXC)</strong></td>
+                <td class="text-right font-bold" style="color: #f59e0b;">${Formatters.currency(carteraActiva)}</td>
+                <td>Créditos comerciales vigentes</td>
+              </tr>
+              <tr style="background: #ecfdf5;">
+                <td><strong>Utilidad Operativa Estimada</strong></td>
+                <td class="text-right font-bold" style="color: #059669; font-size: 15px;">${Formatters.currency(margenEst)}</td>
+                <td>Margen bruto estimado ~42% tras egresos</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="doc-footer" style="margin-top: 40px;">
           <p>Informe generado confidencialmente para la junta directiva y gerencia general.</p>
           <p style="margin-top: 4px; font-size: 10px;">Software Nexa ERP Multiempresa • Licenciado para ${tenant.razonSocial}</p>
         </div>

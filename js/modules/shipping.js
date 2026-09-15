@@ -24,6 +24,8 @@ export const SHIPPING_STATUSES = {
 };
 
 export const ShippingModule = {
+  printQueue: [], // Cola para lote de rótulos
+
   async render(container) {
     const tenant = TenantServiceInstance.getActiveTenant();
     const tenantId = tenant ? tenant.id : 'tenant_rayopro';
@@ -40,7 +42,10 @@ export const ShippingModule = {
           <p>Control de despacho de mercancía, transportadoras nacionales (Servientrega, Coordinadora, Envia) y estado de entrega</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-primary btn-sm" id="btn-new-shipping">🚚 Registrar Nuevo Envío</button>
+          <button class="btn btn-secondary btn-sm" id="btn-print-batch" style="background: var(--brand-accent); color: white;" ${this.printQueue.length === 0 ? 'disabled' : ''}>
+            🖨️ Imprimir Lote (${this.printQueue.length})
+          </button>
+          <button class="btn btn-primary btn-sm" id="btn-new-shipping">📦 Registrar Nuevo Envío</button>
         </div>
       </div>
 
@@ -111,10 +116,10 @@ export const ShippingModule = {
           render: val => Number(val) > 0 ? Formatters.currency(val) : '<span class="text-success">Gratis / Propio</span>'
         }
       ],
-      actions: (row) => `
-        <button class="btn btn-primary btn-sm btn-print-label" data-id="${row.id}" title="Imprimir Rótulo Adhesivo con Código de Barras">🏷️ Rótulo Envío</button>
-        <button class="btn btn-secondary btn-sm btn-update-ship-status" data-id="${row.id}">🔄 Estado</button>
-      `
+        actions: (row) => `
+          <button class="btn btn-primary btn-sm btn-print-label" data-id="${row.id}" title="Añadir a Cola de Impresión">➕ Encolar</button>
+          <button class="btn btn-secondary btn-sm btn-update-ship-status" data-id="${row.id}">🔄 Estado</button>
+        `
     });
 
     // Nuevo envío
@@ -122,15 +127,31 @@ export const ShippingModule = {
       this.openNewShippingModal(tenantId, clients, () => this.render(container));
     });
 
+    // Imprimir Lote
+    const btnBatch = container.querySelector('#btn-print-batch');
+    if (btnBatch) {
+      btnBatch.addEventListener('click', () => {
+        if (this.printQueue.length > 0) {
+          const html = PrintTemplates.batchShippingLabels(this.printQueue);
+          ExportService.printDocument(html, `Lote_Rotulos_${new Date().getTime()}`);
+          this.printQueue = []; // Vaciar cola después de imprimir
+          this.render(container);
+        }
+      });
+    }
+
     // Eventos de tabla
     container.addEventListener('click', (e) => {
       const printLabelBtn = e.target.closest('.btn-print-label');
       if (printLabelBtn) {
         const id = printLabelBtn.getAttribute('data-id');
         const ship = shipments.find(s => s.id === id);
-        if (ship) {
-          const html = PrintTemplates.shippingBoxLabel(ship);
-          ExportService.printDocument(html, `Rotulo_Envio_${ship.numeroGuia}`);
+        if (ship && !this.printQueue.find(s => s.id === ship.id)) {
+          this.printQueue.push(ship);
+          window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Rótulo añadido a la cola de impresión', type: 'success' } }));
+          this.render(container);
+        } else if (ship) {
+          window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'El rótulo ya está en la cola', type: 'info' } }));
         }
         return;
       }

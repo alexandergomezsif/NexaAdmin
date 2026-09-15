@@ -101,8 +101,7 @@ export const PrintTemplates = {
   },
 
   /**
-   * 1. RÓTULO / GUÍA DE ENVÍO PARA CAJAS (TRANSPORTADORAS)
-   * Diseñado conforme a normas de transportadoras de carga en Colombia
+   * 1. RÓTULO / GUÍA DE ENVÍO COMPACTO (Diseñado para 4 por página)
    */
   shippingBoxLabel(shipping) {
     const tenant = TenantServiceInstance.getActiveTenant() || {
@@ -115,101 +114,85 @@ export const PrintTemplates = {
       telefono: '3017100508'
     };
     const barcode = this.generateBarcodeSvg(shipping.numeroGuia || '77092184531');
-    const logoSrc = TenantServiceInstance.getHorizontalLogo(tenant, false);
 
     return `
-      <div style="border: 3px solid #000; padding: 16px; max-width: 620px; margin: 0 auto; background: #fff; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; color: #000;">
-        
-        <!-- CABECERA RÓTULO CON LOGO DESTACADO DE ALTA VISIBILIDAD -->
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="${logoSrc}" alt="${tenant.nombreComercial}" 
-                 style="height: 44px; max-width: 155px; object-fit: contain; border-radius: 4px;" 
-                 onerror="this.onerror=null; this.src='datos/isotipo fondo blanco.jpg';">
-            <div>
-              <div style="font-size: 16px; font-weight: 900; letter-spacing: -0.5px; text-transform: uppercase;">
-                ${tenant.nombreComercial}
-              </div>
-              <div style="font-size: 10px; font-weight: 700; color: #444;">LÍNEA PROFESIONAL DE EMBELLECIMIENTO AUTOMOTRIZ</div>
-            </div>
-          </div>
+      <div style="flex: 1; border: 2px solid #000; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; box-sizing: border-box; overflow: hidden; position: relative;">
+        <!-- CABECERA -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px;">
+          <div style="font-weight: 900; font-size: 18px; text-transform: uppercase; letter-spacing: -0.5px;">${tenant.nombreComercial}</div>
           <div style="text-align: right;">
-            <div style="background: #000; color: #fff; padding: 4px 10px; font-size: 12px; font-weight: 800; border-radius: 4px; text-transform: uppercase;">
-              ${shipping.transportadora || 'COORDINADORA / ENVIA'}
+            <div style="background: #000; color: #fff; padding: 2px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; display: inline-block;">
+              ${shipping.transportadora || 'COORDINADORA'}
             </div>
-            <div style="font-size: 11px; font-weight: bold; margin-top: 4px;">GUÍA: ${shipping.numeroGuia || '77092184531'}</div>
+            <div style="font-size: 11px; font-weight: bold; margin-top: 2px;">GUÍA: ${shipping.numeroGuia || 'PENDIENTE'}</div>
           </div>
         </div>
 
-        <!-- CÓDIGO DE BARRAS DE RASTREO -->
-        <div style="text-align: center; padding: 10px; background: #f9f9f9; border: 1px dashed #666; margin-bottom: 16px; border-radius: 6px;">
-          ${barcode}
-        </div>
-
-        <!-- CUADRO DE REMITENTE Y DESTINATARIO -->
-        <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px; margin-bottom: 16px;">
-          
+        <!-- CONTENIDO -->
+        <div style="display: flex; gap: 8px; height: 100%;">
           <!-- REMITENTE -->
-          <div style="border: 1px solid #999; padding: 10px; border-radius: 6px; font-size: 11px; line-height: 1.45;">
-            <div style="font-weight: 800; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 6px; color: #555;">
-              DE (REMITENTE):
-            </div>
-            <div style="font-weight: 800; font-size: 12px;">${tenant.razonSocial}</div>
-            <div><strong>NIT:</strong> ${tenant.nit}-${tenant.dv}</div>
-            <div><strong>Dirección:</strong> ${tenant.direccion}</div>
-            <div><strong>Ciudad:</strong> ${tenant.ciudad} - ${tenant.departamento || 'Antioquia'}</div>
-            <div><strong>Teléfono:</strong> ${tenant.telefono}</div>
-            ${tenant.whatsapp ? `<div><strong>WhatsApp:</strong> ${tenant.whatsapp}</div>` : ''}
+          <div style="flex: 1; border: 1px solid #999; padding: 6px; border-radius: 4px; font-size: 10px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-weight: bold; color: #555; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin-bottom: 4px;">DE (REMITENTE):</div>
+            <div style="font-weight: bold; font-size: 11px; color: #000;">${tenant.razonSocial}</div>
+            <div>NIT: ${tenant.nit}-${tenant.dv}</div>
+            <div>${tenant.direccion}</div>
+            <div>${tenant.ciudad}</div>
+            <div>Tel: ${tenant.telefono}</div>
           </div>
 
-          <!-- DESTINATARIO COMPLETO SIN OMITIR NADA -->
-          <div style="border: 2px solid #000; padding: 10px; border-radius: 6px; font-size: 11.5px; line-height: 1.45; background: #fffdf0;">
-            <div style="font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px; color: #000; font-size: 12px;">
-              PARA (DESTINATARIO):
-            </div>
-            <div style="font-weight: 900; font-size: 14px; color: #000; margin-bottom: 2px;">${shipping.clienteNombre}</div>
-            <div><strong>NIT / C.C.:</strong> ${shipping.nitCc || '-'}</div>
-            <div><strong>Dirección de Entrega:</strong> ${shipping.direccion}</div>
-            ${shipping.barrio ? `<div><strong>Barrio / Sector:</strong> ${shipping.barrio}</div>` : ''}
-            <div><strong>Ciudad / Destino:</strong> ${shipping.ciudad} - ${shipping.departamento || ''}</div>
-            <div><strong>Teléfono Contacto:</strong> ${shipping.telefono || '-'}</div>
-            ${shipping.whatsapp ? `<div><strong>WhatsApp:</strong> ${shipping.whatsapp}</div>` : ''}
-            ${shipping.email ? `<div><strong>Correo Electrónico:</strong> ${shipping.email}</div>` : ''}
-            ${shipping.observaciones ? `
-              <div style="margin-top: 6px; font-size: 10.5px; color: #333; border-top: 1px dashed #aaa; padding-top: 4px;">
-                <strong>Instrucciones / Obs:</strong> ${shipping.observaciones}
-              </div>
-            ` : ''}
-          </div>
-
-        </div>
-
-        <!-- DETALLES DEL PAQUETE / CAJAS -->
-        <div style="border: 1px solid #000; padding: 12px; margin-bottom: 16px; border-radius: 6px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-size: 11px; font-weight: 700; color: #555;">DESCRIPCIÓN DEL CONTENIDO:</div>
-              <div style="font-size: 13px; font-weight: 800;">${shipping.contenidoDescripcion || 'Productos de mantenimiento y embellecimiento automotriz'}</div>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 11px; font-weight: 700; color: #555;">TOTAL CAJAS / BULTOS:</div>
-              <div style="font-size: 18px; font-weight: 900; color: #0071e3;">${shipping.cajasTotal || 1} CAJAS</div>
+          <!-- DESTINATARIO -->
+          <div style="flex: 2; border: 2px solid #000; padding: 6px; border-radius: 4px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; background: #fffdf0;">
+            <div style="font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">PARA (DESTINATARIO):</div>
+            <div style="font-weight: 900; font-size: 13px;">${shipping.clienteNombre}</div>
+            <div><strong>NIT/CC:</strong> ${shipping.nitCc || '-'}</div>
+            <div><strong>Dirección:</strong> ${shipping.direccion}</div>
+            <div><strong>Destino:</strong> ${shipping.ciudad} ${shipping.departamento ? '- ' + shipping.departamento : ''}</div>
+            <div><strong>Tel:</strong> ${shipping.telefono || '-'}</div>
+            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #999; font-weight: 600;">
+              Desc: ${shipping.contenidoDescripcion || 'Productos automotrices'} - ${shipping.cajasTotal || 1} CAJA(S)
             </div>
           </div>
         </div>
 
-        <!-- INSTRUCCIONES DE MANEJO SEGURO (SEGURO PARA TRANSPORTADORAS) -->
-        <div style="display: flex; align-items: center; justify-content: space-around; background: #000; color: #fff; padding: 8px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase;">
-          <span>✨ PRODUCTOS DE EMBELLECIMIENTO AUTOMOTRIZ</span>
-          <span>⬆️ ESTE LADO ARRIBA</span>
-          <span>📦 MANEJAR CON CUIDADO</span>
-        </div>
-
-        <div style="font-size: 9px; color: #777; text-align: center; margin-top: 10px;">
-          Rótulo Oficial de Despacho generado por Nexa ERP para Rayo Pro Colombia
+        <!-- CÓDIGO BARRAS -->
+        <div style="position: absolute; bottom: 8px; right: 12px;">
+          ${barcode}
         </div>
       </div>
     `;
+  },
+
+  /**
+   * 1.5. LOTE DE RÓTULOS (4 por página tamaño carta)
+   */
+  batchShippingLabels(shippings) {
+    if (!shippings || shippings.length === 0) return '';
+    
+    let html = '';
+    const itemsPerPage = 4;
+    
+    for (let i = 0; i < shippings.length; i += itemsPerPage) {
+      const chunk = shippings.slice(i, i + itemsPerPage);
+      
+      html += `
+        <div style="width: 21.59cm; height: 27.94cm; padding: 1cm; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.5cm; ${i + itemsPerPage < shippings.length ? 'page-break-after: always;' : ''}">
+      `;
+      
+      chunk.forEach(shipping => {
+        html += this.shippingBoxLabel(shipping);
+      });
+      
+      // Si el chunk tiene menos de 4, rellenamos con espacios vacíos para mantener el tamaño
+      if (chunk.length < itemsPerPage) {
+        for (let j = 0; j < itemsPerPage - chunk.length; j++) {
+          html += `<div style="flex: 1;"></div>`;
+        }
+      }
+      
+      html += `</div>`;
+    }
+    
+    return html;
   },
 
   /**
@@ -233,50 +216,50 @@ export const PrintTemplates = {
     const header = this.getHeader(docTitle, sale.consecutivo, sale.fecha);
     
     const rowsHtml = items.map((it, idx) => `
-      <tr>
-        <td class="text-center">${idx + 1}</td>
-        <td><strong>${it.sku || '-'}</strong></td>
-        <td>${it.nombre}</td>
-        <td class="text-center"><strong>${it.cantidad}</strong></td>
-        <td class="text-right">${Formatters.currency(it.precioUnitario)}</td>
-        <td class="text-right"><strong>${Formatters.currency(it.total)}</strong></td>
+      <tr style="font-size: 11px;">
+        <td class="text-center" style="padding: 4px;">${idx + 1}</td>
+        <td style="padding: 4px;"><strong>${it.sku || '-'}</strong></td>
+        <td style="padding: 4px;">${it.nombre}</td>
+        <td class="text-center" style="padding: 4px;"><strong>${it.cantidad}</strong></td>
+        <td class="text-right" style="padding: 4px;">${Formatters.currency(it.precioUnitario)}</td>
+        <td class="text-right" style="padding: 4px;"><strong>${Formatters.currency(it.total)}</strong></td>
       </tr>
     `).join('');
 
     return `
       ${header}
       
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #fbfbfd; padding: 14px; border-radius: 8px; border: 1px solid #e5e5ea;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; background: #fbfbfd; padding: 8px; border-radius: 6px; border: 1px solid #e5e5ea; line-height: 1.2;">
         <div>
-          <div style="font-size: 11px; text-transform: uppercase; color: #86868b; font-weight: 700;">Datos del Cliente:</div>
-          <div style="font-size: 14px; font-weight: 700; color: #1d1d1f; margin: 2px 0;">${sale.clienteNombre}</div>
-          <div style="font-size: 12px; color: #424245;"><strong>NIT/CC:</strong> ${sale.clienteNit || '-'}</div>
-          <div style="font-size: 12px; color: #424245;"><strong>Forma de Pago:</strong> ${sale.metodoPago || 'Crédito Comercial'}</div>
-          <div style="margin-top: 4px;">
-            <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${esFE ? '#e0f2fe' : '#f1f5f9'}; color: ${esFE ? '#0369a1' : '#475569'}; font-weight: 700;">
-              ${esFE ? '⚡ Factura Electrónica' : '📄 Documento Interno / Sin FE'}
+          <div style="font-size: 10px; text-transform: uppercase; color: #86868b; font-weight: 700;">Datos del Cliente:</div>
+          <div style="font-size: 12px; font-weight: 700; color: #1d1d1f; margin: 2px 0;">${sale.clienteNombre}</div>
+          <div style="font-size: 11px; color: #424245;"><strong>NIT/CC:</strong> ${sale.clienteNit || '-'}</div>
+          <div style="font-size: 11px; color: #424245;"><strong>Forma Pago:</strong> ${sale.metodoPago || 'Crédito Comercial'}</div>
+          <div style="margin-top: 2px;">
+            <span style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: ${esFE ? '#e0f2fe' : '#f1f5f9'}; color: ${esFE ? '#0369a1' : '#475569'}; font-weight: 700;">
+              ${esFE ? '⚡ Factura Electrónica' : '📄 Doc Interno (Sin FE)'}
             </span>
           </div>
         </div>
         <div>
-          <div style="font-size: 11px; text-transform: uppercase; color: #86868b; font-weight: 700;">Información de Venta:</div>
-          <div style="font-size: 12px; color: #424245;"><strong>Asesor / Vendedor:</strong> ${sale.vendedorNombre || 'Juan Pablo'}</div>
-          <div style="font-size: 12px; color: #424245;"><strong>Estado:</strong> ${sale.estado}</div>
-          <div style="font-size: 11px; color: #86868b; margin-top: 4px;">
-            ${aplicaIva ? 'Régimen con IVA (19%)' : 'Régimen Exento / Etapa Inicial (Sin IVA - 0%)'}
+          <div style="font-size: 10px; text-transform: uppercase; color: #86868b; font-weight: 700;">Info Venta:</div>
+          <div style="font-size: 11px; color: #424245;"><strong>Vendedor:</strong> ${sale.vendedorNombre || 'Juan Pablo'}</div>
+          <div style="font-size: 11px; color: #424245;"><strong>Estado:</strong> ${sale.estado}</div>
+          <div style="font-size: 10px; color: #86868b; margin-top: 2px;">
+            ${aplicaIva ? 'Régimen con IVA (19%)' : 'Régimen Exento (Sin IVA - 0%)'}
           </div>
         </div>
       </div>
 
-      <table>
+      <table style="margin-bottom: 10px;">
         <thead>
-          <tr>
-            <th class="text-center" style="width: 40px;">#</th>
-            <th style="width: 120px;">SKU</th>
-            <th>Descripción del Producto / Empaque</th>
-            <th class="text-center" style="width: 80px;">Cant.</th>
-            <th class="text-right" style="width: 120px;">V. Unitario</th>
-            <th class="text-right" style="width: 130px;">Total</th>
+          <tr style="font-size: 11px;">
+            <th class="text-center" style="width: 30px; padding: 4px;">#</th>
+            <th style="width: 100px; padding: 4px;">SKU</th>
+            <th style="padding: 4px;">Descripción</th>
+            <th class="text-center" style="width: 50px; padding: 4px;">Cant.</th>
+            <th class="text-right" style="width: 90px; padding: 4px;">V. Unit</th>
+            <th class="text-right" style="width: 100px; padding: 4px;">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -284,31 +267,31 @@ export const PrintTemplates = {
         </tbody>
       </table>
 
-      <div class="doc-totals">
-        <div class="total-row">
+      <div class="doc-totals" style="margin-top: 5px;">
+        <div class="total-row" style="padding: 2px 0;">
           <span>Subtotal Neto:</span>
           <span>${Formatters.currency(sale.subtotal)}</span>
         </div>
         ${sale.descuentos > 0 ? `
-          <div class="total-row" style="color: #ff3b30;">
+          <div class="total-row" style="padding: 2px 0; color: #ff3b30;">
             <span>Descuentos:</span>
             <span>-${Formatters.currency(sale.descuentos)}</span>
           </div>
         ` : ''}
-        <div class="total-row">
+        <div class="total-row" style="padding: 2px 0;">
           <span>${aplicaIva ? 'IVA (19%):' : 'IVA (Exento 0%):'}</span>
           <span>${Formatters.currency(sale.impuestos || 0)}</span>
         </div>
-        <div class="total-row grand-total">
+        <div class="total-row grand-total" style="padding-top: 4px; margin-top: 4px;">
           <span>TOTAL A PAGAR:</span>
           <span>${Formatters.currency(sale.total)}</span>
         </div>
       </div>
 
-      <div class="doc-footer">
-        <p>Agradecemos su compra y preferencia. Productos de mantenimiento y embellecimiento automotriz garantizados por Rayo Pro Colombia S.A.S.</p>
-        <p style="margin-top: 4px; font-size: 10px;">
-          ${esFE ? 'Resolución DIAN No. 18764000123456 • Documento Oficial Validado por DIAN' : 'Documento comercial emitido para fines administrativos internos • Software Nexa ERP'}
+      <div class="doc-footer" style="margin-top: 15px; padding-top: 10px; font-size: 10px; line-height: 1.2;">
+        <p>Agradecemos su compra y preferencia. Productos garantizados por Rayo Pro Colombia S.A.S.</p>
+        <p style="margin-top: 2px; font-size: 9px;">
+          ${esFE ? 'Resolución DIAN No. 18764000123456 • Documento Validado por DIAN' : 'Documento emitido para fines administrativos • Nexa ERP'}
         </p>
       </div>
     `;
