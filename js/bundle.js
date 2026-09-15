@@ -4978,40 +4978,41 @@ Generado por Nexa ERP.`;
       const tenant = TenantServiceInstance.getActiveTenant() || {
         nombreComercial: "Rayo Pro",
         razonSocial: "Rayo Pro Colombia S.A.S.",
-        nit: "901458321",
+        nit: "901458321-4",
         dv: 4,
         direccion: "Carrera 42 # 54A - 77",
         ciudad: "Itag\xFC\xED",
         telefono: "3017100508"
       };
-      const barcode = this.generateBarcodeSvg(shipping.numeroGuia || "77092184531");
+      const qrCodeBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQAQMAAAC032DuAAAABlBMVEX///8AAABVwtN+AAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA50lEQVQokY3SMY7DIBAF0Iko3MUXQPY1tkDiSqZzZbZLh69kKQXXQOICSUeB+AvZjVLE481Ur0CaP8wQvcoid0TKojCcSNpx3SYaGBrILvfZ4IBWTnRIijfFs3abg81/jXdY887RPaPvsJX4Vs+p32kxIuLqvsIH9PFCpB1xnDQw3oFUGC5aIJ/r24Fh70fIRcAXhmylXbzpFoejpGAf3RhCpOj0ug0cN6RYNDz9z/aDweRT4lh3YeGU8YVh3SbJs2pv99kOJp/wGJ7jLNrBHNCGpe5oYNguKt6xJo4tr3DU/x7XMV/1A2RJkeLuHf/gAAAAAElFTkSuQmCC";
       return `
       <div style="flex: 1; border: 2px solid #000; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; box-sizing: border-box; overflow: hidden; position: relative;">
         <!-- CABECERA -->
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px;">
-          <div style="font-weight: 900; font-size: 18px; text-transform: uppercase; letter-spacing: -0.5px;">${tenant.nombreComercial}</div>
+          <h1 style="margin: 0; font-size: 20px; font-weight: 900;">${tenant.nombreComercial.toUpperCase()}</h1>
           <div style="text-align: right;">
-            <div style="background: #000; color: #fff; padding: 2px 8px; font-size: 11px; font-weight: bold; border-radius: 4px; display: inline-block;">
-              ${shipping.transportadora || "COORDINADORA"}
+            <div style="background: #000; color: #fff; padding: 2px 8px; font-weight: bold; border-radius: 4px; font-size: 11px; display: inline-block;">
+              ${shipping.transportadora || "Transportadora M\xFAltiple"}
             </div>
-            <div style="font-size: 11px; font-weight: bold; margin-top: 2px;">GU\xCDA: ${shipping.numeroGuia || "PENDIENTE"}</div>
+            <div style="font-size: 10px; font-weight: bold; margin-top: 4px;">GU\xCDA: ${shipping.numeroGuia || "PENDIENTE"}</div>
           </div>
         </div>
 
-        <!-- CONTENIDO -->
-        <div style="display: flex; gap: 8px; height: 100%;">
+        <!-- CUERPO PRINCIPAL DIVIDIDO EN 2 -->
+        <div style="display: flex; flex: 1; gap: 12px;">
+          
           <!-- REMITENTE -->
-          <div style="flex: 1; border: 1px solid #999; padding: 6px; border-radius: 4px; font-size: 10px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center;">
-            <div style="font-weight: bold; color: #555; border-bottom: 1px solid #ccc; padding-bottom: 2px; margin-bottom: 4px;">DE (REMITENTE):</div>
-            <div style="font-weight: bold; font-size: 11px; color: #000;">${tenant.razonSocial}</div>
+          <div style="flex: 1; border: 2px solid #000; padding: 6px; border-radius: 4px; font-size: 10px; line-height: 1.2; display: flex; flex-direction: column; justify-content: center;">
+            <div style="color: #444; margin-bottom: 6px; font-weight: bold;">DE (REMITENTE):</div>
+            <div style="font-weight: 900; font-size: 11px;">${tenant.razonSocial}</div>
             <div>NIT: ${tenant.nit}-${tenant.dv}</div>
-            <div>${tenant.direccion}</div>
+            <div>${tenant.direccion}, Zona Industrial</div>
             <div>${tenant.ciudad}</div>
             <div>Tel: ${tenant.telefono}</div>
           </div>
 
           <!-- DESTINATARIO -->
-          <div style="flex: 2; border: 2px solid #000; padding: 6px; padding-right: 170px; border-radius: 4px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; background: #fffdf0; position: relative;">
+          <div style="flex: 2; border: 2px solid #000; padding: 6px; padding-right: 90px; border-radius: 4px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; background: #fffdf0; position: relative;">
             <div style="font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">PARA (DESTINATARIO):</div>
             <div style="font-weight: 900; font-size: 13px;">${shipping.clienteNombre}</div>
             <div><strong>NIT/CC:</strong> ${shipping.nitCc || "-"}</div>
@@ -5022,9 +5023,10 @@ Generado por Nexa ERP.`;
               Desc: ${shipping.contenidoDescripcion || "Productos automotrices"} - ${shipping.cajasTotal || 1} CAJA(S)
             </div>
             
-            <!-- C\xD3DIGO BARRAS MOVIDO DENTRO DEL RECUADRO -->
-            <div style="position: absolute; bottom: 8px; right: 8px;">
-              ${barcode}
+            <!-- QR PROMOCIONAL MOVIDO A LA ESQUINA SUPERIOR DERECHA -->
+            <div style="position: absolute; top: 6px; right: 6px; text-align: center; width: 70px;">
+              <img src="${qrCodeBase64}" alt="QR Rese\xF1a" style="width: 50px; height: 50px; display: block; margin: 0 auto;">
+              <div style="font-size: 7px; line-height: 1.1; margin-top: 3px; font-weight: bold; color: #444;">D\xC9JANOS UNA<br>RESE\xD1A</div>
             </div>
           </div>
         </div>
