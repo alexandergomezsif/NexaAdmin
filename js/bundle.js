@@ -9,7 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // js/services/db-service.js
+  // ../js/services/db-service.js
   var db_service_exports = {};
   __export(db_service_exports, {
     DB: () => DB2,
@@ -17,7 +17,7 @@
   });
   var DB_NAME, DB_VERSION, STORES, DBService, DB2;
   var init_db_service = __esm({
-    "js/services/db-service.js"() {
+    "../js/services/db-service.js"() {
       DB_NAME = "NexaERP_DB";
       DB_VERSION = 2;
       STORES = {
@@ -289,10 +289,10 @@
     }
   });
 
-  // js/utils/formatters.js
+  // ../js/utils/formatters.js
   var Formatters;
   var init_formatters = __esm({
-    "js/utils/formatters.js"() {
+    "../js/utils/formatters.js"() {
       Formatters = {
         /**
          * Formatea un valor numérico a Pesos Colombianos (COP) sin decimales o con decimales según se requiera
@@ -390,14 +390,14 @@
     }
   });
 
-  // js/services/export-service.js
+  // ../js/services/export-service.js
   var export_service_exports = {};
   __export(export_service_exports, {
     ExportService: () => ExportService
   });
   var ExportService;
   var init_export_service = __esm({
-    "js/services/export-service.js"() {
+    "../js/services/export-service.js"() {
       init_formatters();
       ExportService = {
         /**
@@ -594,10 +594,10 @@
     }
   });
 
-  // js/services/tenant-service.js
+  // ../js/services/tenant-service.js
   init_db_service();
 
-  // js/data/seed-rayopro.js
+  // ../js/data/seed-rayopro.js
   var RAYO_PRO_TENANT_ID = "tenant_rayopro";
   var ALT_DEMO_TENANT_ID = "tenant_autobrillo";
   var SeedData = {
@@ -1591,7 +1591,7 @@
     ]
   };
 
-  // js/utils/dian-dv.js
+  // ../js/utils/dian-dv.js
   var DianDV = {
     // Factores de ponderación oficiales DIAN (hasta 15 dígitos)
     WEIGHTS: [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71],
@@ -1636,7 +1636,7 @@
     }
   };
 
-  // js/utils/event-bus.js
+  // ../js/utils/event-bus.js
   var EventBusService = class {
     constructor() {
       this.events = {};
@@ -1676,7 +1676,7 @@
   };
   var EventBus = new EventBusService();
 
-  // js/services/tenant-service.js
+  // ../js/services/tenant-service.js
   var TenantService = class {
     constructor() {
       this.currentTenant = null;
@@ -1994,10 +1994,10 @@
   };
   var TenantServiceInstance = new TenantService();
 
-  // js/services/auth-service.js
+  // ../js/services/auth-service.js
   init_db_service();
 
-  // js/services/audit-service.js
+  // ../js/services/audit-service.js
   init_db_service();
   var AuditServiceManager = class {
     /**
@@ -2045,7 +2045,7 @@
   };
   var AuditService = new AuditServiceManager();
 
-  // js/services/auth-service.js
+  // ../js/services/auth-service.js
   var ROLES = {
     DEV: "Desarrollador",
     ADMIN: "Desarrollador",
@@ -2250,7 +2250,7 @@
   };
   var AuthServiceInstance = new AuthService();
 
-  // js/services/cash-service.js
+  // ../js/services/cash-service.js
   init_db_service();
   var CashService = {
     /**
@@ -2373,7 +2373,7 @@
     }
   };
 
-  // js/components/toast.js
+  // ../js/components/toast.js
   var ToastManager = class {
     constructor() {
       this.container = null;
@@ -2439,7 +2439,7 @@
   };
   var Toast = new ToastManager();
 
-  // js/components/modal.js
+  // ../js/components/modal.js
   var Modal = {
     activeModal: null,
     /**
@@ -2540,11 +2540,11 @@
     }
   };
 
-  // js/modules/dashboard.js
+  // ../js/modules/dashboard.js
   init_db_service();
   init_formatters();
 
-  // js/components/kpi-card.js
+  // ../js/components/kpi-card.js
   function renderKpiCard({
     label,
     value,
@@ -2577,7 +2577,7 @@
   `;
   }
 
-  // js/modules/dashboard.js
+  // ../js/modules/dashboard.js
   var DashboardModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -3119,11 +3119,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/clients.js
+  // ../js/modules/clients.js
   init_db_service();
   init_formatters();
 
-  // js/components/data-table.js
+  // ../js/components/data-table.js
   var DataTable = class {
     constructor({
       containerId,
@@ -3317,7 +3317,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/clients.js
+  // ../js/modules/clients.js
   var CLIENT_SEGMENTS = {
     "Consumidor Final": {
       priceListOrder: 1,
@@ -3928,7 +3928,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/products.js
+  // ../js/modules/products.js
   init_db_service();
   init_formatters();
   var ProductsModule = {
@@ -4250,11 +4250,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/inventory.js
+  // ../js/modules/inventory.js
   init_db_service();
   init_formatters();
 
-  // js/services/kardex-service.js
+  // ../js/services/kardex-service.js
   init_db_service();
   var MOVEMENT_TYPES = {
     COMPRA: { label: "Compra de Mercanc\xEDa/Insumos", type: "IN" },
@@ -4358,7 +4358,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/inventory.js
+  // ../js/modules/inventory.js
   var InventoryModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -4729,11 +4729,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/production.js
+  // ../js/modules/production.js
   init_db_service();
   init_formatters();
 
-  // js/services/production-service.js
+  // ../js/services/production-service.js
   init_db_service();
   var ProductionService = {
     /**
@@ -4887,10 +4887,10 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/production.js
+  // ../js/modules/production.js
   init_export_service();
 
-  // js/components/print-template.js
+  // ../js/components/print-template.js
   init_formatters();
   var PrintTemplates = {
     /**
@@ -5011,21 +5011,21 @@ Generado por Nexa ERP.`;
           </div>
 
           <!-- DESTINATARIO -->
-          <div style="flex: 2; border: 2px solid #000; padding: 6px; border-radius: 4px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; background: #fffdf0;">
+          <div style="flex: 2; border: 2px solid #000; padding: 6px; border-radius: 4px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; background: #fffdf0; position: relative;">
             <div style="font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">PARA (DESTINATARIO):</div>
             <div style="font-weight: 900; font-size: 13px;">${shipping.clienteNombre}</div>
             <div><strong>NIT/CC:</strong> ${shipping.nitCc || "-"}</div>
             <div><strong>Direcci\xF3n:</strong> ${shipping.direccion}</div>
             <div><strong>Destino:</strong> ${shipping.ciudad} ${shipping.departamento ? "- " + shipping.departamento : ""}</div>
             <div><strong>Tel:</strong> ${shipping.telefono || "-"}</div>
-            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #999; font-weight: 600;">
+            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #999; font-weight: 600; padding-right: 140px;">
               Desc: ${shipping.contenidoDescripcion || "Productos automotrices"} - ${shipping.cajasTotal || 1} CAJA(S)
             </div>
           </div>
         </div>
 
         <!-- C\xD3DIGO BARRAS -->
-        <div style="position: absolute; bottom: 8px; right: 12px;">
+        <div style="position: absolute; bottom: 12px; right: 16px;">
           ${barcode}
         </div>
       </div>
@@ -5241,7 +5241,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/production.js
+  // ../js/modules/production.js
   var ProductionModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -5600,7 +5600,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/purchases.js
+  // ../js/modules/purchases.js
   init_db_service();
   init_formatters();
   var PurchasesModule = {
@@ -5913,11 +5913,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/sales-pos.js
+  // ../js/modules/sales-pos.js
   init_db_service();
   init_formatters();
 
-  // js/services/tax-service.js
+  // ../js/services/tax-service.js
   var TaxService = {
     /**
      * Calcula el subtotal, descuento, base gravable, IVA y total de una lista de ítems.
@@ -5963,7 +5963,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/sales-pos.js
+  // ../js/modules/sales-pos.js
   init_export_service();
   var SalesPosModule = {
     cart: [],
@@ -6582,7 +6582,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/shipping.js
+  // ../js/modules/shipping.js
   init_db_service();
   init_formatters();
   init_export_service();
@@ -6893,7 +6893,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/cash.js
+  // ../js/modules/cash.js
   init_db_service();
   init_formatters();
   var CashModule = {
@@ -7347,7 +7347,7 @@ _Reporte generado autom\xE1ticamente desde Nexa Admin ERP._`;
     }
   };
 
-  // js/modules/expenses.js
+  // ../js/modules/expenses.js
   init_db_service();
   init_formatters();
   var EXPENSE_CATEGORIES = [
@@ -7518,7 +7518,7 @@ _Reporte generado autom\xE1ticamente desde Nexa Admin ERP._`;
     }
   };
 
-  // js/modules/cxc.js
+  // ../js/modules/cxc.js
   init_db_service();
   init_formatters();
   var CxcModule = {
@@ -7851,7 +7851,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/cxp.js
+  // ../js/modules/cxp.js
   init_db_service();
   init_formatters();
   var CxpModule = {
@@ -7991,7 +7991,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/users.js
+  // ../js/modules/users.js
   init_db_service();
   var UsersModule = {
     async render(container) {
@@ -8277,7 +8277,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/audit.js
+  // ../js/modules/audit.js
   init_db_service();
   init_formatters();
   init_export_service();
@@ -8381,7 +8381,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/reports.js
+  // ../js/modules/reports.js
   init_db_service();
   init_formatters();
   init_export_service();
@@ -8667,7 +8667,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/settings.js
+  // ../js/modules/settings.js
   init_db_service();
   var SettingsModule = {
     async render(container) {
@@ -9265,7 +9265,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/backup.js
+  // ../js/modules/backup.js
   init_db_service();
   var BackupModule = {
     async render(container) {
@@ -9383,7 +9383,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/importer.js
+  // ../js/modules/importer.js
   init_db_service();
   var ImporterModule = {
     async render(container) {
@@ -9622,7 +9622,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/integrations.js
+  // ../js/modules/integrations.js
   var IntegrationsModule = {
     render(container) {
       container.innerHTML = `
@@ -9754,7 +9754,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/modules/documents.js
+  // ../js/modules/documents.js
   init_db_service();
   init_export_service();
   var DocumentsModule = {
@@ -9824,6 +9824,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           return PrintTemplates.productionOrder(sampleOrder);
         } else if (type === "SHIPPING_LABEL") {
           return PrintTemplates.shippingBoxLabel(sampleShipping);
+        } else if (type === "SHIPPING_BATCH") {
+          return PrintTemplates.batchShippingLabels([sampleShipping, sampleShipping, sampleShipping, sampleShipping]);
         }
         return "";
       };
@@ -9844,7 +9846,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         <div class="ios-segmented-control" id="doc-segmented-tabs">
           <button class="ios-segment-btn active doc-tab-btn" data-doc="INVOICE">\u{1F9FE} Factura / POS</button>
           <button class="ios-segment-btn doc-tab-btn" data-doc="QUOTE">\u{1F4D1} Cotizaci\xF3n Comercial</button>
-          <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_LABEL">\u{1F3F7}\uFE0F R\xF3tulo Env\xEDo (Cajas)</button>
+          <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_LABEL">\u{1F3F7}\uFE0F R\xF3tulo Env\xEDo (1x)</button>
+          <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_BATCH">\u{1F5A8}\uFE0F Lote R\xF3tulos (4x)</button>
           <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_NOTE">\u{1F69A} Remisi\xF3n de Entrega</button>
           <button class="ios-segment-btn doc-tab-btn" data-doc="PRODUCTION">\u2699\uFE0F Orden con Firma</button>
         </div>
@@ -9872,7 +9875,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // js/app.js
+  // ../js/app.js
   window.addEventListener("error", (e) => {
     console.error("Nexa Global Error:", e.error || e.message);
     const container = document.getElementById("view-container");

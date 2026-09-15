@@ -81,6 +81,9 @@ export const DocumentsModule = {
         return PrintTemplates.productionOrder(sampleOrder);
       } else if (type === 'SHIPPING_LABEL') {
         return PrintTemplates.shippingBoxLabel(sampleShipping);
+      } else if (type === 'SHIPPING_BATCH') {
+        // Enviar un arreglo de 4 envíos iguales para simular el lote completo
+        return PrintTemplates.batchShippingLabels([sampleShipping, sampleShipping, sampleShipping, sampleShipping]);
       }
       return '';
     };
@@ -102,7 +105,8 @@ export const DocumentsModule = {
         <div class="ios-segmented-control" id="doc-segmented-tabs">
           <button class="ios-segment-btn active doc-tab-btn" data-doc="INVOICE">🧾 Factura / POS</button>
           <button class="ios-segment-btn doc-tab-btn" data-doc="QUOTE">📑 Cotización Comercial</button>
-          <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_LABEL">🏷️ Rótulo Envío (Cajas)</button>
+          <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_LABEL">🏷️ Rótulo Envío (1x)</button>
+          <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_BATCH">🖨️ Lote Rótulos (4x)</button>
           <button class="ios-segment-btn doc-tab-btn" data-doc="SHIPPING_NOTE">🚚 Remisión de Entrega</button>
           <button class="ios-segment-btn doc-tab-btn" data-doc="PRODUCTION">⚙️ Orden con Firma</button>
         </div>
