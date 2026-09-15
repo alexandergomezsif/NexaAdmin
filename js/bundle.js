@@ -5011,22 +5011,22 @@ Generado por Nexa ERP.`;
           </div>
 
           <!-- DESTINATARIO -->
-          <div style="flex: 2; border: 2px solid #000; padding: 6px; border-radius: 4px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; background: #fffdf0; position: relative;">
+          <div style="flex: 2; border: 2px solid #000; padding: 6px; padding-right: 170px; border-radius: 4px; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; background: #fffdf0; position: relative;">
             <div style="font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">PARA (DESTINATARIO):</div>
             <div style="font-weight: 900; font-size: 13px;">${shipping.clienteNombre}</div>
             <div><strong>NIT/CC:</strong> ${shipping.nitCc || "-"}</div>
             <div><strong>Direcci\xF3n:</strong> ${shipping.direccion}</div>
             <div><strong>Destino:</strong> ${shipping.ciudad} ${shipping.departamento ? "- " + shipping.departamento : ""}</div>
             <div><strong>Tel:</strong> ${shipping.telefono || "-"}</div>
-            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #999; font-weight: 600; padding-right: 140px;">
+            <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #999; font-weight: 600;">
               Desc: ${shipping.contenidoDescripcion || "Productos automotrices"} - ${shipping.cajasTotal || 1} CAJA(S)
             </div>
+            
+            <!-- C\xD3DIGO BARRAS MOVIDO DENTRO DEL RECUADRO -->
+            <div style="position: absolute; bottom: 8px; right: 8px;">
+              ${barcode}
+            </div>
           </div>
-        </div>
-
-        <!-- C\xD3DIGO BARRAS -->
-        <div style="position: absolute; bottom: 12px; right: 16px;">
-          ${barcode}
         </div>
       </div>
     `;
