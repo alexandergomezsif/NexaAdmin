@@ -5042,7 +5042,7 @@ Generado por Nexa ERP.`;
       for (let i = 0; i < shippings.length; i += itemsPerPage) {
         const chunk = shippings.slice(i, i + itemsPerPage);
         html += `
-        <div style="width: 21.59cm; height: 27.94cm; padding: 1cm; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.5cm; ${i + itemsPerPage < shippings.length ? "page-break-after: always;" : ""}">
+        <div style="height: calc(100vh - 32px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; ${i + itemsPerPage < shippings.length ? "page-break-after: always;" : ""}">
       `;
         chunk.forEach((shipping) => {
           html += this.shippingBoxLabel(shipping);
@@ -6705,27 +6705,38 @@ Generado por Nexa ERP.`;
           }
         });
       }
-      container.addEventListener("click", (e) => {
-        const printLabelBtn = e.target.closest(".btn-print-label");
-        if (printLabelBtn) {
-          const id = printLabelBtn.getAttribute("data-id");
-          const ship = shipments.find((s) => s.id === id);
-          if (ship && !this.printQueue.find((s) => s.id === ship.id)) {
-            this.printQueue.push(ship);
-            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "R\xF3tulo a\xF1adido a la cola de impresi\xF3n", type: "success" } }));
-            this.render(container);
-          } else if (ship) {
-            window.dispatchEvent(new CustomEvent("toast", { detail: { message: "El r\xF3tulo ya est\xE1 en la cola", type: "info" } }));
+      if (!this._hasBoundClick) {
+        this._hasBoundClick = true;
+        container.addEventListener("click", (e) => {
+          const printLabelBtn = e.target.closest(".btn-print-label");
+          if (printLabelBtn) {
+            const id = printLabelBtn.getAttribute("data-id");
+            DB2.getAll(STORES.ORDERS_SHIPPING, tenantId).then((ships) => {
+              const ship = ships.find((s) => s.id === id);
+              if (ship && !this.printQueue.find((s) => s.id === ship.id)) {
+                this.printQueue.push(ship);
+                window.dispatchEvent(new CustomEvent("toast", { detail: { message: "R\xF3tulo a\xF1adido a la cola de impresi\xF3n", type: "success" } }));
+                const batchBtn = container.querySelector("#btn-print-batch");
+                if (batchBtn) {
+                  batchBtn.removeAttribute("disabled");
+                  batchBtn.innerHTML = `\u{1F5A8}\uFE0F Imprimir Lote (${this.printQueue.length})`;
+                }
+              } else if (ship) {
+                window.dispatchEvent(new CustomEvent("toast", { detail: { message: "El r\xF3tulo ya est\xE1 en la cola", type: "info" } }));
+              }
+            });
+            return;
           }
-          return;
-        }
-        const updateBtn = e.target.closest(".btn-update-ship-status");
-        if (updateBtn) {
-          const id = updateBtn.getAttribute("data-id");
-          const ship = shipments.find((s) => s.id === id);
-          this.openUpdateStatusModal(ship, () => this.render(container));
-        }
-      });
+          const updateBtn = e.target.closest(".btn-update-ship-status");
+          if (updateBtn) {
+            const id = updateBtn.getAttribute("data-id");
+            DB2.getAll(STORES.ORDERS_SHIPPING, tenantId).then((ships) => {
+              const ship = ships.find((s) => s.id === id);
+              this.openUpdateStatusModal(ship, () => this.render(container));
+            });
+          }
+        });
+      }
     },
     openNewShippingModal(tenantId, clients, onSaved) {
       const content = `

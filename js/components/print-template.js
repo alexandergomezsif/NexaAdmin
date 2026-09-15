@@ -175,7 +175,7 @@ export const PrintTemplates = {
       const chunk = shippings.slice(i, i + itemsPerPage);
       
       html += `
-        <div style="width: 21.59cm; height: 27.94cm; padding: 1cm; box-sizing: border-box; display: flex; flex-direction: column; gap: 0.5cm; ${i + itemsPerPage < shippings.length ? 'page-break-after: always;' : ''}">
+        <div style="height: calc(100vh - 32px); box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; ${i + itemsPerPage < shippings.length ? 'page-break-after: always;' : ''}">
       `;
       
       chunk.forEach(shipping => {

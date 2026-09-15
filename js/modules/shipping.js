@@ -140,29 +140,43 @@ export const ShippingModule = {
       });
     }
 
-    // Eventos de tabla
-    container.addEventListener('click', (e) => {
-      const printLabelBtn = e.target.closest('.btn-print-label');
-      if (printLabelBtn) {
-        const id = printLabelBtn.getAttribute('data-id');
-        const ship = shipments.find(s => s.id === id);
-        if (ship && !this.printQueue.find(s => s.id === ship.id)) {
-          this.printQueue.push(ship);
-          window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Rótulo añadido a la cola de impresión', type: 'success' } }));
-          this.render(container);
-        } else if (ship) {
-          window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'El rótulo ya está en la cola', type: 'info' } }));
+    // Eventos de tabla (Usar un handler en una propiedad para evitar duplicados si se llama render múltiples veces)
+    if (!this._hasBoundClick) {
+      this._hasBoundClick = true;
+      container.addEventListener('click', (e) => {
+        const printLabelBtn = e.target.closest('.btn-print-label');
+        if (printLabelBtn) {
+          const id = printLabelBtn.getAttribute('data-id');
+          // Encontrar el objeto usando una lectura fresca o desde la UI
+          DB.getAll(STORES.ORDERS_SHIPPING, tenantId).then(ships => {
+             const ship = ships.find(s => s.id === id);
+             if (ship && !this.printQueue.find(s => s.id === ship.id)) {
+                this.printQueue.push(ship);
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Rótulo añadido a la cola de impresión', type: 'success' } }));
+                
+                // Actualizar botón de lote sin re-renderizar todo
+                const batchBtn = container.querySelector('#btn-print-batch');
+                if (batchBtn) {
+                   batchBtn.removeAttribute('disabled');
+                   batchBtn.innerHTML = `🖨️ Imprimir Lote (${this.printQueue.length})`;
+                }
+             } else if (ship) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'El rótulo ya está en la cola', type: 'info' } }));
+             }
+          });
+          return;
         }
-        return;
-      }
 
-      const updateBtn = e.target.closest('.btn-update-ship-status');
-      if (updateBtn) {
-        const id = updateBtn.getAttribute('data-id');
-        const ship = shipments.find(s => s.id === id);
-        this.openUpdateStatusModal(ship, () => this.render(container));
-      }
-    });
+        const updateBtn = e.target.closest('.btn-update-ship-status');
+        if (updateBtn) {
+          const id = updateBtn.getAttribute('data-id');
+          DB.getAll(STORES.ORDERS_SHIPPING, tenantId).then(ships => {
+             const ship = ships.find(s => s.id === id);
+             this.openUpdateStatusModal(ship, () => this.render(container));
+          });
+        }
+      });
+    }
   },
 
   openNewShippingModal(tenantId, clients, onSaved) {
