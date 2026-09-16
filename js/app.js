@@ -90,26 +90,14 @@ class NexaApp {
       const tenant = await TenantServiceInstance.init();
       
       // 2. Inicializar usuario y permisos RBAC
-      await AuthServiceInstance.init(tenant.id);
+      const currentUser = await AuthServiceInstance.init(tenant.id);
 
-      // 3. Inicializar Topbar y Controles
-      this.initShellUI(tenant);
-
-      // 4. Configurar Enrutador SPA
-      this.setupRouter();
-
-      // 5. Escuchar cambios de empresa para re-renderizar
-      EventBus.on('tenant:changed', (newTenant) => {
-        this.updateBrandUI(newTenant);
-        this.loadCurrentRoute();
-      });
-
-      EventBus.on('auth:userChanged', (newUser) => {
-        this.updateUserUI(newUser);
-      });
-
-      // 6. Cargar vista inicial
-      this.loadCurrentRoute();
+      if (!currentUser) {
+        this.renderLoginScreen(tenant);
+        return;
+      }
+      
+      this.startAuthenticatedApp(tenant);
 
       console.log('⚡ Nexa ERP inicializado correctamente para:', tenant.nombreComercial);
     } catch (err) {
@@ -122,6 +110,89 @@ class NexaApp {
         `;
       }
     }
+  }
+
+
+  startAuthenticatedApp(tenant) {
+    // 3. Inicializar Topbar y Controles
+    this.initShellUI(tenant);
+
+    // 4. Configurar Enrutador SPA
+    this.setupRouter();
+
+    // 5. Escuchar cambios de empresa para re-renderizar
+    EventBus.on('tenant:changed', (newTenant) => {
+      this.updateBrandUI(newTenant);
+      this.loadCurrentRoute();
+    });
+
+    EventBus.on('auth:userChanged', (newUser) => {
+      this.updateUserUI(newUser);
+    });
+
+    // 6. Cargar vista inicial
+    this.loadCurrentRoute();
+  }
+
+  async renderLoginScreen(tenant) {
+    const { DB, STORES } = await import('./services/db-service.js');
+    const users = await DB.getAll(STORES.USERS, tenant.id);
+    
+    document.body.innerHTML = `
+      <div style="display: flex; height: 100vh; background: var(--bg-surface-solid); font-family: 'Inter', sans-serif;">
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px;">
+          <div style="width: 100%; max-width: 400px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="font-size: 28px; font-weight: 800; color: var(--brand-primary); margin-bottom: 8px;">NexaAdmin ERP</h1>
+              <p style="color: var(--text-secondary); font-size: 14px;">Inicie sesión para acceder a su espacio de trabajo</p>
+            </div>
+            
+            <div class="card" style="padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+              <form id="login-form">
+                <div class="form-group mb-3">
+                  <label class="form-label" style="font-weight: 600;">Seleccione su Usuario / Rol</label>
+                  <select class="form-select" id="login-user" required>
+                    <option value="" disabled selected>Seleccionar...</option>
+                    ${users.map(u => `<option value="${u.id}">${u.nombre} (${u.rol})</option>`).join('')}
+                  </select>
+                </div>
+                
+                <div class="form-group mb-4">
+                  <label class="form-label" style="font-weight: 600;">Contraseña</label>
+                  <input type="password" class="form-control" id="login-password" placeholder="Su clave de acceso" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-100" style="padding: 12px; font-weight: 700; font-size: 15px;">
+                  Ingresar al Sistema
+                </button>
+              </form>
+            </div>
+            
+            <div style="text-align: center; margin-top: 24px; color: var(--text-muted); font-size: 12px;">
+              &copy; ${new Date().getFullYear()} NexaAdmin ERP local. <br>
+              <em>Protección activa. Todos los intentos de acceso son auditados.</em>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById('login-user').value;
+      const pass = document.getElementById('login-password').value;
+      
+      try {
+        const { AuthServiceInstance } = await import('./services/auth-service.js');
+        await AuthServiceInstance.switchUser(userId, pass);
+        // Reload page to start app cleanly
+        window.location.reload();
+      } catch (err) {
+        import('./components/toast.js').then(({ Toast }) => {
+          Toast.error(err.message);
+        });
+      }
+    });
   }
 
   setupRouter() {
@@ -468,8 +539,9 @@ class NexaApp {
           `).join('')}
         </div>
       `,
-      footerButtons: [
-        { label: 'Ir a Gestión de Usuarios', class: 'btn-secondary', onClick: () => { Modal.close(); window.location.hash = '#users'; } },
+            footerButtons: [
+        { label: 'Cerrar Sesión (Salir)', class: 'btn-danger', onClick: () => { Modal.close(); AuthServiceInstance.logout(); } },
+        { label: 'Gestionar Usuarios', class: 'btn-secondary', onClick: () => { Modal.close(); window.location.hash = '#users'; } },
         { label: 'Cerrar', class: 'btn-secondary', onClick: () => Modal.close() }
       ]
     });
