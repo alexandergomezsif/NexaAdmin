@@ -76,7 +76,7 @@ export const ROLE_ALLOWED_MODULES = {
 class AuthService {
   constructor() {
     this.currentUser = null;
-    this.activeUserId = localStorage.getItem('nexa_active_user') || 'usr_dev';
+    this.activeUserId = localStorage.getItem('nexa_active_user') || null;
   }
 
   async init(tenantId) {
@@ -103,16 +103,20 @@ class AuthService {
       users.push(devUser);
     }
     
-    // Auto-asignar contraseña 1234 a los usuarios antiguos que no tenían
-    let updated = false;
+    // MIGRACIÓN: Reducir cuentas a las menores posibles (Gerente, Vendedor, Desarrollador)
+    const gerente = { id: 'usr_gerente', nombre: 'Gerente General', usuario: 'gerente', clave: '1234', rol: ROLES.GERENTE, permisos: Object.values(PERMISSIONS) };
+    const vendedor = { id: 'usr_vendedor', nombre: 'Vendedor Principal', usuario: 'vendedor', clave: '1234', rol: ROLES.VENDEDOR, permisos: [PERMISSIONS.VER, PERMISSIONS.CREAR] };
+    
+    if (!users.find(u => u.id === 'usr_gerente')) await DB.add(STORES.USERS, gerente);
+    if (!users.find(u => u.id === 'usr_vendedor')) await DB.add(STORES.USERS, vendedor);
+    
+    const KEEP = ['usr_dev', 'usr_gerente', 'usr_vendedor'];
     for (let u of users) {
-      if (!u.clave && u.id !== 'usr_dev') {
-        u.clave = '1234';
-        await DB.update(STORES.USERS, u);
-        updated = true;
+      if (!KEEP.includes(u.id)) {
+        await DB.delete(STORES.USERS, u.id);
       }
     }
-    if (updated) users = await DB.getAll(STORES.USERS, tenantId);
+    users = await DB.getAll(STORES.USERS, tenantId);
 
     if (this.activeUserId) {
       this.currentUser = users.find(u => u.id === this.activeUserId) || null;
