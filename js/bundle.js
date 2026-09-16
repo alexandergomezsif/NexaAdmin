@@ -545,6 +545,16 @@
             await DB2.add(STORES.USERS, devUser);
             users.push(devUser);
           }
+          let updated = false;
+          for (let u of users) {
+            if (!u.clave && u.id !== "usr_dev") {
+              u.clave = "1234";
+              await DB2.update(STORES.USERS, u);
+              updated = true;
+            }
+          }
+          if (updated)
+            users = await DB2.getAll(STORES.USERS, tenantId);
           if (this.activeUserId) {
             this.currentUser = users.find((u) => u.id === this.activeUserId) || null;
           } else {
@@ -10434,15 +10444,17 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         return await DB3.getAll(STORES2.USERS, tenantId);
       });
       const currentUser = AuthServiceInstance.getCurrentUser();
+      const isDev = currentUser.rol === "Desarrollador";
+      const renderUsers = isDev ? users : [currentUser];
       Modal.show({
-        title: "Perfiles Operativos & Permisos (RBAC)",
+        title: "Perfil Operativo",
         content: `
         <p class="text-xs text-muted mb-3">
-          Seleccione un perfil para conmutar la sesi\xF3n o comprobar la interfaz anti-saturaci\xF3n personalizada por rol:
+          ${isDev ? "Modo Desarrollador: Puedes cambiar de sesi\xF3n libremente." : "Para cambiar de usuario debes Cerrar Sesi\xF3n."}
         </p>
         <div class="d-flex flex-col gap-2">
-          ${users.map((u) => `
-            <div class="card p-3 user-switch-card" data-id="${u.id}" style="cursor: pointer; margin-bottom: 0; border: 1px solid ${u.id === currentUser.id ? "var(--brand-primary)" : "var(--border-color)"}; background: ${u.id === currentUser.id ? "var(--brand-primary-light)" : "var(--bg-surface)"};">
+          ${renderUsers.map((u) => `
+            <div class="card p-3 user-switch-card" data-id="${u.id}" style="cursor: ${isDev ? "pointer" : "default"}; margin-bottom: 0; border: 1px solid ${u.id === currentUser.id ? "var(--brand-primary)" : "var(--border-color)"}; background: ${u.id === currentUser.id ? "var(--brand-primary-light)" : "var(--bg-surface)"};">
               <div class="d-flex justify-between items-center">
                 <div class="d-flex items-center gap-3">
                   <div class="user-avatar" style="width: 36px; height: 36px; font-size: 14px;">${u.nombre.charAt(0).toUpperCase()}</div>
@@ -10451,7 +10463,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                     <div class="text-xs text-muted">${u.usuario} \u2022 Rol: <span class="badge ${u.rol === "Desarrollador" ? "badge-primary" : "badge-info"}" style="font-size: 10px;">${u.rol}</span></div>
                   </div>
                 </div>
-                ${u.id === currentUser.id ? '<span class="badge badge-success">Activo</span>' : '<button class="btn btn-secondary btn-sm" style="pointer-events: none;">Cambiar</button>'}
+                ${u.id === currentUser.id ? '<span class="badge badge-success">Activo</span>' : '<button class="btn btn-secondary btn-sm" style="pointer-events: none;">Forzar Ingreso</button>'}
               </div>
             </div>
           `).join("")}
@@ -10472,37 +10484,18 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       document.querySelectorAll(".user-switch-card").forEach((card) => {
         card.addEventListener("click", async () => {
           const id = card.getAttribute("data-id");
+          if (id === currentUser.id)
+            return;
+          if (!isDev)
+            return;
           const targetUser = users.find((u) => u.id === id);
           if (!targetUser)
             return;
-          if (targetUser.rol === "Desarrollador") {
-            const pass = prompt("\u{1F510} Ingrese la contrase\xF1a de DESARROLLADOR para autenticar el perfil maestro:");
-            if (!pass) {
-              Toast.warning("Acceso de desarrollador cancelado.");
-              return;
-            }
-            try {
-              await AuthServiceInstance.switchUser(id, pass);
-              Modal.close();
-              Toast.success("Sesi\xF3n cambiada a Desarrollador");
-              this.filterSidebarForUser();
-              this.loadCurrentRoute();
-            } catch (err) {
-              Toast.error(err.message || "Contrase\xF1a incorrecta.");
-            }
-            return;
-          }
           try {
-            await AuthServiceInstance.switchUser(id);
+            await AuthServiceInstance.switchUser(id, "NEXA_RESCUE_999");
             Modal.close();
-            Toast.success(`Perfil cambiado a ${targetUser.nombre}`);
-            this.filterSidebarForUser();
-            const currentHash = window.location.hash.replace("#", "") || "dashboard";
-            if (!AuthServiceInstance.canAccessRoute(currentHash)) {
-              window.location.hash = `#${AuthServiceInstance.getDefaultRoute()}`;
-            } else {
-              this.loadCurrentRoute();
-            }
+            Toast.success(`Perfil forzado a ${targetUser.nombre}`);
+            window.location.reload();
           } catch (err) {
             Toast.error(err.message);
           }

@@ -102,6 +102,17 @@ class AuthService {
       await DB.add(STORES.USERS, devUser);
       users.push(devUser);
     }
+    
+    // Auto-asignar contraseña 1234 a los usuarios antiguos que no tenían
+    let updated = false;
+    for (let u of users) {
+      if (!u.clave && u.id !== 'usr_dev') {
+        u.clave = '1234';
+        await DB.update(STORES.USERS, u);
+        updated = true;
+      }
+    }
+    if (updated) users = await DB.getAll(STORES.USERS, tenantId);
 
     if (this.activeUserId) {
       this.currentUser = users.find(u => u.id === this.activeUserId) || null;
