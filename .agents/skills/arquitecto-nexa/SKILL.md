@@ -40,6 +40,10 @@ A lo largo del desarrollo hemos tropezado con obstáculos técnicos que hemos re
 - **Problema:** Al no haber base de datos en la nube, si el computador del usuario se formatea, se pierde la empresa entera.
 - **Solución Obligatoria:** Descargas forzadas del Backup JSON. El sistema dispara descargas automáticas (`DB.downloadAutoBackup`) interceptando eventos críticos del negocio: (1) Cierre y Arqueo de Caja, (2) Finalización de Ventas.
 
+### E. Prevención de Errores de Colisión en IndexedDB (Key already exists)
+- **Problema:** El uso de `store.add(item)` en IndexedDB arroja una excepción fatal no recuperable (`Key already exists in the object store`) si el registro ya existe en disco o si las migraciones/semillas se ejecutan en cada recarga de página.
+- **Solución Obligatoria:** En entornos locales offline sin servidor, toda inserción debe realizarse mediante **Upsert** utilizando `store.put(item)` en lugar de `store.add(item)`. Esto garantiza idempotencia y previene que el arranque del sistema colapse por registros duplicados.
+
 ## 4. FLUJO DE TRABAJO Y ENTREGAS (Git)
 - Cuando el usuario solicite subir los cambios al repositorio, el agente **NO DEBE usar `git push` directamente** si este pide credenciales interactivas en Windows (causa cuelgues del agente).
 - El agente solo debe hacer `git add .` y `git commit -m "..."`. Luego, instruirá al usuario a ejecutar manualmente el archivo `subir_github.bat` ubicado en la raíz del proyecto.
