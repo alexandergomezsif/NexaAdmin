@@ -84,7 +84,6 @@ export const SeedData = {
     { id: 'wh_2', tenantId: RAYO_PRO_TENANT_ID, codigo: 'BOD-02', nombre: 'Planta de Producción & Reactores', direccion: 'Área de Envasado Nave B', esPrincipal: false, estado: 'ACTIVO' },
     { id: 'wh_3', tenantId: RAYO_PRO_TENANT_ID, codigo: 'BOD-03', nombre: 'Punto de Venta / Mostrador', direccion: 'Mostrador de atención y retail', esPrincipal: false, estado: 'ACTIVO' }
   ],
-
   users: [
     {
       id: 'usr_dev',
@@ -98,67 +97,26 @@ export const SeedData = {
       permisos: ['VER', 'CREAR', 'EDITAR', 'ELIMINAR', 'AUTORIZAR', 'EXPORTAR', 'FINANCIERO', 'DEVELOPER']
     },
     {
-      id: 'usr_juan',
+      id: 'usr_gerente',
       tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Juan Pablo (Gerente General)',
-      usuario: 'juan.gerencia',
-      clave: 'gerente.2026',
-      email: 'juan@rayopro.com.co',
+      nombre: 'Gerente General',
+      usuario: 'gerente',
+      clave: '1234',
+      email: 'gerencia@empresa.com',
       rol: 'Gerente',
       estado: 'ACTIVO',
-      firmaUrl: 'datos/firma juan.jpg',
-      permisos: ['VER', 'CREAR', 'EDITAR', 'AUTORIZAR', 'EXPORTAR', 'FINANCIERO']
+      permisos: ['VER', 'CREAR', 'EDITAR', 'ELIMINAR', 'AUTORIZAR', 'EXPORTAR', 'FINANCIERO']
     },
     {
-      id: 'usr_admin',
+      id: 'usr_vendedor',
       tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Carlos Mario Arango',
-      usuario: 'carlos.admin',
-      clave: 'carlos.2026',
-      email: 'carlos@rayopro.com.co',
-      rol: 'Gerente',
-      estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR', 'EDITAR', 'AUTORIZAR', 'EXPORTAR', 'FINANCIERO']
-    },
-    {
-      id: 'usr_ventas',
-      tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Valentina Restrepo',
-      usuario: 'valentina.ventas',
-      email: 'ventas@rayopro.com.co',
+      nombre: 'Vendedor Principal',
+      usuario: 'vendedor',
+      clave: '1234',
+      email: 'ventas@empresa.com',
       rol: 'Vendedor',
       estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR', 'EDITAR']
-    },
-    {
-      id: 'usr_bodega',
-      tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Mateo Osorio (Bodega & Despachos)',
-      usuario: 'mateo.logistica',
-      email: 'bodega@rayopro.com.co',
-      rol: 'Bodega',
-      estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR', 'EDITAR']
-    },
-    {
-      id: 'usr_produccion',
-      tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Ing. David Gómez (Jefe de Planta)',
-      usuario: 'david.planta',
-      email: 'produccion@rayopro.com.co',
-      rol: 'Producción',
-      estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR', 'EDITAR', 'AUTORIZAR']
-    },
-    {
-      id: 'usr_caja',
-      tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Camila Henao (Caja Mostrador)',
-      usuario: 'camila.caja',
-      email: 'caja@rayopro.com.co',
-      rol: 'Caja',
-      estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR', 'EDITAR']
+      permisos: ['VER', 'CREAR']
     }
   ],
 
@@ -605,8 +563,8 @@ export const SeedData = {
       barrio: 'La Estación',
       ciudad: 'La Tebaida',
       departamento: 'Quindío',
-      vendedorId: 'usr_juan',
-      vendedorNombre: 'Juan Pablo (Gerente)',
+      vendedorId: 'usr_gerente',
+      vendedorNombre: 'Gerente General',
       listaPreciosId: 'plist_5', // Tarifa Especial Cano Trucks
       cupoCredito: 30000000,
       diasCredito: 30,
@@ -636,8 +594,8 @@ export const SeedData = {
       ciudad: 'Medellín',
       departamento: 'Antioquia',
       barrio: 'El Poblado',
-      vendedorId: 'usr_ventas',
-      vendedorNombre: 'Valentina Restrepo',
+      vendedorId: 'usr_vendedor',
+      vendedorNombre: 'Vendedor Principal',
       listaPreciosId: 'plist_2',
       cupoCredito: 5000000,
       diasCredito: 30,
@@ -667,8 +625,8 @@ export const SeedData = {
       ciudad: 'Bello',
       departamento: 'Antioquia',
       barrio: 'Prado',
-      vendedorId: 'usr_ventas',
-      vendedorNombre: 'Valentina Restrepo',
+      vendedorId: 'usr_vendedor',
+      vendedorNombre: 'Vendedor Principal',
       listaPreciosId: 'plist_1',
       cupoCredito: 1000000,
       diasCredito: 15,
@@ -739,8 +697,8 @@ export const SeedData = {
       costoUnitarioReal: 8487,
       costosIndirectosReales: 45000,
       estado: 'COMPLETADA',
-      responsableId: 'usr_juan',
-      responsableNombre: 'Juan Pablo (Gerente)',
+      responsableId: 'usr_gerente',
+      responsableNombre: 'Gerente General',
       firmaUrl: 'datos/firma juan.jpg',
       insumosConsumidos: [
         { materiaPrimaId: 'prod_mp_base_alcalina', sku: 'MP-BASE-ALCAL', nombre: 'Base Desengrasante Alcalina Concentrada', cantidad: 36, unidadMedida: 'Kg', costoUnitario: 9200, costoTotal: 331200 },
@@ -775,7 +733,7 @@ export const SeedData = {
       fechaEntregaEstimada: '2026-09-14',
       cajasTotal: 17,
       contenidoDescripcion: '17 CAJAS X 12 (Productos de mantenimiento y embellecimiento automotriz)',
-      responsable: 'Juan Pablo (Gerente)',
+      responsable: 'Gerente General',
       observaciones: 'Manejar con cuidado. Cajas con sellos de seguridad Rayo Pro. Productos de mantenimiento y embellecimiento automotriz.'
     },
     {
@@ -800,7 +758,7 @@ export const SeedData = {
       fechaEntregaEstimada: '2026-09-15',
       cajasTotal: 8,
       contenidoDescripcion: '8 CAJAS X 12 (Productos de mantenimiento y embellecimiento automotriz)',
-      responsable: 'Valentina Restrepo',
+      responsable: 'Vendedor Principal',
       observaciones: 'Despacho prioritario programado para recolección hoy en la tarde. Productos de embellecimiento automotriz.'
     }
   ],
@@ -835,8 +793,8 @@ export const SeedData = {
       clienteId: 'cli_cano_trucks',
       clienteNombre: 'Jhon Jairo Chalarca Acevedo (Cano)',
       clienteNit: '1096.037.405-1',
-      vendedorId: 'usr_juan',
-      vendedorNombre: 'Juan Pablo (Gerente)',
+      vendedorId: 'usr_gerente',
+      vendedorNombre: 'Gerente General',
       listaPreciosId: 'plist_5',
       fecha: '2026-09-11T14:20:00Z',
       estado: 'CREDITO_PENDIENTE',
@@ -860,8 +818,8 @@ export const SeedData = {
     {
       id: 'cshift_actual',
       tenantId: RAYO_PRO_TENANT_ID,
-      usuarioId: 'usr_juan',
-      usuarioNombre: 'Juan Pablo (Gerente)',
+      usuarioId: 'usr_gerente',
+      usuarioNombre: 'Gerente General',
       fechaApertura: '2026-09-12T07:30:00Z',
       fechaCierre: null,
       montoApertura: 300000,
@@ -892,8 +850,8 @@ export const SeedData = {
       proveedor: 'Coordinadora Mercantil S.A.',
       valor: 165000,
       formaPago: 'Transferencia Bancolombia',
-      responsableId: 'usr_juan',
-      responsableNombre: 'Juan Pablo',
+      responsableId: 'usr_gerente',
+      responsableNombre: 'Gerente General',
       observacion: 'Guía 77092184531'
     }
   ],
@@ -966,8 +924,8 @@ export const SeedData = {
       saldoCantidad: 144,
       costoUnitario: 8487,
       costoTotal: 1018500,
-      usuarioId: 'usr_juan',
-      usuarioNombre: 'Juan Pablo (Gerente)',
+      usuarioId: 'usr_gerente',
+      usuarioNombre: 'Gerente General',
       observacion: 'Entrada por lote fabricado LOTE-DES2609-01 (10 cajas x 12)'
     }
   ],
@@ -978,8 +936,8 @@ export const SeedData = {
       tenantId: RAYO_PRO_TENANT_ID,
       fecha: '2026-09-12',
       hora: '10:15:00',
-      usuarioId: 'usr_juan',
-      usuarioNombre: 'Juan Pablo (Gerente)',
+      usuarioId: 'usr_gerente',
+      usuarioNombre: 'Gerente General',
       modulo: 'Ventas POS',
       accion: 'CREAR',
       registroId: 'RP-10026',
