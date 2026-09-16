@@ -199,7 +199,7 @@
           return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([storeName], "readwrite");
             const store = transaction.objectStore(storeName);
-            const request = store.add(item);
+            const request = store.put(item);
             request.onsuccess = () => resolve(item);
             request.onerror = () => reject(request.error);
           });
@@ -532,7 +532,8 @@
           }
           const devUser = {
             id: "usr_dev",
-            nombre: "Soporte / Administrador",
+            tenantId: tenantId || "tenant_rayopro",
+            nombre: "Desarrollador Master",
             usuario: "admin",
             clave: "Nexa.2026",
             rol: ROLES.DEV,
@@ -540,17 +541,17 @@
           };
           if (!users || users.length === 0) {
             users = [devUser];
-            await DB2.add(STORES.USERS, devUser);
+            await DB2.update(STORES.USERS, devUser);
           } else if (!users.find((u) => u.id === "usr_dev")) {
-            await DB2.add(STORES.USERS, devUser);
+            await DB2.update(STORES.USERS, devUser);
             users.push(devUser);
           }
-          const gerente = { id: "usr_gerente", nombre: "Gerente General", usuario: "gerente", clave: "1234", rol: ROLES.GERENTE, permisos: Object.values(PERMISSIONS) };
-          const vendedor = { id: "usr_vendedor", nombre: "Vendedor Principal", usuario: "vendedor", clave: "1234", rol: ROLES.VENDEDOR, permisos: [PERMISSIONS.VER, PERMISSIONS.CREAR] };
+          const gerente = { id: "usr_gerente", tenantId: tenantId || "tenant_rayopro", nombre: "Gerente General", usuario: "gerente", clave: "1234", rol: ROLES.GERENTE, permisos: Object.values(PERMISSIONS) };
+          const vendedor = { id: "usr_vendedor", tenantId: tenantId || "tenant_rayopro", nombre: "Vendedor Principal", usuario: "vendedor", clave: "1234", rol: ROLES.VENDEDOR, permisos: [PERMISSIONS.VER, PERMISSIONS.CREAR] };
           if (!users.find((u) => u.id === "usr_gerente"))
-            await DB2.add(STORES.USERS, gerente);
+            await DB2.update(STORES.USERS, gerente);
           if (!users.find((u) => u.id === "usr_vendedor"))
-            await DB2.add(STORES.USERS, vendedor);
+            await DB2.update(STORES.USERS, vendedor);
           const KEEP = ["usr_dev", "usr_gerente", "usr_vendedor"];
           for (let u of users) {
             if (!KEEP.includes(u.id)) {
@@ -1131,9 +1132,9 @@
       {
         id: "usr_dev",
         tenantId: RAYO_PRO_TENANT_ID,
-        nombre: "Desarrollador Master (Autor de Software)",
-        usuario: "desarrollador",
-        clave: "Admin.2026",
+        nombre: "Desarrollador Master",
+        usuario: "admin",
+        clave: "Nexa.2026",
         email: "desarrollador@nexa.software",
         rol: "Desarrollador",
         estado: "ACTIVO",
@@ -2068,14 +2069,9 @@
         for (const u of SeedData.users) {
           const found = existingUsers.find((eu) => eu.id === u.id);
           if (!found) {
-            await DB2.add(STORES.USERS, u);
+            await DB2.update(STORES.USERS, u);
           } else if (u.id === "usr_dev" && (found.clave === "dev.nexa.2026" || !found.clave)) {
             found.clave = "Admin.2026";
-            await DB2.update(STORES.USERS, found);
-          } else if (u.id === "usr_juan" && found.rol !== "Gerente") {
-            found.rol = "Gerente";
-            found.nombre = "Juan Pablo (Gerente General)";
-            found.clave = "gerente.2026";
             await DB2.update(STORES.USERS, found);
           }
         }
@@ -2083,7 +2079,7 @@
         for (const c of SeedData.customers) {
           const found = existingCusts.find((ec) => ec.id === c.id);
           if (!found) {
-            await DB2.add(STORES.CUSTOMERS, c);
+            await DB2.update(STORES.CUSTOMERS, c);
           } else if (found.facturaElectronica === void 0 || found.aplicaIva === void 0) {
             found.facturaElectronica = c.facturaElectronica;
             found.aplicaIva = c.aplicaIva;

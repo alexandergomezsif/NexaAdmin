@@ -201,7 +201,7 @@ class DBService {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
-      const request = store.add(item);
+      const request = store.put(item); // Upsert seguro: evita errores de colisión de claves
 
       request.onsuccess = () => resolve(item);
       request.onerror = () => reject(request.error);
