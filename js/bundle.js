@@ -266,6 +266,28 @@
           return backup;
         }
         /**
+         * Genera y fuerza la descarga automática de un archivo JSON de respaldo.
+         * Utilizado para respaldos automáticos por seguridad.
+         */
+        async downloadAutoBackup(triggerName = "Auto") {
+          try {
+            const backupData = await this.exportBackup();
+            const jsonStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const dateStr = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `NexaERP_CopiaSeguridad_${triggerName}_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            console.error("Error generando copia de seguridad autom\xE1tica:", e);
+          }
+        }
+        /**
          * Restaura la información desde un objeto de backup JSON
          */
         async restoreBackup(backupData) {
@@ -6450,6 +6472,7 @@ Generado por Nexa ERP.`;
           valorNuevo: `${Formatters.currency(totals.total)} (${metodoPago})`
         });
         Toast.success(`\xA1Venta ${consecutivo} registrada con \xE9xito!`);
+        await DB2.downloadAutoBackup("PostVenta_" + consecutivo);
         const cartSnapshot = JSON.parse(JSON.stringify(this.cart));
         const clientSnapshot = this.selectedClient ? { ...this.selectedClient } : null;
         const totalUnidades = cartSnapshot.reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
@@ -7255,6 +7278,7 @@ Generado por Nexa ERP.`;
                 saldoContado,
                 observacionesCierre
               });
+              await DB2.downloadAutoBackup("CierreCaja");
               Toast.success("Turno de caja cerrado exitosamente.");
               Modal.close();
               if (onComplete)

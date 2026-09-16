@@ -559,6 +559,9 @@ export const SalesPosModule = {
       });
 
       Toast.success(`¡Venta ${consecutivo} registrada con éxito!`);
+      
+      // Auto-Respaldo de Seguridad solicitado
+      await DB.downloadAutoBackup('PostVenta_' + consecutivo);
 
       // 6. Preparar instantáneas para impresión y despacho (inmunes a la limpieza de carrito)
       const cartSnapshot = JSON.parse(JSON.stringify(this.cart));
