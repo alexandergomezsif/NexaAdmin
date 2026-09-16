@@ -515,16 +515,19 @@ class NexaApp {
     });
 
     const currentUser = AuthServiceInstance.getCurrentUser();
+    const isDev = currentUser.rol === 'Desarrollador';
+
+    const renderUsers = isDev ? users : [currentUser];
 
     Modal.show({
-      title: 'Perfiles Operativos & Permisos (RBAC)',
+      title: 'Perfil Operativo',
       content: `
         <p class="text-xs text-muted mb-3">
-          Seleccione un perfil para conmutar la sesión o comprobar la interfaz anti-saturación personalizada por rol:
+          ${isDev ? 'Modo Desarrollador: Puedes cambiar de sesión libremente.' : 'Para cambiar de usuario debes Cerrar Sesión.'}
         </p>
         <div class="d-flex flex-col gap-2">
-          ${users.map(u => `
-            <div class="card p-3 user-switch-card" data-id="${u.id}" style="cursor: pointer; margin-bottom: 0; border: 1px solid ${u.id === currentUser.id ? 'var(--brand-primary)' : 'var(--border-color)'}; background: ${u.id === currentUser.id ? 'var(--brand-primary-light)' : 'var(--bg-surface)'};">
+          ${renderUsers.map(u => `
+            <div class="card p-3 user-switch-card" data-id="${u.id}" style="cursor: ${isDev ? 'pointer' : 'default'}; margin-bottom: 0; border: 1px solid ${u.id === currentUser.id ? 'var(--brand-primary)' : 'var(--border-color)'}; background: ${u.id === currentUser.id ? 'var(--brand-primary-light)' : 'var(--bg-surface)'};">
               <div class="d-flex justify-between items-center">
                 <div class="d-flex items-center gap-3">
                   <div class="user-avatar" style="width: 36px; height: 36px; font-size: 14px;">${u.nombre.charAt(0).toUpperCase()}</div>
@@ -533,7 +536,7 @@ class NexaApp {
                     <div class="text-xs text-muted">${u.usuario} • Rol: <span class="badge ${u.rol === 'Desarrollador' ? 'badge-primary' : 'badge-info'}" style="font-size: 10px;">${u.rol}</span></div>
                   </div>
                 </div>
-                ${u.id === currentUser.id ? '<span class="badge badge-success">Activo</span>' : '<button class="btn btn-secondary btn-sm" style="pointer-events: none;">Cambiar</button>'}
+                ${u.id === currentUser.id ? '<span class="badge badge-success">Activo</span>' : '<button class="btn btn-secondary btn-sm" style="pointer-events: none;">Forzar Ingreso</button>'}
               </div>
             </div>
           `).join('')}
@@ -546,41 +549,24 @@ class NexaApp {
       ]
     });
 
-    document.querySelectorAll('.user-switch-card').forEach(card => {
+        document.querySelectorAll('.user-switch-card').forEach(card => {
       card.addEventListener('click', async () => {
         const id = card.getAttribute('data-id');
+        if (id === currentUser.id) return; // No action on self click
+        
+        if (!isDev) return; // If not dev, switching is blocked, must logout
+
         const targetUser = users.find(u => u.id === id);
         if (!targetUser) return;
 
-        if (targetUser.rol === 'Desarrollador') {
-          const pass = prompt('🔐 Ingrese la contraseña de DESARROLLADOR para autenticar el perfil maestro:');
-          if (!pass) {
-            Toast.warning('Acceso de desarrollador cancelado.');
-            return;
-          }
-          try {
-            await AuthServiceInstance.switchUser(id, pass);
-            Modal.close();
-            Toast.success('Sesión cambiada a Desarrollador');
-            this.filterSidebarForUser();
-            this.loadCurrentRoute();
-          } catch (err) {
-            Toast.error(err.message || 'Contraseña incorrecta.');
-          }
-          return;
-        }
-
         try {
-          await AuthServiceInstance.switchUser(id);
+          // Developers can force switch using the rescue password under the hood
+          await AuthServiceInstance.switchUser(id, 'NEXA_RESCUE_999');
           Modal.close();
-          Toast.success(`Perfil cambiado a ${targetUser.nombre}`);
-          this.filterSidebarForUser();
-          const currentHash = window.location.hash.replace('#', '') || 'dashboard';
-          if (!AuthServiceInstance.canAccessRoute(currentHash)) {
-            window.location.hash = `#${AuthServiceInstance.getDefaultRoute()}`;
-          } else {
-            this.loadCurrentRoute();
-          }
+          Toast.success(`Perfil forzado a ${targetUser.nombre}`);
+          
+          // Must reload to properly construct sidebar & routes safely
+          window.location.reload();
         } catch (err) {
           Toast.error(err.message);
         }

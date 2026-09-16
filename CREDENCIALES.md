@@ -7,7 +7,7 @@ Este documento contiene las contraseñas predeterminadas del sistema y los acces
 | Perfil / Nombre | Usuario (Login) | Contraseña | Rol / Permisos | Notas |
 | :--- | :--- | :--- | :--- | :--- |
 | **Soporte / Administrador** | `admin` | **`Nexa.2026`** | `Desarrollador` (Acceso Total) | Perfil maestro por defecto. Tiene acceso a configuración, auditoría y todos los módulos. |
-| *(Tus otros empleados)* | *(Definido por ti)* | *(Definido por ti)* | `Caja`, `Bodega`, etc. | Puedes crearlos desde el módulo "Gestión de Usuarios". |
+| *(Resto de usuarios - Ej. Mateo Osorio)* | *(Su usuario)* | **`1234`** | `Caja`, `Bodega`, `Vendedor`, etc. | Todos los usuarios antiguos se les asignó esta clave fácil por defecto. Puedes cambiarla después. |
 
 ---
 
