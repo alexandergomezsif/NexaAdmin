@@ -281,6 +281,30 @@ class DBService {
   }
 
   /**
+   * Genera y fuerza la descarga automática de un archivo JSON de respaldo.
+   * Utilizado para respaldos automáticos por seguridad.
+   */
+  async downloadAutoBackup(triggerName = 'Auto') {
+    try {
+      const backupData = await this.exportBackup();
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const dateStr = new Date().toISOString().replace(/[:.]/g, '-');
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `NexaERP_CopiaSeguridad_${triggerName}_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Error generando copia de seguridad automática:', e);
+    }
+  }
+
+  /**
    * Restaura la información desde un objeto de backup JSON
    */
   async restoreBackup(backupData) {

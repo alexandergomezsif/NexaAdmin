@@ -386,6 +386,9 @@ export const CashModule = {
               observacionesCierre
             });
 
+            // Auto-Respaldo obligatorio al Cierre de Caja
+            await DB.downloadAutoBackup('CierreCaja');
+
             Toast.success('Turno de caja cerrado exitosamente.');
             Modal.close();
             if (onComplete) onComplete();
