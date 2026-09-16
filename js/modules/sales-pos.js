@@ -441,25 +441,31 @@ export const SalesPosModule = {
     });
 
     // PROCESAR VENTA
-    container.querySelector('#btn-process-sale').addEventListener('click', async () => {
-      if (this.cart.length === 0) {
-        Toast.warning('El carrito de venta está vacío.');
-        return;
-      }
+    container.querySelector('#btn-process-sale').addEventListener('click', () => {
+        if (this.cart.length === 0) {
+          Toast.warning('El carrito de venta está vacío.');
+          return;
+        }
 
-      const cobraIva = !this.selectedClient || this.selectedClient.aplicaIva !== false;
-      const tieneFE = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
+        const cobraIva = !this.selectedClient || this.selectedClient.aplicaIva !== false;
+        const tieneFE = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
 
-      const totals = TaxService.calculateTotals(this.cart, 0, {
-        aplicaIva: cobraIva,
-        facturaElectronica: tieneFE
-      });
-      const metodoPago = container.querySelector('#pos-payment-method').value;
-      const tipoDoc = container.querySelector('#pos-doc-type').value;
-      const consecutivo = 'RP-' + Math.floor(10000 + Math.random() * 90000);
-      const isCredit = metodoPago === 'Crédito' || tipoDoc === 'VENTA_CREDITO';
-
-      // Si es a crédito, verificar cupo del cliente
+        const totals = TaxService.calculateTotals(this.cart, 0, {
+          aplicaIva: cobraIva,
+          facturaElectronica: tieneFE
+        });
+        const metodoPago = container.querySelector('#pos-payment-method').value;
+        const tipoDoc = container.querySelector('#pos-doc-type').value;
+        
+        Modal.confirm({
+          title: 'Confirmar Venta / Facturación',
+          message: `¿Está seguro de facturar por un total de <strong>${Formatters.currency(totals.total)}</strong> mediante <strong>${metodoPago}</strong>?`,
+          confirmText: 'Sí, Facturar',
+          cancelText: 'Revisar',
+          onConfirm: async () => {
+            const consecutivo = 'RP-' + Math.floor(10000 + Math.random() * 90000);
+            const isCredit = metodoPago === 'Crédito' || tipoDoc === 'VENTA_CREDITO';
+            // Si es a crédito, verificar cupo del cliente
       if (isCredit && this.selectedClient) {
         const nuevoSaldo = (this.selectedClient.saldoPendiente || 0) + totals.total;
         if (this.selectedClient.cupoCredito > 0 && nuevoSaldo > this.selectedClient.cupoCredito) {
@@ -702,6 +708,8 @@ export const SalesPosModule = {
 
       this.cart = [];
       this.render(container);
+          }
+        });
     });
 
     // Atajos de Teclado
