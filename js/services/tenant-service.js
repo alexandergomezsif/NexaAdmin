@@ -34,14 +34,9 @@ class TenantService {
       for (const u of SeedData.users) {
         const found = existingUsers.find(eu => eu.id === u.id);
         if (!found) {
-          await DB.add(STORES.USERS, u);
+          await DB.update(STORES.USERS, u);
         } else if (u.id === 'usr_dev' && (found.clave === 'dev.nexa.2026' || !found.clave)) {
           found.clave = 'Admin.2026';
-          await DB.update(STORES.USERS, found);
-        } else if (u.id === 'usr_juan' && found.rol !== 'Gerente') {
-          found.rol = 'Gerente';
-          found.nombre = 'Juan Pablo (Gerente General)';
-          found.clave = 'gerente.2026';
           await DB.update(STORES.USERS, found);
         }
       }
@@ -51,7 +46,7 @@ class TenantService {
       for (const c of SeedData.customers) {
         const found = existingCusts.find(ec => ec.id === c.id);
         if (!found) {
-          await DB.add(STORES.CUSTOMERS, c);
+          await DB.update(STORES.CUSTOMERS, c);
         } else if (found.facturaElectronica === undefined || found.aplicaIva === undefined) {
           found.facturaElectronica = c.facturaElectronica;
           found.aplicaIva = c.aplicaIva;

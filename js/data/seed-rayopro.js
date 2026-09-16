@@ -88,9 +88,9 @@ export const SeedData = {
     {
       id: 'usr_dev',
       tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Desarrollador Master (Autor de Software)',
-      usuario: 'desarrollador',
-      clave: 'Admin.2026',
+      nombre: 'Desarrollador Master',
+      usuario: 'admin',
+      clave: 'Nexa.2026',
       email: 'desarrollador@nexa.software',
       rol: 'Desarrollador',
       estado: 'ACTIVO',

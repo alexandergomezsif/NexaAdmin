@@ -88,7 +88,8 @@ class AuthService {
     // Ensure the default Dev user is always present in memory/DB as a fallback emergency login
     const devUser = {
       id: 'usr_dev',
-      nombre: 'Soporte / Administrador',
+      tenantId: tenantId || 'tenant_rayopro',
+      nombre: 'Desarrollador Master',
       usuario: 'admin',
       clave: 'Nexa.2026',
       rol: ROLES.DEV,
@@ -97,18 +98,18 @@ class AuthService {
     
     if (!users || users.length === 0) {
       users = [devUser];
-      await DB.add(STORES.USERS, devUser);
+      await DB.update(STORES.USERS, devUser);
     } else if (!users.find(u => u.id === 'usr_dev')) {
-      await DB.add(STORES.USERS, devUser);
+      await DB.update(STORES.USERS, devUser);
       users.push(devUser);
     }
     
     // MIGRACIÓN: Reducir cuentas a las menores posibles (Gerente, Vendedor, Desarrollador)
-    const gerente = { id: 'usr_gerente', nombre: 'Gerente General', usuario: 'gerente', clave: '1234', rol: ROLES.GERENTE, permisos: Object.values(PERMISSIONS) };
-    const vendedor = { id: 'usr_vendedor', nombre: 'Vendedor Principal', usuario: 'vendedor', clave: '1234', rol: ROLES.VENDEDOR, permisos: [PERMISSIONS.VER, PERMISSIONS.CREAR] };
+    const gerente = { id: 'usr_gerente', tenantId: tenantId || 'tenant_rayopro', nombre: 'Gerente General', usuario: 'gerente', clave: '1234', rol: ROLES.GERENTE, permisos: Object.values(PERMISSIONS) };
+    const vendedor = { id: 'usr_vendedor', tenantId: tenantId || 'tenant_rayopro', nombre: 'Vendedor Principal', usuario: 'vendedor', clave: '1234', rol: ROLES.VENDEDOR, permisos: [PERMISSIONS.VER, PERMISSIONS.CREAR] };
     
-    if (!users.find(u => u.id === 'usr_gerente')) await DB.add(STORES.USERS, gerente);
-    if (!users.find(u => u.id === 'usr_vendedor')) await DB.add(STORES.USERS, vendedor);
+    if (!users.find(u => u.id === 'usr_gerente')) await DB.update(STORES.USERS, gerente);
+    if (!users.find(u => u.id === 'usr_vendedor')) await DB.update(STORES.USERS, vendedor);
     
     const KEEP = ['usr_dev', 'usr_gerente', 'usr_vendedor'];
     for (let u of users) {
