@@ -211,12 +211,25 @@ export const CxcModule = {
             const formData = new FormData(form);
             const abono = Number(formData.get('montoAbono'));
             const metodo = formData.get('metodoPago');
+            const compB64 = formData.get('comprobanteBase64');
+            const observacion = formData.get('reciboCaja');
 
-            // 1. Actualizar CXC
-            cxcItem.abonos = (cxcItem.abonos || 0) + abono;
-            cxcItem.saldo = Math.max(0, cxcItem.saldo - abono);
-            if (cxcItem.saldo === 0) cxcItem.estado = 'PAGADA';
-            await DB.update(STORES.RECEIVABLES_CXC, cxcItem);
+              // 1. Actualizar CXC
+              cxcItem.abonos = (cxcItem.abonos || 0) + abono;
+              cxcItem.saldo = Math.max(0, cxcItem.saldo - abono);
+              if (cxcItem.saldo === 0) cxcItem.estado = 'PAGADA';
+              
+              // Historial de pagos para guardar el comprobante
+              cxcItem.historialPagos = cxcItem.historialPagos || [];
+              cxcItem.historialPagos.push({
+                fecha: new Date().toISOString(),
+                monto: abono,
+                metodo,
+                observacion,
+                comprobanteBase64: compB64 || null
+              });
+              
+              await DB.update(STORES.RECEIVABLES_CXC, cxcItem);
 
             // 2. Actualizar cliente
             const client = clients.find(c => c.id === cxcItem.clienteId);

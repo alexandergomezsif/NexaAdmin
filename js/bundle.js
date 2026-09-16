@@ -6172,6 +6172,16 @@ Generado por Nexa ERP.`;
               <strong class="text-success" id="pos-lbl-change" style="font-size: 13px;">$ 0</strong>
             </div>
 
+            <!-- CONTENEDOR DE COMPROBANTE DE PAGO -->
+            <div id="pos-attachment-row" style="display: none; background: var(--bg-surface-solid); padding: 8px; border-radius: 6px; border: 1px dashed var(--brand-primary); text-align: center; margin-bottom: 8px;">
+              <label class="form-label text-xs d-block mb-1" style="color: var(--brand-primary); font-weight: 700;">\u{1F4F8} Foto del Comprobante (Opcional):</label>
+              <input type="file" id="pos-inp-receipt-file" accept="image/*" capture="environment" style="font-size: 10px; width: 100%;">
+              <input type="hidden" id="pos-inp-receipt-b64">
+              <div id="pos-receipt-preview" class="mt-2" style="display: none;">
+                <img src="" style="max-height: 80px; max-width: 100%; border-radius: 4px; object-fit: contain; border: 1px solid #ccc;">
+              </div>
+            </div>
+
             <button class="btn btn-primary w-100" id="btn-process-sale" style="padding: 9px; font-size: 14px; font-weight: 700;">
               \u26A1 COBRAR Y FACTURAR (F4)
             </button>
@@ -7735,10 +7745,20 @@ _Reporte generado autom\xE1ticamente desde Nexa Admin ERP._`;
               const formData = new FormData(form);
               const abono = Number(formData.get("montoAbono"));
               const metodo = formData.get("metodoPago");
+              const compB64 = formData.get("comprobanteBase64");
+              const observacion = formData.get("reciboCaja");
               cxcItem.abonos = (cxcItem.abonos || 0) + abono;
               cxcItem.saldo = Math.max(0, cxcItem.saldo - abono);
               if (cxcItem.saldo === 0)
                 cxcItem.estado = "PAGADA";
+              cxcItem.historialPagos = cxcItem.historialPagos || [];
+              cxcItem.historialPagos.push({
+                fecha: (/* @__PURE__ */ new Date()).toISOString(),
+                monto: abono,
+                metodo,
+                observacion,
+                comprobanteBase64: compB64 || null
+              });
               await DB2.update(STORES.RECEIVABLES_CXC, cxcItem);
               const client = clients.find((c) => c.id === cxcItem.clienteId);
               if (client) {
