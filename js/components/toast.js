@@ -9,7 +9,7 @@ class ToastManager {
   }
 
   init() {
-    if (!this.container) {
+    if (!this.container || !document.body.contains(this.container)) {
       this.container = document.createElement('div');
       this.container.className = 'toast-container';
       document.body.appendChild(this.container);

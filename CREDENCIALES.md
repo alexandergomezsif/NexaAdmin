@@ -8,9 +8,9 @@ He simplificado la lista de usuarios. El sistema ahora cuenta estrictamente con 
 
 | Perfil / Nombre | Usuario (Login) | Contraseña | Rol / Permisos | Notas |
 | :--- | :--- | :--- | :--- | :--- |
-| **Desarrollador Master** | `admin` | **`Nexa.2026`** | `Desarrollador` | Perfil maestro por defecto. Acceso total y libre. |
-| **Gerente General** | `gerente` | **`1234`** | `Gerente` | Acceso financiero y administrativo. No puede borrar base de datos. |
-| **Vendedor Principal** | `vendedor` | **`1234`** | `Vendedor` / `Caja` | Solo acceso al Punto de Venta (POS) y visualización. |
+| **Desarrollador Master** | `admin` (o `desarrollador`) | **`1234`** *(o `Nexa.2026`)* | `Desarrollador` | Perfil maestro por defecto. Acceso total a los 20 módulos y configuración. |
+| **Gerente General** | `gerente` | **`1234`** | `Gerente` | Acceso financiero y administrativo. |
+| **Vendedor Principal** | `vendedor` | **`1234`** | `Vendedor` / `Caja` | Acceso a Ventas POS y Clientes. |
 
 > *(Nota: Si escribes parte del usuario en el login, el sistema te sugerirá autocompletarlo).*
 
