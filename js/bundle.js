@@ -6372,7 +6372,7 @@ Generado por Nexa ERP.`;
         this.cart = [];
         updateCartView();
       });
-      container.querySelector("#btn-process-sale").addEventListener("click", async () => {
+      container.querySelector("#btn-process-sale").addEventListener("click", () => {
         if (this.cart.length === 0) {
           Toast.warning("El carrito de venta est\xE1 vac\xEDo.");
           return;
@@ -6385,145 +6385,151 @@ Generado por Nexa ERP.`;
         });
         const metodoPago = container.querySelector("#pos-payment-method").value;
         const tipoDoc = container.querySelector("#pos-doc-type").value;
-        const consecutivo = "RP-" + Math.floor(1e4 + Math.random() * 9e4);
-        const isCredit = metodoPago === "Cr\xE9dito" || tipoDoc === "VENTA_CREDITO";
-        if (isCredit && this.selectedClient) {
-          const nuevoSaldo = (this.selectedClient.saldoPendiente || 0) + totals.total;
-          if (this.selectedClient.cupoCredito > 0 && nuevoSaldo > this.selectedClient.cupoCredito) {
-            Toast.warning(`El cupo de cr\xE9dito ($ ${Formatters.currency(this.selectedClient.cupoCredito)}) ser\xEDa excedido. Saldo actual: ${Formatters.currency(this.selectedClient.saldoPendiente)}`);
-            return;
-          }
-        }
-        const received = Number(container.querySelector("#pos-inp-received").value || totals.total);
-        const change = Math.max(0, received - totals.total);
-        const sale = {
-          tenantId,
-          consecutivo,
-          tipoDoc,
-          facturaElectronica: tieneFE,
-          aplicaIva: cobraIva,
-          clienteId: this.selectedClient ? this.selectedClient.id : "cli_mostrador",
-          clienteNombre: this.selectedClient ? this.selectedClient.nombre : "Cliente Mostrador",
-          clienteNit: this.selectedClient ? this.selectedClient.nitCc : "222222222222",
-          vendedorId: "usr_ventas",
-          vendedorNombre: "Valentina Restrepo",
-          listaPreciosId: this.selectedPriceListId,
-          fecha: (/* @__PURE__ */ new Date()).toISOString(),
-          estado: isCredit ? "CREDITO_PENDIENTE" : "PAGADA",
-          subtotal: totals.baseGravable,
-          descuentos: totals.totalDescuentos,
-          impuestos: totals.totalIva,
-          total: totals.total,
-          metodoPago,
-          pagoRecibido: isCredit ? 0 : received,
-          cambio: isCredit ? 0 : change,
-          saldoCredito: isCredit ? totals.total : 0,
-          items: this.cart.map((i) => ({
-            productoId: i.productoId,
-            sku: i.sku,
-            nombre: i.nombre,
-            precioUnitario: i.precioUnitario,
-            cantidad: i.cantidad,
-            total: i.cantidad * i.precioUnitario
-          }))
-        };
-        await DB2.add(STORES.SALES, sale);
-        for (const item of this.cart) {
-          await KardexService.registerMovement({
-            tenantId,
-            productoId: item.productoId,
-            bodegaId: "wh_1",
-            documentoTipo: "VENTA",
-            documentoNumero: consecutivo,
-            cantidad: item.cantidad,
-            costoUnitario: item.precioUnitario,
-            observacion: `Venta POS No. ${consecutivo} a ${sale.clienteNombre}`
-          });
-        }
-        if (!isCredit && currentShift) {
-          if (metodoPago === "Efectivo") {
-            currentShift.totalVentasEfectivo = (currentShift.totalVentasEfectivo || 0) + totals.total;
-            currentShift.saldoEsperado += totals.total;
-          } else if (metodoPago === "Transferencia") {
-            currentShift.totalVentasTransferencia = (currentShift.totalVentasTransferencia || 0) + totals.total;
-          } else if (metodoPago === "Nequi" || metodoPago === "Daviplata") {
-            currentShift.totalVentasNequiDaviplata = (currentShift.totalVentasNequiDaviplata || 0) + totals.total;
-          } else if (metodoPago === "Tarjeta") {
-            currentShift.totalVentasTarjeta = (currentShift.totalVentasTarjeta || 0) + totals.total;
-          }
-          await DB2.update(STORES.CASH_SHIFTS, currentShift);
-        }
-        if (isCredit && this.selectedClient) {
-          this.selectedClient.saldoPendiente = (this.selectedClient.saldoPendiente || 0) + totals.total;
-          this.selectedClient.totalComprado = (this.selectedClient.totalComprado || 0) + totals.total;
-          this.selectedClient.numeroCompras = (this.selectedClient.numeroCompras || 0) + 1;
-          await DB2.update(STORES.CUSTOMERS, this.selectedClient);
-          await DB2.add(STORES.RECEIVABLES_CXC, {
-            tenantId,
-            ventaId: sale.id,
-            documento: consecutivo,
-            clienteId: this.selectedClient.id,
-            clienteNombre: this.selectedClient.nombre,
-            fechaEmision: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-            fechaVencimiento: new Date(Date.now() + (this.selectedClient.diasCredito || 30) * 864e5).toISOString().split("T")[0],
-            valorTotal: totals.total,
-            abonos: 0,
-            saldo: totals.total,
-            diasMora: 0,
-            estado: "AL_DIA"
-          });
-        }
-        await AuditService.log({
-          modulo: "Ventas POS",
-          accion: "CREAR",
-          registroId: consecutivo,
-          campoModificado: "Factura Emitida",
-          valorAnterior: "-",
-          valorNuevo: `${Formatters.currency(totals.total)} (${metodoPago})`
-        });
-        Toast.success(`\xA1Venta ${consecutivo} registrada con \xE9xito!`);
-        await DB2.downloadAutoBackup("PostVenta_" + consecutivo);
-        const cartSnapshot = JSON.parse(JSON.stringify(this.cart));
-        const clientSnapshot = this.selectedClient ? { ...this.selectedClient } : null;
-        const totalUnidades = cartSnapshot.reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
-        const cajasTotal = Math.max(1, Math.ceil(totalUnidades / 12));
-        const transportadoraDefecto = "Coordinadora Mercantil";
-        const shippingRecord = {
-          tenantId,
-          ventaId: sale.id,
-          documentoNumero: consecutivo,
-          clienteId: clientSnapshot ? clientSnapshot.id : "CLI_GEN",
-          clienteNombre: sale.clienteNombre,
-          nitCc: sale.clienteNit || (clientSnapshot ? clientSnapshot.nitCc : ""),
-          telefono: clientSnapshot ? clientSnapshot.telefono || clientSnapshot.whatsapp || "3124567890" : "3124567890",
-          whatsapp: clientSnapshot ? clientSnapshot.whatsapp || clientSnapshot.telefono || "" : "",
-          email: clientSnapshot ? clientSnapshot.email || "" : "",
-          ciudad: clientSnapshot ? clientSnapshot.ciudad || "Medell\xEDn" : "Medell\xEDn",
-          departamento: clientSnapshot ? clientSnapshot.departamento || "Antioquia" : "Antioquia",
-          barrio: clientSnapshot ? clientSnapshot.barrio || "" : "",
-          direccion: clientSnapshot ? clientSnapshot.direccion || "Direcci\xF3n comercial" : "Direcci\xF3n comercial",
-          transportadora: transportadoraDefecto,
-          numeroGuia: `GUIA-${consecutivo.replace(/\D/g, "") || String(Math.floor(1e5 + Math.random() * 9e5))}`,
-          costoEnvio: 0,
-          fechaDespacho: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-          fechaEntregaEstimada: new Date(Date.now() + 2 * 864e5).toISOString().split("T")[0],
-          estadoCiclo: "LISTO_DESPACHO",
-          responsable: "Mateo Osorio (Bodega & Despachos)",
-          cajasTotal,
-          contenidoDescripcion: "Productos de mantenimiento y embellecimiento automotriz Rayo Pro",
-          observaciones: "Manejar con precauci\xF3n. Productos de mantenimiento y embellecimiento automotriz Rayo Pro. No volcar."
-        };
-        try {
-          await DB2.add(STORES.ORDERS_SHIPPING, shippingRecord);
-        } catch (err) {
-          console.warn("Registro de orden de despacho autom\xE1tico:", err);
-        }
-        const invoiceHtml = PrintTemplates.saleInvoice(sale, sale.items);
-        const labelHtml = PrintTemplates.shippingBoxLabel(shippingRecord);
-        const modalDialog = Modal.show({
-          title: `\u2705 Venta ${consecutivo} Registrada con \xC9xito`,
-          size: "lg",
-          content: `
+        Modal.confirm({
+          title: "Confirmar Venta / Facturaci\xF3n",
+          message: `\xBFEst\xE1 seguro de facturar por un total de <strong>${Formatters.currency(totals.total)}</strong> mediante <strong>${metodoPago}</strong>?`,
+          confirmText: "S\xED, Facturar",
+          cancelText: "Revisar",
+          onConfirm: async () => {
+            const consecutivo = "RP-" + Math.floor(1e4 + Math.random() * 9e4);
+            const isCredit = metodoPago === "Cr\xE9dito" || tipoDoc === "VENTA_CREDITO";
+            if (isCredit && this.selectedClient) {
+              const nuevoSaldo = (this.selectedClient.saldoPendiente || 0) + totals.total;
+              if (this.selectedClient.cupoCredito > 0 && nuevoSaldo > this.selectedClient.cupoCredito) {
+                Toast.warning(`El cupo de cr\xE9dito ($ ${Formatters.currency(this.selectedClient.cupoCredito)}) ser\xEDa excedido. Saldo actual: ${Formatters.currency(this.selectedClient.saldoPendiente)}`);
+                return;
+              }
+            }
+            const received = Number(container.querySelector("#pos-inp-received").value || totals.total);
+            const change = Math.max(0, received - totals.total);
+            const sale = {
+              tenantId,
+              consecutivo,
+              tipoDoc,
+              facturaElectronica: tieneFE,
+              aplicaIva: cobraIva,
+              clienteId: this.selectedClient ? this.selectedClient.id : "cli_mostrador",
+              clienteNombre: this.selectedClient ? this.selectedClient.nombre : "Cliente Mostrador",
+              clienteNit: this.selectedClient ? this.selectedClient.nitCc : "222222222222",
+              vendedorId: "usr_ventas",
+              vendedorNombre: "Valentina Restrepo",
+              listaPreciosId: this.selectedPriceListId,
+              fecha: (/* @__PURE__ */ new Date()).toISOString(),
+              estado: isCredit ? "CREDITO_PENDIENTE" : "PAGADA",
+              subtotal: totals.baseGravable,
+              descuentos: totals.totalDescuentos,
+              impuestos: totals.totalIva,
+              total: totals.total,
+              metodoPago,
+              pagoRecibido: isCredit ? 0 : received,
+              cambio: isCredit ? 0 : change,
+              saldoCredito: isCredit ? totals.total : 0,
+              items: this.cart.map((i) => ({
+                productoId: i.productoId,
+                sku: i.sku,
+                nombre: i.nombre,
+                precioUnitario: i.precioUnitario,
+                cantidad: i.cantidad,
+                total: i.cantidad * i.precioUnitario
+              }))
+            };
+            await DB2.add(STORES.SALES, sale);
+            for (const item of this.cart) {
+              await KardexService.registerMovement({
+                tenantId,
+                productoId: item.productoId,
+                bodegaId: "wh_1",
+                documentoTipo: "VENTA",
+                documentoNumero: consecutivo,
+                cantidad: item.cantidad,
+                costoUnitario: item.precioUnitario,
+                observacion: `Venta POS No. ${consecutivo} a ${sale.clienteNombre}`
+              });
+            }
+            if (!isCredit && currentShift) {
+              if (metodoPago === "Efectivo") {
+                currentShift.totalVentasEfectivo = (currentShift.totalVentasEfectivo || 0) + totals.total;
+                currentShift.saldoEsperado += totals.total;
+              } else if (metodoPago === "Transferencia") {
+                currentShift.totalVentasTransferencia = (currentShift.totalVentasTransferencia || 0) + totals.total;
+              } else if (metodoPago === "Nequi" || metodoPago === "Daviplata") {
+                currentShift.totalVentasNequiDaviplata = (currentShift.totalVentasNequiDaviplata || 0) + totals.total;
+              } else if (metodoPago === "Tarjeta") {
+                currentShift.totalVentasTarjeta = (currentShift.totalVentasTarjeta || 0) + totals.total;
+              }
+              await DB2.update(STORES.CASH_SHIFTS, currentShift);
+            }
+            if (isCredit && this.selectedClient) {
+              this.selectedClient.saldoPendiente = (this.selectedClient.saldoPendiente || 0) + totals.total;
+              this.selectedClient.totalComprado = (this.selectedClient.totalComprado || 0) + totals.total;
+              this.selectedClient.numeroCompras = (this.selectedClient.numeroCompras || 0) + 1;
+              await DB2.update(STORES.CUSTOMERS, this.selectedClient);
+              await DB2.add(STORES.RECEIVABLES_CXC, {
+                tenantId,
+                ventaId: sale.id,
+                documento: consecutivo,
+                clienteId: this.selectedClient.id,
+                clienteNombre: this.selectedClient.nombre,
+                fechaEmision: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+                fechaVencimiento: new Date(Date.now() + (this.selectedClient.diasCredito || 30) * 864e5).toISOString().split("T")[0],
+                valorTotal: totals.total,
+                abonos: 0,
+                saldo: totals.total,
+                diasMora: 0,
+                estado: "AL_DIA"
+              });
+            }
+            await AuditService.log({
+              modulo: "Ventas POS",
+              accion: "CREAR",
+              registroId: consecutivo,
+              campoModificado: "Factura Emitida",
+              valorAnterior: "-",
+              valorNuevo: `${Formatters.currency(totals.total)} (${metodoPago})`
+            });
+            Toast.success(`\xA1Venta ${consecutivo} registrada con \xE9xito!`);
+            await DB2.downloadAutoBackup("PostVenta_" + consecutivo);
+            const cartSnapshot = JSON.parse(JSON.stringify(this.cart));
+            const clientSnapshot = this.selectedClient ? { ...this.selectedClient } : null;
+            const totalUnidades = cartSnapshot.reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
+            const cajasTotal = Math.max(1, Math.ceil(totalUnidades / 12));
+            const transportadoraDefecto = "Coordinadora Mercantil";
+            const shippingRecord = {
+              tenantId,
+              ventaId: sale.id,
+              documentoNumero: consecutivo,
+              clienteId: clientSnapshot ? clientSnapshot.id : "CLI_GEN",
+              clienteNombre: sale.clienteNombre,
+              nitCc: sale.clienteNit || (clientSnapshot ? clientSnapshot.nitCc : ""),
+              telefono: clientSnapshot ? clientSnapshot.telefono || clientSnapshot.whatsapp || "3124567890" : "3124567890",
+              whatsapp: clientSnapshot ? clientSnapshot.whatsapp || clientSnapshot.telefono || "" : "",
+              email: clientSnapshot ? clientSnapshot.email || "" : "",
+              ciudad: clientSnapshot ? clientSnapshot.ciudad || "Medell\xEDn" : "Medell\xEDn",
+              departamento: clientSnapshot ? clientSnapshot.departamento || "Antioquia" : "Antioquia",
+              barrio: clientSnapshot ? clientSnapshot.barrio || "" : "",
+              direccion: clientSnapshot ? clientSnapshot.direccion || "Direcci\xF3n comercial" : "Direcci\xF3n comercial",
+              transportadora: transportadoraDefecto,
+              numeroGuia: `GUIA-${consecutivo.replace(/\D/g, "") || String(Math.floor(1e5 + Math.random() * 9e5))}`,
+              costoEnvio: 0,
+              fechaDespacho: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+              fechaEntregaEstimada: new Date(Date.now() + 2 * 864e5).toISOString().split("T")[0],
+              estadoCiclo: "LISTO_DESPACHO",
+              responsable: "Mateo Osorio (Bodega & Despachos)",
+              cajasTotal,
+              contenidoDescripcion: "Productos de mantenimiento y embellecimiento automotriz Rayo Pro",
+              observaciones: "Manejar con precauci\xF3n. Productos de mantenimiento y embellecimiento automotriz Rayo Pro. No volcar."
+            };
+            try {
+              await DB2.add(STORES.ORDERS_SHIPPING, shippingRecord);
+            } catch (err) {
+              console.warn("Registro de orden de despacho autom\xE1tico:", err);
+            }
+            const invoiceHtml = PrintTemplates.saleInvoice(sale, sale.items);
+            const labelHtml = PrintTemplates.shippingBoxLabel(shippingRecord);
+            const modalDialog = Modal.show({
+              title: `\u2705 Venta ${consecutivo} Registrada con \xC9xito`,
+              size: "lg",
+              content: `
           <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: rgba(0, 113, 227, 0.05); padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(0, 113, 227, 0.15);">
             <div>
               <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">TOTAL COBRADO:</span>
@@ -6555,50 +6561,52 @@ Generado por Nexa ERP.`;
             ${labelHtml}
           </div>
         `,
-          footerButtons: [
-            {
-              label: "\u{1F3F7}\uFE0F Imprimir R\xF3tulo de Env\xEDo",
-              class: "btn-secondary",
-              onClick: () => {
-                ExportService.printDocument(labelHtml, `Rotulo_Envio_${shippingRecord.numeroGuia}`);
+              footerButtons: [
+                {
+                  label: "\u{1F3F7}\uFE0F Imprimir R\xF3tulo de Env\xEDo",
+                  class: "btn-secondary",
+                  onClick: () => {
+                    ExportService.printDocument(labelHtml, `Rotulo_Envio_${shippingRecord.numeroGuia}`);
+                  }
+                },
+                {
+                  label: "\u{1F5A8}\uFE0F Imprimir Factura",
+                  class: "btn-primary",
+                  onClick: () => {
+                    ExportService.printDocument(invoiceHtml, `Factura_${consecutivo}`);
+                  }
+                },
+                {
+                  label: "\u2728 Nueva Venta",
+                  class: "btn-secondary",
+                  onClick: () => Modal.close()
+                }
+              ]
+            });
+            if (modalDialog) {
+              const tabInvBtn = modalDialog.querySelector("#btn-tab-preview-invoice");
+              const tabShipBtn = modalDialog.querySelector("#btn-tab-preview-shipping");
+              const viewInv = modalDialog.querySelector("#view-preview-invoice");
+              const viewShip = modalDialog.querySelector("#view-preview-shipping");
+              if (tabInvBtn && tabShipBtn && viewInv && viewShip) {
+                tabInvBtn.addEventListener("click", () => {
+                  tabInvBtn.className = "btn btn-sm btn-primary";
+                  tabShipBtn.className = "btn btn-sm btn-secondary";
+                  viewInv.style.display = "block";
+                  viewShip.style.display = "none";
+                });
+                tabShipBtn.addEventListener("click", () => {
+                  tabShipBtn.className = "btn btn-sm btn-primary";
+                  tabInvBtn.className = "btn btn-sm btn-secondary";
+                  viewInv.style.display = "none";
+                  viewShip.style.display = "block";
+                });
               }
-            },
-            {
-              label: "\u{1F5A8}\uFE0F Imprimir Factura",
-              class: "btn-primary",
-              onClick: () => {
-                ExportService.printDocument(invoiceHtml, `Factura_${consecutivo}`);
-              }
-            },
-            {
-              label: "\u2728 Nueva Venta",
-              class: "btn-secondary",
-              onClick: () => Modal.close()
             }
-          ]
-        });
-        if (modalDialog) {
-          const tabInvBtn = modalDialog.querySelector("#btn-tab-preview-invoice");
-          const tabShipBtn = modalDialog.querySelector("#btn-tab-preview-shipping");
-          const viewInv = modalDialog.querySelector("#view-preview-invoice");
-          const viewShip = modalDialog.querySelector("#view-preview-shipping");
-          if (tabInvBtn && tabShipBtn && viewInv && viewShip) {
-            tabInvBtn.addEventListener("click", () => {
-              tabInvBtn.className = "btn btn-sm btn-primary";
-              tabShipBtn.className = "btn btn-sm btn-secondary";
-              viewInv.style.display = "block";
-              viewShip.style.display = "none";
-            });
-            tabShipBtn.addEventListener("click", () => {
-              tabShipBtn.className = "btn btn-sm btn-primary";
-              tabInvBtn.className = "btn btn-sm btn-secondary";
-              viewInv.style.display = "none";
-              viewShip.style.display = "block";
-            });
+            this.cart = [];
+            this.render(container);
           }
-        }
-        this.cart = [];
-        this.render(container);
+        });
       });
       const handlePosKeys = (e) => {
         if (e.key === "F4") {
