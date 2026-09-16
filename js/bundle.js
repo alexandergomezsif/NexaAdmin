@@ -523,7 +523,7 @@
       AuthService = class {
         constructor() {
           this.currentUser = null;
-          this.activeUserId = localStorage.getItem("nexa_active_user") || "usr_dev";
+          this.activeUserId = localStorage.getItem("nexa_active_user") || null;
         }
         async init(tenantId) {
           let users = await DB2.getAll(STORES.USERS, tenantId);
@@ -545,16 +545,19 @@
             await DB2.add(STORES.USERS, devUser);
             users.push(devUser);
           }
-          let updated = false;
+          const gerente = { id: "usr_gerente", nombre: "Gerente General", usuario: "gerente", clave: "1234", rol: ROLES.GERENTE, permisos: Object.values(PERMISSIONS) };
+          const vendedor = { id: "usr_vendedor", nombre: "Vendedor Principal", usuario: "vendedor", clave: "1234", rol: ROLES.VENDEDOR, permisos: [PERMISSIONS.VER, PERMISSIONS.CREAR] };
+          if (!users.find((u) => u.id === "usr_gerente"))
+            await DB2.add(STORES.USERS, gerente);
+          if (!users.find((u) => u.id === "usr_vendedor"))
+            await DB2.add(STORES.USERS, vendedor);
+          const KEEP = ["usr_dev", "usr_gerente", "usr_vendedor"];
           for (let u of users) {
-            if (!u.clave && u.id !== "usr_dev") {
-              u.clave = "1234";
-              await DB2.update(STORES.USERS, u);
-              updated = true;
+            if (!KEEP.includes(u.id)) {
+              await DB2.delete(STORES.USERS, u.id);
             }
           }
-          if (updated)
-            users = await DB2.getAll(STORES.USERS, tenantId);
+          users = await DB2.getAll(STORES.USERS, tenantId);
           if (this.activeUserId) {
             this.currentUser = users.find((u) => u.id === this.activeUserId) || null;
           } else {
@@ -10126,11 +10129,11 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             <div class="card" style="padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
               <form id="login-form">
                 <div class="form-group mb-3">
-                  <label class="form-label" style="font-weight: 600;">Seleccione su Usuario / Rol</label>
-                  <select class="form-select" id="login-user" required>
-                    <option value="" disabled selected>Seleccionar...</option>
-                    ${users.map((u) => `<option value="${u.id}">${u.nombre} (${u.rol})</option>`).join("")}
-                  </select>
+                  <label class="form-label" style="font-weight: 600;">Usuario</label>
+                  <input type="text" class="form-control" id="login-username" list="user-list" placeholder="Escriba su usuario (ej. admin, gerente, vendedor)..." required autocomplete="username" autofocus>
+                  <datalist id="user-list">
+                    ${users.map((u) => `<option value="${u.usuario}">${u.nombre} (${u.rol})</option>`).join("")}
+                  </datalist>
                 </div>
                 
                 <div class="form-group mb-4">
@@ -10154,11 +10157,18 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     `;
       document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const userId = document.getElementById("login-user").value;
+        const usernameInput = document.getElementById("login-username").value.trim();
         const pass = document.getElementById("login-password").value;
+        const userObj = users.find((u) => u.usuario.toLowerCase() === usernameInput.toLowerCase() || u.id === usernameInput);
+        if (!userObj) {
+          Promise.resolve().then(() => (init_toast(), toast_exports)).then(({ Toast: Toast2 }) => {
+            Toast2.error("Usuario no encontrado.");
+          });
+          return;
+        }
         try {
           const { AuthServiceInstance: AuthServiceInstance2 } = await Promise.resolve().then(() => (init_auth_service(), auth_service_exports));
-          await AuthServiceInstance2.switchUser(userId, pass);
+          await AuthServiceInstance2.switchUser(userObj.id, pass);
           window.location.reload();
         } catch (err) {
           Promise.resolve().then(() => (init_toast(), toast_exports)).then(({ Toast: Toast2 }) => {

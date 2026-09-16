@@ -2,12 +2,17 @@
 
 Este documento contiene las contraseñas predeterminadas del sistema y los accesos de emergencia. **Por favor, mantén este archivo seguro o bórralo una vez hayas memorizado las credenciales.**
 
+He simplificado la lista de usuarios. El sistema ahora cuenta estrictamente con estas 3 cuentas optimizadas:
+
 ## 👤 Usuarios del Sistema
 
 | Perfil / Nombre | Usuario (Login) | Contraseña | Rol / Permisos | Notas |
 | :--- | :--- | :--- | :--- | :--- |
-| **Soporte / Administrador** | `admin` | **`Nexa.2026`** | `Desarrollador` (Acceso Total) | Perfil maestro por defecto. Tiene acceso a configuración, auditoría y todos los módulos. |
-| *(Resto de usuarios - Ej. Mateo Osorio)* | *(Su usuario)* | **`1234`** | `Caja`, `Bodega`, `Vendedor`, etc. | Todos los usuarios antiguos se les asignó esta clave fácil por defecto. Puedes cambiarla después. |
+| **Desarrollador Master** | `admin` | **`Nexa.2026`** | `Desarrollador` | Perfil maestro por defecto. Acceso total y libre. |
+| **Gerente General** | `gerente` | **`1234`** | `Gerente` | Acceso financiero y administrativo. No puede borrar base de datos. |
+| **Vendedor Principal** | `vendedor` | **`1234`** | `Vendedor` / `Caja` | Solo acceso al Punto de Venta (POS) y visualización. |
+
+> *(Nota: Si escribes parte del usuario en el login, el sistema te sugerirá autocompletarlo).*
 
 ---
 
@@ -19,6 +24,4 @@ Para evitar perder la información de tu empresa, he programado una **Clave de R
 
 | Uso | Contraseña Maestra | Instrucciones |
 | :--- | :--- | :--- |
-| **Desbloqueo de Emergencia** | **`NEXA_RESCUE_999`** | Si te quedas por fuera, en la pantalla de Login selecciona cualquier usuario y escribe esta clave exacta. Te dejará entrar sin importar qué contraseña tenga realmente ese usuario. |
-
-> **Recomendación:** Una vez dentro del sistema con el usuario `admin`, ve al módulo **Usuarios y Accesos**, crea los perfiles de tu equipo (Cajeros, Vendedores) y asígnales sus propias claves.
+| **Desbloqueo de Emergencia** | **`NEXA_RESCUE_999`** | Si te quedas por fuera, escribe el usuario admin (o gerente) y en la contraseña usa esta clave exacta. Te forzará la entrada al sistema. |

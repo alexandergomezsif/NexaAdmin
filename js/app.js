@@ -150,11 +150,11 @@ class NexaApp {
             <div class="card" style="padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
               <form id="login-form">
                 <div class="form-group mb-3">
-                  <label class="form-label" style="font-weight: 600;">Seleccione su Usuario / Rol</label>
-                  <select class="form-select" id="login-user" required>
-                    <option value="" disabled selected>Seleccionar...</option>
-                    ${users.map(u => `<option value="${u.id}">${u.nombre} (${u.rol})</option>`).join('')}
-                  </select>
+                  <label class="form-label" style="font-weight: 600;">Usuario</label>
+                  <input type="text" class="form-control" id="login-username" list="user-list" placeholder="Escriba su usuario (ej. admin, gerente, vendedor)..." required autocomplete="username" autofocus>
+                  <datalist id="user-list">
+                    ${users.map(u => `<option value="${u.usuario}">${u.nombre} (${u.rol})</option>`).join('')}
+                  </datalist>
                 </div>
                 
                 <div class="form-group mb-4">
@@ -179,12 +179,19 @@ class NexaApp {
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const userId = document.getElementById('login-user').value;
+      const usernameInput = document.getElementById('login-username').value.trim();
       const pass = document.getElementById('login-password').value;
+      
+      const userObj = users.find(u => u.usuario.toLowerCase() === usernameInput.toLowerCase() || u.id === usernameInput);
+      
+      if (!userObj) {
+        import('./components/toast.js').then(({ Toast }) => { Toast.error('Usuario no encontrado.'); });
+        return;
+      }
       
       try {
         const { AuthServiceInstance } = await import('./services/auth-service.js');
-        await AuthServiceInstance.switchUser(userId, pass);
+        await AuthServiceInstance.switchUser(userObj.id, pass);
         // Reload page to start app cleanly
         window.location.reload();
       } catch (err) {
