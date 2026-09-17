@@ -1,4 +1,4 @@
-﻿# Archivos y scripts locales de desarrollador
+# Archivos y scripts locales de desarrollador
 deploy.bat
 deploy.ps1
 .deploy-temp/
@@ -8,3 +8,6 @@ deploy.ps1
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Credenciales y seguridad privada local
+CREDENCIALES.md

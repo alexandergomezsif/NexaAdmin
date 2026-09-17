@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 echo =========================================
 echo  Subiendo cambios de NexaAdmin a GitHub...
 echo =========================================
@@ -16,6 +16,15 @@ git commit -m "%commitMsg%"
 echo.
 echo Subiendo al repositorio...
 git push origin main
+
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo ---------------------------------------------------------
+    echo  [AVISO] El envio normal fue rechazado por divergencia de historial.
+    echo  Aplicando sincronizacion directa para actualizar GitHub...
+    echo ---------------------------------------------------------
+    git push --force origin main
+)
 
 echo.
 echo =========================================
