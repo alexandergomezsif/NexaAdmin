@@ -95,6 +95,21 @@ $$\text{Punto de Equilibrio (Ventas \$)} = \frac{CF_{\text{mensual}}}{\text{Marg
 
 ---
 
-## 6. Principio de Claridad Pedagógica en la UI
-En los módulos de NexaAdmin, cada tarjeta o cálculo debe incluir un botón o acordeón desplegable:
-- *"¿De dónde sale este número?"*: que muestre la fórmula aplicada, los insumos sumados y un desglose paso a paso legible para cualquier persona sin formación contable avanzada.
+## 6. Principio de Claridad Pedagógica y Lenguaje Cotidiano (Sin Tecnicismos)
+Para que un dueño de taller, fábrica o comercio sin formación administrativa entienda el sistema al instante, la interfaz debe traducir los términos técnicos a lenguaje del día a día:
+
+| Término Contable / Universitario | Nombre en NexaAdmin (Lenguaje Intuitivo) |
+| :--- | :--- |
+| **Materia Prima Directa (MPD)** | **Lo que va por dentro (Líquidos / Químicos)** |
+| **Material de Empaque (ME)** | **El Empaque (Tarro, Tapa, Etiqueta y Caja)** |
+| **Costos de Conversión (MOD + CIF)** | **Trabajo, Servicios y Máquinas (Luz, agua y envasado)** |
+| **Merma Técnica** | **Lo que se riega o evapora (Desperdicio)** |
+| **Costo Primo + CIF (COGS)** | **Lo que te cuesta fabricar 1 unidad terminada** |
+| **Margen Bruto sobre Precio** | **Tu ganancia limpia en el bolsillo por cada botella** |
+| **Fórmula BOM** | **Receta de Fabricación Maestra** |
+| **Batch Size** | **Tamaño de la preparación (Litros por tanda)** |
+
+### Elementos Visuales Obligatorios:
+1. **Barra multicolor de distribución:** Muestra visualmente qué parte del costo se va en químicos, empaque y trabajo.
+2. **Semáforo de salud de ganancia:** Verde (🟢 Excelente >30%), Amarillo (🟡 Aceptable para mayoristas 15-30%), Rojo (🔴 Peligro <15%).
+3. **Representación Dual Inquebrantable:** Todo porcentaje (%) debe tener al lado su valor en pesos (ej. `35% (+$4.200 COP)`).
