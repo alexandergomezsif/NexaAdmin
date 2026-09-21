@@ -10052,44 +10052,66 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         (await DB2.getAll(STORES.PRODUCTS, tenantId)).filter((p) => p.tipoItem === "PRODUCTO_TERMINADO")
       ]);
       container.innerHTML = `
-      <div class="view-header">
+      <div class="view-header mb-3" style="padding-bottom: 8px;">
         <div class="view-title-wrap">
           <div class="d-flex items-center gap-2">
-            <h1>B\xF3veda Privada de Recetas y F\xF3rmulas</h1>
-            <span class="badge badge-success">\u{1F513} ABIERTO</span>
+            <h1 style="font-size: 20px;">B\xF3veda Privada de F\xF3rmulas y Recetas</h1>
+            <span class="badge badge-success font-bold">\u{1F513} ABIERTO</span>
           </div>
-          <p>Tus recetas qu\xEDmicas maestras, lista de ingredientes, porcentajes e instrucciones de preparaci\xF3n paso a paso</p>
+          <p class="text-xs text-muted mb-0">Secretos qu\xEDmicos de fabricaci\xF3n, lista de ingredientes, proporciones y paso a paso</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-secondary btn-sm" id="btn-lock-now">\u{1F512} Cerrar B\xF3veda</button>
           <button class="btn btn-secondary btn-sm" id="btn-change-pin">\u{1F511} Cambiar Clave</button>
-          <button class="btn btn-primary btn-sm" id="btn-new-recipe">\u2728 + Crear Nueva Receta</button>
+          <button class="btn btn-primary btn-sm font-bold" id="btn-nueva-receta-asistente">
+            \u2728 + Asistente para Crear Receta
+          </button>
         </div>
       </div>
 
-      <!-- 3 TARJETAS RESUMEN LADO A LADO EN GRID -->
-      <div class="nexa-grid-3 mb-3">
-        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid var(--brand-primary);">
-          <div class="text-xs text-muted font-bold">RECETAS REGISTRADAS</div>
-          <div style="font-size: 24px; font-weight: 800; color: var(--brand-primary); margin-top: 2px;">${recipes.length} f\xF3rmulas</div>
-          <div class="text-xs text-muted">Protegidas con clave</div>
+      <!-- 3 Tarjetas Resumen en Grid -->
+      <div class="pricing-kpi-grid mb-3">
+        <div class="pricing-kpi-card kpi-cost">
+          <div class="pricing-kpi-info">
+            <span class="pricing-kpi-label"><span>\u{1F9EA}</span> Recetas Registradas</span>
+            <span class="pricing-kpi-sub">F\xF3rmulas activas en b\xF3veda</span>
+          </div>
+          <div class="pricing-kpi-data">
+            <span class="pricing-kpi-value" style="color: #0284c7;">${recipes.length}</span>
+            <span class="badge badge-info" style="font-size: 9.5px;">B\xF3veda</span>
+          </div>
         </div>
-        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid #10b981;">
-          <div class="text-xs text-muted font-bold">QU\xCDMICOS EN INVENTARIO</div>
-          <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 2px;">${rawMaterials.length} insumos</div>
-          <div class="text-xs text-muted">Listos para mezclar</div>
+
+        <div class="pricing-kpi-card kpi-profit">
+          <div class="pricing-kpi-info">
+            <span class="pricing-kpi-label"><span>\u{1F9F4}</span> Materias Primas</span>
+            <span class="pricing-kpi-sub">Insumos qu\xEDmicos en stock</span>
+          </div>
+          <div class="pricing-kpi-data">
+            <span class="pricing-kpi-value" style="color: #047857;">${rawMaterials.length}</span>
+            <span class="badge badge-success" style="font-size: 9.5px;">Disponibles</span>
+          </div>
         </div>
-        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid #8b5cf6;">
-          <div class="text-xs text-muted font-bold">SEGURIDAD</div>
-          <div style="font-size: 14px; font-weight: 800; color: #7c3aed; margin-top: 6px;">100% CONFIDENCIAL</div>
-          <div class="text-xs text-muted">Solo visible para gerencia</div>
+
+        <div class="pricing-kpi-card kpi-price">
+          <div class="pricing-kpi-info">
+            <span class="pricing-kpi-label"><span>\u{1F6E1}\uFE0F</span> Nivel de Seguridad</span>
+            <span class="pricing-kpi-sub">Protegido con clave</span>
+          </div>
+          <div class="pricing-kpi-data">
+            <span class="pricing-kpi-value" style="color: var(--brand-primary); font-size: 16px;">CONFIDENCIAL</span>
+            <span class="badge badge-primary" style="font-size: 9.5px;">Gerente / Dev</span>
+          </div>
         </div>
       </div>
 
       <!-- Listado de Recetas -->
-      <div class="card p-3" style="border-radius: 14px;">
+      <div class="card p-3" style="border-radius: 12px;">
         <div class="d-flex justify-between items-center mb-3">
-          <h3 style="font-size: 15px; font-weight: 800; margin: 0;">Tus Recetas de Fabricaci\xF3n</h3>
+          <div>
+            <h3 style="font-size: 14.5px; font-weight: 800; margin: 0;">Tus F\xF3rmulas de Fabricaci\xF3n</h3>
+            <span class="text-xs text-muted">Cada receta contiene proporciones balanceadas al 100% y costo por litro</span>
+          </div>
         </div>
 
         <div class="d-flex flex-col gap-3">
@@ -10097,7 +10119,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             <div class="text-center p-5 text-muted">
               <div style="font-size: 32px; margin-bottom: 8px;">\u{1F9EA}</div>
               <strong>A\xFAn no tienes recetas creadas en tu b\xF3veda.</strong>
-              <p class="text-xs mt-1">Presiona <em>"+ Crear Nueva Receta"</em> para agregar tu primera f\xF3rmula con ingredientes y pasos.</p>
+              <p class="text-xs mt-1">Presiona <em>"+ Asistente para Crear Receta"</em> para registrar tu primera f\xF3rmula guiada paso a paso.</p>
+              <button class="btn btn-primary btn-sm mt-2 font-bold" id="btn-receta-vacia">\u2728 Iniciar Asistente de Receta</button>
             </div>
           ` : recipes.map((r) => {
         const fg = finishedGoods.find((p) => p.id === r.productoTerminadoId) || {};
@@ -10114,12 +10137,12 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         const batch = Number(r.cantidadProducir) || 1;
         const costoPorLitro = batch > 0 ? Math.round(costoTanda / batch) : costoTanda;
         return `
-              <div class="card p-4 mb-0" style="border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface);">
-                <div class="d-flex justify-between items-start mb-3">
+              <div class="card p-3 mb-0" style="border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-surface);">
+                <div class="d-flex justify-between items-start mb-2">
                   <div>
                     <div class="d-flex items-center gap-2">
                       <span style="font-size: 20px;">\u{1F9EA}</span>
-                      <h4 style="font-size: 16px; font-weight: 800; margin: 0; color: var(--text-main);">${r.nombreFormula || "Receta de " + (fg.nombre || "Producto")}</h4>
+                      <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">${r.nombreFormula}</h4>
                     </div>
                     <div class="text-xs text-muted mt-1">
                       Producto: <strong>${fg.nombre || "No asignado"}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${r.unidadMedida || "Litros"}</strong>
@@ -10127,50 +10150,50 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   </div>
 
                   <div class="d-flex gap-2">
-                    <button class="btn btn-primary btn-sm btn-calcular-precios" data-id="${r.id}" style="font-weight: 700;">
-                      \u{1F4A1} Ver cu\xE1nto cuesta fabricar y fijar precios
+                    <button class="btn btn-primary btn-sm font-bold btn-calcular-precios" data-id="${r.id}" style="font-size: 11.5px;">
+                      \u{1F4A1} Calcular Precios de Venta
                     </button>
-                    <button class="btn btn-secondary btn-sm btn-editar-receta" data-id="${r.id}">
-                      \u270F\uFE0F Editar
+                    <button class="btn btn-secondary btn-sm btn-editar-receta" data-id="${r.id}" style="font-size: 11.5px;">
+                      \u270F\uFE0F Editar con Asistente
                     </button>
                   </div>
                 </div>
 
                 <!-- Resumen en 3 Tarjetitas -->
-                <div class="nexa-grid-3 mb-3">
-                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
-                    <div class="text-muted text-xs">Costo total de la tanda:</div>
-                    <div class="font-bold text-success" style="font-size: 14px;">${Formatters.currency(costoTanda)}</div>
+                <div class="nexa-grid-3 mb-2">
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <div class="text-muted text-xs">Costo Total Tanda:</div>
+                    <strong class="text-success" style="font-size: 13.5px;">${Formatters.currency(costoTanda)}</strong>
                   </div>
-                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
-                    <div class="text-muted text-xs">Costo de l\xEDquido por litro:</div>
-                    <div class="font-bold text-primary" style="font-size: 14px;">${Formatters.currency(costoPorLitro)} / L</div>
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <div class="text-muted text-xs">Costo Qu\xEDmico x Litro:</div>
+                    <strong class="text-primary" style="font-size: 13.5px;">${Formatters.currency(costoPorLitro)} / L</strong>
                   </div>
-                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
-                    <div class="text-muted text-xs">Suma de ingredientes:</div>
-                    <div class="font-bold ${Math.abs(sumaPorcentajes - 100) < 0.5 ? "text-success" : "text-warning"}" style="font-size: 14px;">
-                      ${sumaPorcentajes.toFixed(1)}% ${Math.abs(sumaPorcentajes - 100) < 0.5 ? "\u2713 (100%)" : "(Incompleto)"}
-                    </div>
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <div class="text-muted text-xs">Suma de Reactivos:</div>
+                    <strong class="${Math.abs(sumaPorcentajes - 100) < 0.5 ? "text-success" : "text-warning"}" style="font-size: 13.5px;">
+                      ${sumaPorcentajes.toFixed(1)}% ${Math.abs(sumaPorcentajes - 100) < 0.5 ? "\u2713 (100%)" : "(Ajustar)"}
+                    </strong>
                   </div>
                 </div>
 
-                <!-- Tabla de Ingredientes -->
+                <!-- Tabla de Reactivos -->
                 <div class="table-responsive mb-2">
                   <table class="table table-sm text-xs" style="margin-bottom: 0;">
                     <thead>
                       <tr>
-                        <th>Ingrediente Qu\xEDmico</th>
-                        <th class="text-center">Momento de adici\xF3n</th>
+                        <th>Reactivo Qu\xEDmico</th>
+                        <th class="text-center">Momento</th>
                         <th class="text-center">Porcentaje (%)</th>
-                        <th class="text-center">Cantidad en tanda</th>
-                        <th class="text-right">Costo que aporta</th>
+                        <th class="text-center">Cantidad en Tanda</th>
+                        <th class="text-right">Costo Insumo</th>
                       </tr>
                     </thead>
                     <tbody>
                       ${insumosConCosto.map((i) => `
                         <tr>
-                          <td><strong>${i.mp.nombre || "Ingrediente"}</strong> <span class="text-muted">(${i.mp.sku || "-"})</span></td>
-                          <td class="text-center"><span class="badge badge-secondary" style="font-size: 10px;">${i.fase || "Paso 1"}</span></td>
+                          <td><strong>${i.mp.nombre || "Reactivo"}</strong> <span class="text-muted">(${i.mp.sku || "-"})</span></td>
+                          <td class="text-center"><span class="badge badge-secondary" style="font-size: 9.5px;">${i.fase || "Paso 1"}</span></td>
                           <td class="text-center font-bold">${i.porcentaje ? i.porcentaje + "%" : "-"}</td>
                           <td class="text-center">${i.cantidad} Kg/L</td>
                           <td class="text-right font-bold">${Formatters.currency(i.sub)}</td>
@@ -10181,12 +10204,11 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 </div>
 
                 ${r.instruccionesFases ? `
-                  <div class="p-3 mt-2" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 12px;">
-                    <strong>\u{1F468}\u200D\u{1F52C} Paso a paso de preparaci\xF3n:</strong>
-                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.4;">${r.instruccionesFases}</div>
+                  <div class="p-2 mt-1" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 11.5px;">
+                    <strong>\u{1F468}\u200D\u{1F52C} Protocolo de Mezcla:</strong>
+                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.35;">${r.instruccionesFases}</div>
                   </div>
                 ` : ""}
-
               </div>
             `;
       }).join("")}
@@ -10201,8 +10223,22 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       container.querySelector("#btn-change-pin").addEventListener("click", () => {
         this.openChangePin();
       });
-      container.querySelector("#btn-new-recipe").addEventListener("click", () => {
-        this.openRecipeEditor(null, tenantId, finishedGoods, rawMaterials, () => this.render(container));
+      const btnNew = container.querySelector("#btn-nueva-receta-asistente");
+      if (btnNew)
+        btnNew.addEventListener("click", () => {
+          this.openFormulaWizard(null, tenantId, finishedGoods, rawMaterials, () => this.render(container));
+        });
+      const btnEmpty = container.querySelector("#btn-receta-vacia");
+      if (btnEmpty)
+        btnEmpty.addEventListener("click", () => {
+          this.openFormulaWizard(null, tenantId, finishedGoods, rawMaterials, () => this.render(container));
+        });
+      container.querySelectorAll(".btn-editar-receta").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const r = recipes.find((rec) => rec.id === id);
+          this.openFormulaWizard(r, tenantId, finishedGoods, rawMaterials, () => this.render(container));
+        });
       });
       container.querySelectorAll(".btn-calcular-precios").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -10214,13 +10250,423 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           }
         });
       });
-      container.querySelectorAll(".btn-editar-receta").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-id");
-          const r = recipes.find((rec) => rec.id === id);
-          this.openRecipeEditor(r, tenantId, finishedGoods, rawMaterials, () => this.render(container));
-        });
+    },
+    /**
+     * ASISTENTE MODAL GUIADO PASO A PASO (WIZARD DE BÓVEDA)
+     */
+    openFormulaWizard(existingRecipe, tenantId, finishedGoods, rawMaterials, onSaved) {
+      const wiz = {
+        step: 1,
+        id: existingRecipe ? existingRecipe.id : "rec_" + Date.now(),
+        nombreFormula: existingRecipe?.nombreFormula || "",
+        productoTerminadoId: existingRecipe?.productoTerminadoId || "",
+        cantidadProducir: existingRecipe?.cantidadProducir || 200,
+        unidadMedida: existingRecipe?.unidadMedida || "Litros",
+        ph: existingRecipe?.especificaciones?.ph || "",
+        insumos: existingRecipe?.insumos ? JSON.parse(JSON.stringify(existingRecipe.insumos)) : [
+          { productoId: "", fase: "Paso 1 (Al inicio)", porcentaje: 80, cantidad: 160 }
+        ],
+        instruccionesFases: existingRecipe?.instruccionesFases || ""
+      };
+      const dialog = Modal.show({
+        title: existingRecipe ? "\u270F\uFE0F Asistente: Editar Receta Maestra" : "\u2728 Asistente Guiado: Crear Nueva Receta",
+        size: "lg",
+        content: '<div id="wizard-formula-container"></div>',
+        footerButtons: []
       });
+      const root = dialog.querySelector("#wizard-formula-container");
+      const renderStep = () => {
+        const stepperHtml = `
+        <div class="wizard-stepper">
+          <div class="wizard-step-item ${wiz.step === 1 ? "active" : wiz.step > 1 ? "completed" : ""}">
+            <div class="step-circle">${wiz.step > 1 ? "\u2713" : "1"}</div>
+            <span>1. Producto & Tanda</span>
+          </div>
+          <div class="wizard-step-item ${wiz.step === 2 ? "active" : wiz.step > 2 ? "completed" : ""}">
+            <div class="step-circle">${wiz.step > 2 ? "\u2713" : "2"}</div>
+            <span>2. Reactivos Qu\xEDmicos</span>
+          </div>
+          <div class="wizard-step-item ${wiz.step === 3 ? "active" : wiz.step > 3 ? "completed" : ""}">
+            <div class="step-circle">${wiz.step > 3 ? "\u2713" : "3"}</div>
+            <span>3. Protocolo de Mezcla</span>
+          </div>
+          <div class="wizard-step-item ${wiz.step === 4 ? "active" : ""}">
+            <div class="step-circle">4</div>
+            <span>4. Ficha & Guardado</span>
+          </div>
+        </div>
+      `;
+        let costoTanda = 0;
+        let sumaPct = 0;
+        wiz.insumos.forEach((i) => {
+          const mp = rawMaterials.find((m) => m.id === i.productoId) || {};
+          const uCost = mp.costo || mp.precioCompra || 0;
+          costoTanda += Number(i.cantidad || 0) * uCost;
+          sumaPct += Number(i.porcentaje || 0);
+        });
+        const batch = Number(wiz.cantidadProducir) || 1;
+        const costoPorLitro = batch > 0 ? Math.round(costoTanda / batch) : costoTanda;
+        let bodyHtml = "";
+        if (wiz.step === 1) {
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 1 de 4:</strong> Nombra tu receta y define el tama\xF1o est\xE1ndar de la tanda que preparas en tus tanques o recipientes.
+          </div>
+
+          <div class="nexa-grid-2 mb-3">
+            <div>
+              <label class="font-bold text-xs">Nombre de la Receta Maestra:</label>
+              <input type="text" id="wiz-rec-name" class="form-control font-bold" value="${wiz.nombreFormula}" placeholder="Ej: Desengrasante Pesado Industrial" required>
+            </div>
+            <div>
+              <label class="font-bold text-xs">\xBFA qu\xE9 Producto Terminado corresponde?</label>
+              <select class="form-select font-bold" id="wiz-rec-prod">
+                <option value="">-- Sin vincular a\xFAn (Solo f\xF3rmula) --</option>
+                ${finishedGoods.map((fg) => `
+                  <option value="${fg.id}" ${wiz.productoTerminadoId === fg.id ? "selected" : ""}>
+                    ${fg.nombre} (${fg.sku || "-"})
+                  </option>
+                `).join("")}
+              </select>
+            </div>
+          </div>
+
+          <div class="nexa-grid-2 mb-3">
+            <div>
+              <label class="font-bold text-xs">\xBFCu\xE1ntos litros o galones preparas en una tanda?</label>
+              <div class="d-flex gap-2">
+                <input type="number" step="any" min="1" id="wiz-rec-batch" class="form-control font-bold" value="${wiz.cantidadProducir}" required>
+                <select class="form-select" id="wiz-rec-unit" style="max-width: 120px;">
+                  <option value="Litros" ${wiz.unidadMedida === "Litros" ? "selected" : ""}>Litros</option>
+                  <option value="Galones" ${wiz.unidadMedida === "Galones" ? "selected" : ""}>Galones</option>
+                  <option value="Kilos" ${wiz.unidadMedida === "Kilos" ? "selected" : ""}>Kilos</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="font-bold text-xs">pH esperado (Opcional):</label>
+              <input type="text" id="wiz-rec-ph" class="form-control" value="${wiz.ph}" placeholder="Ej: 11 a 12 (Alcalino)">
+            </div>
+          </div>
+        `;
+        } else if (wiz.step === 2) {
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 2 de 4:</strong> Agrega las materias primas qu\xEDmicas que lleva la mezcla. 
+            El sistema calcular\xE1 autom\xE1ticamente el peso en Kg/L y el costo por litro en tiempo real.
+          </div>
+
+          <div class="d-flex justify-between items-center mb-2">
+            <div>
+              <span class="text-xs font-bold text-muted">LISTA DE REACTIVOS DE LA RECETA:</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm font-bold" id="wiz-btn-add-ing">
+              + Agregar Reactivo
+            </button>
+          </div>
+
+          <div class="table-responsive mb-2" style="max-height: 240px; overflow-y: auto;">
+            <table class="table table-sm text-xs" style="margin-bottom: 0;">
+              <thead>
+                <tr>
+                  <th>Materia Prima</th>
+                  <th style="width: 140px;">Momento</th>
+                  <th style="width: 90px;" class="text-center">%</th>
+                  <th style="width: 110px;" class="text-center">Cantidad (${wiz.unidadMedida})</th>
+                  <th style="width: 40px;"></th>
+                </tr>
+              </thead>
+              <tbody id="wiz-tbody-ings">
+                ${wiz.insumos.map((item, idx) => `
+                  <tr data-idx="${idx}">
+                    <td>
+                      <select class="form-select form-select-sm sel-mp font-bold">
+                        <option value="" disabled ${!item.productoId ? "selected" : ""}>Elegir insumo...</option>
+                        ${rawMaterials.map((rm) => `
+                          <option value="${rm.id}" ${item.productoId === rm.id ? "selected" : ""}>
+                            ${rm.nombre} (${Formatters.currency(rm.costo || rm.precioCompra || 0)}/u)
+                          </option>
+                        `).join("")}
+                      </select>
+                    </td>
+                    <td>
+                      <select class="form-select form-select-sm sel-fase">
+                        <option value="Paso 1 (Al inicio)" ${item.fase === "Paso 1 (Al inicio)" ? "selected" : ""}>Paso 1 (Al inicio)</option>
+                        <option value="Paso 2 (En el medio)" ${item.fase === "Paso 2 (En el medio)" ? "selected" : ""}>Paso 2 (En el medio)</option>
+                        <option value="Paso 3 (Al final)" ${item.fase === "Paso 3 (Al final)" ? "selected" : ""}>Paso 3 (Al final)</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm text-center font-bold inp-pct" value="${item.porcentaje || ""}" placeholder="%">
+                    </td>
+                    <td>
+                      <input type="number" step="any" min="0" class="form-control form-control-sm text-center font-bold inp-qty" value="${item.cantidad || ""}" placeholder="Cantidad">
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-secondary btn-sm btn-del-row" style="padding: 1px 6px; color: var(--danger-color);">&times;</button>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Barra de Balance y Costo en Vivo -->
+          <div class="p-3 card mb-0" style="background: var(--bg-surface-solid); border-radius: 8px;">
+            <div class="d-flex justify-between items-center">
+              <div>
+                <span class="text-xs text-muted font-bold">Balance de Proporciones:</span>
+                <div class="d-flex items-center gap-2 mt-1">
+                  <span class="badge ${Math.abs(sumaPct - 100) < 0.5 ? "badge-success" : "badge-warning"} font-bold" style="font-size: 13px;">
+                    ${sumaPct.toFixed(1)}% ${Math.abs(sumaPct - 100) < 0.5 ? "100% Perfecto \u2713" : "(Faltan o sobran " + (100 - sumaPct).toFixed(1) + "%)"}
+                  </span>
+                </div>
+              </div>
+
+              <div class="text-right">
+                <span class="text-xs text-muted font-bold">Costo Qu\xEDmico Estimado:</span>
+                <div style="font-size: 18px; font-weight: 900; color: #0284c7;">
+                  ${Formatters.currency(costoPorLitro)} / ${wiz.unidadMedida.slice(0, -1) || "L"}
+                </div>
+                <span class="text-xs text-muted">Total Tanda: ${Formatters.currency(costoTanda)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        } else if (wiz.step === 3) {
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 3 de 4:</strong> Escribe las instrucciones de mezclado paso a paso para que cualquier operario 
+            prepare la f\xF3rmula exactamente con la misma calidad.
+          </div>
+
+          <div class="form-group mb-2">
+            <div class="d-flex justify-between items-center mb-1">
+              <label class="font-bold text-xs">Instrucciones de Preparaci\xF3n (Paso a Paso):</label>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-plantilla-mezcla" style="font-size: 10.5px; padding: 2px 8px;">
+                Insertar Plantilla Gu\xEDa
+              </button>
+            </div>
+            <textarea id="wiz-rec-steps" rows="6" class="form-control text-xs" style="font-size: 12px; line-height: 1.4;" placeholder="Paso 1: Llenar el tanque con el agua base y encender el agitador a media velocidad...&#10;Paso 2: Agregar el qu\xEDmico activo lentamente para evitar salpicaduras...&#10;Paso 3: Incorporar el color y la fragancia hasta homogenizar...&#10;Paso 4: Tomar muestra de pH antes del envasado.">${wiz.instruccionesFases}</textarea>
+          </div>
+        `;
+        } else if (wiz.step === 4) {
+          const prodAsoc = finishedGoods.find((p) => p.id === wiz.productoTerminadoId);
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 4 de 4:</strong> Ficha t\xE9cnica consolidada lista para registrar en tu B\xF3veda Privada.
+          </div>
+
+          <div class="card p-3 mb-3" style="background: var(--bg-surface-solid); border-radius: 10px;">
+            <div class="d-flex justify-between items-start mb-2">
+              <div>
+                <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">\u{1F9EA} ${wiz.nombreFormula}</h4>
+                <div class="text-xs text-muted">
+                  Producto Asociado: <strong>${prodAsoc ? prodAsoc.nombre : "Sin vincular"}</strong> | Tanda: <strong>${wiz.cantidadProducir} ${wiz.unidadMedida}</strong>
+                </div>
+              </div>
+              <span class="badge badge-success font-bold">100% Confidencial</span>
+            </div>
+
+            <div class="nexa-grid-3 mt-2">
+              <div class="p-2" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px;">
+                <div class="text-xs text-muted font-bold">Reactivos en la mezcla:</div>
+                <strong style="font-size: 14px; color: var(--text-main);">${wiz.insumos.length} ingredientes</strong>
+              </div>
+              <div class="p-2" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px;">
+                <div class="text-xs text-muted font-bold">Costo Total Tanda:</div>
+                <strong style="font-size: 14px; color: #047857;">${Formatters.currency(costoTanda)}</strong>
+              </div>
+              <div class="p-2" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px;">
+                <div class="text-xs text-muted font-bold">Costo L\xEDquido x Litro:</div>
+                <strong style="font-size: 14px; color: #0284c7;">${Formatters.currency(costoPorLitro)} / L</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 card mb-0" style="background: rgba(0, 113, 227, 0.04); border: 1px solid var(--brand-primary); border-radius: 8px;">
+            <div class="d-flex justify-between items-center">
+              <div>
+                <strong style="font-size: 13px; color: var(--brand-primary);">\xBFDeseas fijar precios de venta con este costo qu\xEDmico?</strong>
+                <p class="text-xs text-muted mb-0">Podemos transferir autom\xE1ticamente los <strong>${Formatters.currency(costoPorLitro)}</strong> a la Calculadora de Precios.</p>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm font-bold" id="wiz-btn-save-and-pricing">
+                \u{1F4A1} Guardar e Ir a Precios
+              </button>
+            </div>
+          </div>
+        `;
+        }
+        const footerHtml = `
+        <div class="wizard-footer">
+          <div>
+            ${wiz.step > 1 ? `
+              <button type="button" class="btn btn-secondary btn-sm font-bold" id="wiz-rec-prev">
+                \u2B05\uFE0F Atr\xE1s
+              </button>
+            ` : `
+              <button type="button" class="btn btn-secondary btn-sm" id="wiz-rec-cancel">
+                Cancelar
+              </button>
+            `}
+          </div>
+
+          <div>
+            ${wiz.step < 4 ? `
+              <button type="button" class="btn btn-primary btn-sm font-bold" id="wiz-rec-next">
+                Siguiente \u2794
+              </button>
+            ` : `
+              <button type="button" class="btn btn-success btn-sm font-bold" id="wiz-rec-save" style="padding: 6px 18px; font-size: 13px;">
+                \u{1F512} Guardar Receta en B\xF3veda
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+        root.innerHTML = `
+        <div class="wizard-body">
+          <div class="wizard-step-content">
+            ${stepperHtml}
+            ${bodyHtml}
+          </div>
+          ${footerHtml}
+        </div>
+      `;
+        const btnCancel = root.querySelector("#wiz-rec-cancel");
+        if (btnCancel)
+          btnCancel.addEventListener("click", () => Modal.close());
+        const btnPrev = root.querySelector("#wiz-rec-prev");
+        if (btnPrev)
+          btnPrev.addEventListener("click", () => {
+            wiz.step = Math.max(1, wiz.step - 1);
+            renderStep();
+          });
+        const btnNext = root.querySelector("#wiz-rec-next");
+        if (btnNext)
+          btnNext.addEventListener("click", () => {
+            if (wiz.step === 1 && !wiz.nombreFormula.trim()) {
+              Toast.warning("Escribe un nombre para la receta.");
+              return;
+            }
+            wiz.step = Math.min(4, wiz.step + 1);
+            renderStep();
+          });
+        if (wiz.step === 1) {
+          const inpN = root.querySelector("#wiz-rec-name");
+          const selP = root.querySelector("#wiz-rec-prod");
+          const inpB = root.querySelector("#wiz-rec-batch");
+          const selU = root.querySelector("#wiz-rec-unit");
+          const inpPh = root.querySelector("#wiz-rec-ph");
+          inpN.addEventListener("input", () => {
+            wiz.nombreFormula = inpN.value;
+          });
+          selP.addEventListener("change", () => {
+            wiz.productoTerminadoId = selP.value;
+          });
+          inpB.addEventListener("input", () => {
+            wiz.cantidadProducir = Number(inpB.value) || 1;
+          });
+          selU.addEventListener("change", () => {
+            wiz.unidadMedida = selU.value;
+          });
+          inpPh.addEventListener("input", () => {
+            wiz.ph = inpPh.value;
+          });
+        }
+        if (wiz.step === 2) {
+          const tbody = root.querySelector("#wiz-tbody-ings");
+          const syncRows = () => {
+            wiz.insumos = [];
+            tbody.querySelectorAll("tr").forEach((tr) => {
+              const selMp = tr.querySelector(".sel-mp");
+              const selFase = tr.querySelector(".sel-fase");
+              const inpPct = tr.querySelector(".inp-pct");
+              const inpQty = tr.querySelector(".inp-qty");
+              if (selMp && selMp.value) {
+                wiz.insumos.push({
+                  productoId: selMp.value,
+                  fase: selFase.value,
+                  porcentaje: Number(inpPct.value) || 0,
+                  cantidad: Number(inpQty.value) || 0
+                });
+              }
+            });
+            renderStep();
+          };
+          tbody.querySelectorAll("tr").forEach((tr) => {
+            const selMp = tr.querySelector(".sel-mp");
+            const selFase = tr.querySelector(".sel-fase");
+            const inpPct = tr.querySelector(".inp-pct");
+            const inpQty = tr.querySelector(".inp-qty");
+            const btnDel = tr.querySelector(".btn-del-row");
+            btnDel.addEventListener("click", () => {
+              tr.remove();
+              syncRows();
+            });
+            inpPct.addEventListener("input", () => {
+              const p = Number(inpPct.value) || 0;
+              const b = Number(wiz.cantidadProducir) || 0;
+              if (b > 0 && p > 0)
+                inpQty.value = (b * p / 100).toFixed(2);
+              syncRows();
+            });
+            selMp.addEventListener("change", syncRows);
+            selFase.addEventListener("change", syncRows);
+            inpQty.addEventListener("input", syncRows);
+          });
+          const btnAdd = root.querySelector("#wiz-btn-add-ing");
+          btnAdd.addEventListener("click", () => {
+            wiz.insumos.push({ productoId: "", fase: "Paso 2 (En el medio)", porcentaje: 10, cantidad: wiz.cantidadProducir * 10 / 100 });
+            renderStep();
+          });
+        }
+        if (wiz.step === 3) {
+          const txt = root.querySelector("#wiz-rec-steps");
+          txt.addEventListener("input", () => {
+            wiz.instruccionesFases = txt.value;
+          });
+          const btnTpl = root.querySelector("#btn-plantilla-mezcla");
+          if (btnTpl)
+            btnTpl.addEventListener("click", () => {
+              txt.value = "Paso 1: Llenar el tanque con el 80% del agua requerida y encender el agitador a 400 RPM.\nPaso 2: Adicionar los tensoactivos lentamente para evitar formaci\xF3n excesiva de espuma.\nPaso 3: Incorporar los agentes secuestrantes y niveladores de pH.\nPaso 4: Agregar la fragancia y el colorante disuelto previamente en agua tibia.\nPaso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en laboratorio.";
+              wiz.instruccionesFases = txt.value;
+              Toast.info("Plantilla insertada");
+            });
+        }
+        if (wiz.step === 4) {
+          const doSave = async (goToPricing = false) => {
+            const recData = {
+              id: wiz.id,
+              tenantId,
+              nombreFormula: wiz.nombreFormula.trim() || "F\xF3rmula Sin Nombre",
+              productoTerminadoId: wiz.productoTerminadoId,
+              cantidadProducir: Number(wiz.cantidadProducir) || 1,
+              unidadMedida: wiz.unidadMedida,
+              instruccionesFases: wiz.instruccionesFases,
+              especificaciones: { ph: wiz.ph },
+              insumos: wiz.insumos,
+              fechaModificacion: (/* @__PURE__ */ new Date()).toISOString()
+            };
+            await DB2.update(STORES.RECIPES_BOM, recData);
+            Toast.success(`\xA1Receta "${recData.nombreFormula}" guardada en B\xF3veda!`);
+            Modal.close();
+            if (goToPricing) {
+              sessionStorage.setItem("nexa_target_pricing_formula", JSON.stringify(recData));
+              window.location.hash = "#pricing-calculator";
+            } else if (onSaved) {
+              onSaved();
+            }
+          };
+          const btnSave = root.querySelector("#wiz-rec-save");
+          if (btnSave)
+            btnSave.addEventListener("click", () => doSave(false));
+          const btnSavePricing = root.querySelector("#wiz-btn-save-and-pricing");
+          if (btnSavePricing)
+            btnSavePricing.addEventListener("click", () => doSave(true));
+        }
+      };
+      renderStep();
     },
     openChangePin() {
       Modal.show({
@@ -10259,205 +10705,6 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           }
         ]
       });
-    },
-    openRecipeEditor(recipe, tenantId, finishedGoods, rawMaterials, onSaved) {
-      let insumos = recipe && recipe.insumos ? JSON.parse(JSON.stringify(recipe.insumos)) : [];
-      const content = `
-      <form id="form-recipe-easy">
-        <div class="nexa-grid-2 mb-3">
-          <div>
-            <label class="font-bold text-xs">Nombre de la Receta</label>
-            <input type="text" id="rec-name" class="form-control font-bold" value="${recipe?.nombreFormula || ""}" placeholder="Ej: Desengrasante Pesado Especial" required>
-          </div>
-          <div>
-            <label class="font-bold text-xs">\xBFA qu\xE9 producto corresponde?</label>
-            <select class="form-select font-bold" id="rec-prod" required>
-              <option value="" disabled ${!recipe ? "selected" : ""}>Seleccionar producto...</option>
-              ${finishedGoods.map((fg) => `
-                <option value="${fg.id}" ${recipe?.productoTerminadoId === fg.id ? "selected" : ""}>${fg.nombre} (${fg.sku})</option>
-              `).join("")}
-            </select>
-          </div>
-        </div>
-
-        <div class="nexa-grid-2 mb-3">
-          <div>
-            <label class="font-bold text-xs">\xBFCu\xE1ntos litros o galones preparas en una tanda?</label>
-            <div class="d-flex gap-2">
-              <input type="number" step="any" min="1" id="rec-batch-qty" class="form-control font-bold" value="${recipe?.cantidadProducir || 200}" required>
-              <select class="form-select" id="rec-batch-unit" style="max-width: 120px;">
-                <option value="Litros" ${recipe?.unidadMedida === "Litros" ? "selected" : ""}>Litros</option>
-                <option value="Galones" ${recipe?.unidadMedida === "Galones" ? "selected" : ""}>Galones</option>
-                <option value="Kilos" ${recipe?.unidadMedida === "Kilos" ? "selected" : ""}>Kilos</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="font-bold text-xs">pH esperado (Opcional)</label>
-            <input type="text" id="rec-ph" class="form-control" value="${recipe?.especificaciones?.ph || ""}" placeholder="Ej: 11 a 12">
-          </div>
-        </div>
-
-        <!-- Tabla de Ingredientes -->
-        <div class="card p-3 mb-3" style="background: var(--bg-surface-solid);">
-          <div class="d-flex justify-between items-center mb-2">
-            <h4 style="font-size: 13.5px; font-weight: 800; margin: 0;">Ingredientes de la Mezcla</h4>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-ing">+ Agregar Ingrediente</button>
-          </div>
-
-          <div class="table-responsive">
-            <table class="table table-sm text-xs">
-              <thead>
-                <tr>
-                  <th>Ingrediente</th>
-                  <th style="width: 140px;">Momento</th>
-                  <th style="width: 90px;" class="text-center">%</th>
-                  <th style="width: 100px;" class="text-center">Cantidad</th>
-                  <th style="width: 30px;"></th>
-                </tr>
-              </thead>
-              <tbody id="tbody-ings"></tbody>
-            </table>
-          </div>
-          <div class="text-xs mt-1 d-flex justify-between items-center text-muted">
-            <span>Suma de porcentajes: <strong id="lbl-sum-pct">0%</strong></span>
-            <span id="badge-pct-bal" class="badge badge-secondary">Calculando</span>
-          </div>
-        </div>
-
-        <div>
-          <label class="font-bold text-xs">Instrucciones de Mezcla (Paso a paso)</label>
-          <textarea id="rec-steps" rows="3" class="form-control text-xs" placeholder="Paso 1: Agregar el agua en el tanque y prender agitador...&#10;Paso 2: Echar el qu\xEDmico despacio...&#10;Paso 3: Agregar aroma y color.">${recipe?.instruccionesFases || ""}</textarea>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: recipe ? "Editar Receta" : "Crear Nueva Receta",
-        size: "lg",
-        content,
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: "Guardar en B\xF3veda",
-            class: "btn-primary",
-            onClick: async () => {
-              const form = dialog.querySelector("#form-recipe-easy");
-              if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-              }
-              const name = dialog.querySelector("#rec-name").value.trim();
-              const prodId = dialog.querySelector("#rec-prod").value;
-              const batch = Number(dialog.querySelector("#rec-batch-qty").value) || 1;
-              const unit = dialog.querySelector("#rec-batch-unit").value;
-              const ph = dialog.querySelector("#rec-ph").value.trim();
-              const steps = dialog.querySelector("#rec-steps").value.trim();
-              const rows = dialog.querySelectorAll("#tbody-ings tr");
-              const newInsumos = [];
-              rows.forEach((tr) => {
-                const selMp = tr.querySelector(".sel-mp");
-                const selFase = tr.querySelector(".sel-fase");
-                const inpPct = tr.querySelector(".inp-pct");
-                const inpQty = tr.querySelector(".inp-qty");
-                if (selMp && selMp.value) {
-                  newInsumos.push({
-                    productoId: selMp.value,
-                    fase: selFase.value,
-                    porcentaje: Number(inpPct.value) || 0,
-                    cantidad: Number(inpQty.value) || 0
-                  });
-                }
-              });
-              if (newInsumos.length === 0) {
-                Toast.warning("Agrega al menos un ingrediente a la receta.");
-                return;
-              }
-              const recData = {
-                ...recipe || {},
-                id: recipe ? recipe.id : "rec_" + Date.now(),
-                tenantId,
-                nombreFormula: name,
-                productoTerminadoId: prodId,
-                cantidadProducir: batch,
-                unidadMedida: unit,
-                instruccionesFases: steps,
-                especificaciones: { ph },
-                insumos: newInsumos,
-                fechaModificacion: (/* @__PURE__ */ new Date()).toISOString()
-              };
-              await DB2.update(STORES.RECIPES_BOM, recData);
-              Toast.success("\xA1Receta guardada exitosamente!");
-              Modal.close();
-              if (onSaved)
-                onSaved();
-            }
-          }
-        ]
-      });
-      const tbody = dialog.querySelector("#tbody-ings");
-      const lblSum = dialog.querySelector("#lbl-sum-pct");
-      const badgeBal = dialog.querySelector("#badge-pct-bal");
-      const updateSum = () => {
-        let s = 0;
-        tbody.querySelectorAll(".inp-pct").forEach((i) => s += Number(i.value) || 0);
-        lblSum.textContent = s.toFixed(1) + "%";
-        if (Math.abs(s - 100) < 0.5) {
-          badgeBal.className = "badge badge-success";
-          badgeBal.textContent = "100% Perfecto \u2713";
-        } else {
-          badgeBal.className = "badge badge-warning";
-          badgeBal.textContent = "Faltan o sobran " + (100 - s).toFixed(1) + "%";
-        }
-      };
-      const addRow = (item = {}) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-        <td>
-          <select class="form-select form-select-sm sel-mp font-bold" required>
-            <option value="" disabled ${!item.productoId ? "selected" : ""}>Elegir ingrediente...</option>
-            ${rawMaterials.map((rm) => `
-              <option value="${rm.id}" ${item.productoId === rm.id ? "selected" : ""}>${rm.nombre}</option>
-            `).join("")}
-          </select>
-        </td>
-        <td>
-          <select class="form-select form-select-sm sel-fase">
-            <option value="Paso 1 (Al inicio)" ${item.fase === "Paso 1 (Al inicio)" ? "selected" : ""}>Paso 1 (Al inicio)</option>
-            <option value="Paso 2 (En el medio)" ${item.fase === "Paso 2 (En el medio)" ? "selected" : ""}>Paso 2 (En el medio)</option>
-            <option value="Paso 3 (Al final)" ${item.fase === "Paso 3 (Al final)" ? "selected" : ""}>Paso 3 (Al final)</option>
-          </select>
-        </td>
-        <td>
-          <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm text-center font-bold inp-pct" value="${item.porcentaje || ""}" placeholder="%">
-        </td>
-        <td>
-          <input type="number" step="any" min="0" class="form-control form-control-sm text-center font-bold inp-qty" value="${item.cantidad || ""}" placeholder="Cantidad">
-        </td>
-        <td>
-          <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 6px; color: var(--danger-color);">&times;</button>
-        </td>
-      `;
-        tr.querySelector("button").addEventListener("click", () => {
-          tr.remove();
-          updateSum();
-        });
-        const pInp = tr.querySelector(".inp-pct");
-        const qInp = tr.querySelector(".inp-qty");
-        pInp.addEventListener("input", () => {
-          const batch = Number(dialog.querySelector("#rec-batch-qty").value) || 0;
-          const p = Number(pInp.value) || 0;
-          if (batch > 0 && p > 0)
-            qInp.value = (batch * p / 100).toFixed(2);
-          updateSum();
-        });
-        tbody.appendChild(tr);
-      };
-      if (insumos.length > 0)
-        insumos.forEach(addRow);
-      else
-        addRow();
-      updateSum();
-      dialog.querySelector("#btn-add-ing").addEventListener("click", () => addRow());
     }
   };
 
@@ -10466,605 +10713,879 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   init_formatters();
   init_toast();
   var PricingCalculatorModule = {
-    state: {
-      selectedProductId: null,
-      productName: "Mi Producto",
-      // Insumo Químico
-      costoQuimico: 3500,
-      // Tarjetas de Empaque
-      costoEnvase: 1200,
-      costoTapa: 400,
-      costoEtiqueta: 350,
-      costoCajaMasterUnit: 250,
-      // Trabajo y Servicios
-      costoManoObraUnit: 500,
-      costoServiciosUnit: 300,
-      pctMerma: 2,
-      // Estrategia
-      modoCalculo: "QUIERO_MARGEN",
-      margenDeseadoPct: 35,
-      precioVentaManual: 11e3,
-      aplicaIva: true,
-      tasaIva: 19
-    },
+    products: [],
+    recipes: [],
+    tenantId: "tenant_rayopro",
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
-      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      this.tenantId = tenant ? tenant.id : "tenant_rayopro";
       const [products, recipes] = await Promise.all([
-        DB2.getAll(STORES.PRODUCTS, tenantId),
-        DB2.getAll(STORES.RECIPES_BOM, tenantId)
+        DB2.getAll(STORES.PRODUCTS, this.tenantId),
+        DB2.getAll(STORES.RECIPES_BOM, this.tenantId)
       ]);
+      this.products = products;
+      this.recipes = recipes;
       const incomingRaw = sessionStorage.getItem("nexa_target_pricing_formula");
       if (incomingRaw) {
         try {
           const formula = JSON.parse(incomingRaw);
           sessionStorage.removeItem("nexa_target_pricing_formula");
-          this.loadFromRecipe(formula, products);
+          this.renderMainView(container);
+          this.openPricingWizard(null, formula, () => this.render(container));
+          return;
         } catch (e) {
           console.error(e);
         }
       }
-      this.renderView(container, tenantId, products, recipes);
+      this.renderMainView(container);
     },
-    loadFromRecipe(formula, products) {
-      const rawMaterials = products.filter((p) => p.tipoItem === "MATERIA_PRIMA");
-      let totalCost = 0;
-      (formula.insumos || []).forEach((ins) => {
-        const mp = rawMaterials.find((m) => m.id === ins.productoId) || {};
-        const unitCost = mp.costo || mp.precioCompra || 0;
-        totalCost += ins.cantidad * unitCost;
-      });
-      const batchQty = Number(formula.cantidadProducir) || 1;
-      const unitChemCost = batchQty > 0 ? Math.round(totalCost / batchQty) : Math.round(totalCost);
-      this.state.costoQuimico = unitChemCost;
-      this.state.productName = formula.nombreFormula || "Producto de Receta";
-      this.state.selectedProductId = formula.productoTerminadoId || null;
-      Toast.success(`\xA1Costo cargado desde receta! ($${Formatters.currency(unitChemCost)})`);
-    },
-    renderView(container, tenantId, products, recipes) {
-      const finishedGoods = products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO");
-      const costoEmpaqueTotal = this.state.costoEnvase + this.state.costoTapa + this.state.costoEtiqueta + this.state.costoCajaMasterUnit;
-      const costoTrabajoTotal = this.state.costoManoObraUnit + this.state.costoServiciosUnit;
-      const subtotalDirecto = this.state.costoQuimico + costoEmpaqueTotal + costoTrabajoTotal;
-      const costoDesperdicio = Math.round(subtotalDirecto * (this.state.pctMerma / 100));
-      const costoTotalFinal = subtotalDirecto + costoDesperdicio;
-      const pctQuimico = costoTotalFinal > 0 ? Math.round(this.state.costoQuimico / costoTotalFinal * 100) : 0;
-      const pctEmpaque = costoTotalFinal > 0 ? Math.round(costoEmpaqueTotal / costoTotalFinal * 100) : 0;
-      const pctTrabajo = costoTotalFinal > 0 ? Math.max(0, 100 - pctQuimico - pctEmpaque) : 0;
-      let precioSinIva = 0;
-      let gananciaLimpiaDinero = 0;
-      let porcentajeGananciaReal = 0;
-      if (this.state.modoCalculo === "QUIERO_MARGEN") {
-        const margenFrac = (this.state.margenDeseadoPct || 0) / 100;
-        precioSinIva = margenFrac >= 0.95 ? costoTotalFinal * 2 : Math.round(costoTotalFinal / (1 - margenFrac));
-        gananciaLimpiaDinero = precioSinIva - costoTotalFinal;
-        porcentajeGananciaReal = this.state.margenDeseadoPct;
-        this.state.precioVentaManual = precioSinIva;
-      } else {
-        precioSinIva = Math.round(this.state.precioVentaManual || 0);
-        gananciaLimpiaDinero = precioSinIva - costoTotalFinal;
-        porcentajeGananciaReal = precioSinIva > 0 ? Math.round(gananciaLimpiaDinero / precioSinIva * 100 * 10) / 10 : 0;
-        this.state.margenDeseadoPct = Math.max(0, porcentajeGananciaReal);
-      }
-      const valorIva = this.state.aplicaIva ? Math.round(precioSinIva * (this.state.tasaIva / 100)) : 0;
-      const precioFinalConIva = precioSinIva + valorIva;
-      let semaforo = {
-        color: "#10b981",
-        bg: "rgba(16, 185, 129, 0.08)",
-        border: "#10b981",
-        icon: "\u{1F7E2}",
-        titulo: "Excelente Ganancia",
-        desc: "Margen saludable para venta comercial y mostrador."
-      };
-      if (porcentajeGananciaReal < 15) {
-        semaforo = {
-          color: "#ef4444",
-          bg: "rgba(239, 68, 68, 0.08)",
-          border: "#ef4444",
-          icon: "\u{1F534}",
-          titulo: "Ganancia Muy Baja",
-          desc: "Margen estrecho con alto riesgo ante imprevistos."
-        };
-      } else if (porcentajeGananciaReal < 30) {
-        semaforo = {
-          color: "#f59e0b",
-          bg: "rgba(245, 158, 11, 0.08)",
-          border: "#f59e0b",
-          icon: "\u{1F7E1}",
-          titulo: "Ganancia Moderada",
-          desc: "Ideal para ventas mayoristas o por volumen."
-        };
-      }
-      const calcTier = (m) => {
-        const p = Math.round(costoTotalFinal / (1 - m / 100));
-        const g = p - costoTotalFinal;
-        const iva = this.state.aplicaIva ? Math.round(p * 0.19) : 0;
-        return { p, g, iva, conIva: p + iva, m };
-      };
-      const tiers = {
-        t1: calcTier(50),
-        t2: calcTier(38),
-        t3: calcTier(28),
-        t4: calcTier(18)
-      };
+    renderMainView(container) {
+      const finishedGoods = this.products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO");
+      const conPrecio = finishedGoods.filter((p) => p.precioVenta > 0);
+      const margenPromedio = conPrecio.length > 0 ? Math.round(conPrecio.reduce((acc, p) => {
+        const costo = p.costo || 0;
+        const precio = p.precioVenta || 0;
+        return acc + (precio > 0 && costo > 0 ? (precio - costo) / precio * 100 : 0);
+      }, 0) / conPrecio.length) : 35;
       container.innerHTML = `
-      <div class="view-header mb-2" style="padding-bottom: 8px;">
+      <div class="view-header mb-3" style="padding-bottom: 8px;">
         <div class="view-title-wrap">
           <div class="d-flex items-center gap-2">
-            <h1 style="font-size: 20px;">Calculadora F\xE1cil de Costos y Ganancias</h1>
-            <span class="badge badge-primary font-bold">PRECIOS INTELIGENTES</span>
+            <h1 style="font-size: 20px;">Costos & Precios Comerciales (IA)</h1>
+            <span class="badge badge-primary font-bold">ASISTENTE GUIADO</span>
           </div>
-          <p class="text-xs text-muted mb-0">Costeo unitario exacto y fijaci\xF3n de precios comerciales con rentabilidad blindada</p>
+          <p class="text-xs text-muted mb-0">Fija y optimiza precios de venta con un asistente pedag\xF3gico paso a paso</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-secondary btn-sm" id="btn-explicar-sencillo">\u2753 \xBFC\xF3mo funciona?</button>
-          <button class="btn btn-primary btn-sm" id="btn-guardar-catalogo">\u{1F4BE} Guardar en Cat\xE1logo</button>
+          <button class="btn btn-primary btn-sm font-bold" id="btn-abrir-asistente-nuevo">
+            \u2728 + Asistente para Fijar Precios
+          </button>
         </div>
       </div>
 
-      <!-- Barra Compacta: Selector de Producto -->
-      <div class="card p-2 mb-2" style="background: var(--bg-surface); border-radius: 10px;">
-        <div class="d-flex justify-between items-center gap-2">
-          <div class="d-flex items-center gap-2" style="flex: 1;">
-            <span style="font-size: 18px;">\u{1F3F7}\uFE0F</span>
-            <span class="text-xs font-bold text-muted" style="white-space: nowrap;">PRODUCTO:</span>
-            <select class="form-select form-select-sm font-bold" id="sel-calc-product" style="font-size: 13px; height: 32px;">
-              <option value="">-- Modo Libre (Calcular cualquier producto nuevo) --</option>
+      <!-- 3 KPIs de Estado del Cat\xE1logo -->
+      <div class="pricing-kpi-grid mb-3">
+        <div class="pricing-kpi-card kpi-cost">
+          <div class="pricing-kpi-info">
+            <span class="pricing-kpi-label"><span>\u{1F4E6}</span> Productos Terminados</span>
+            <span class="pricing-kpi-sub">En cat\xE1logo actual</span>
+          </div>
+          <div class="pricing-kpi-data">
+            <span class="pricing-kpi-value" style="color: #0284c7;">${finishedGoods.length}</span>
+            <span class="badge badge-info" style="font-size: 9.5px;">Fabricaci\xF3n</span>
+          </div>
+        </div>
+
+        <div class="pricing-kpi-card kpi-price">
+          <div class="pricing-kpi-info">
+            <span class="pricing-kpi-label"><span>\u{1F3F7}\uFE0F</span> Con Precios Fijados</span>
+            <span class="pricing-kpi-sub">Listos para mostrador</span>
+          </div>
+          <div class="pricing-kpi-data">
+            <span class="pricing-kpi-value" style="color: var(--brand-primary);">${conPrecio.length} / ${finishedGoods.length}</span>
+            <span class="badge badge-primary" style="font-size: 9.5px;">${Math.round(conPrecio.length / (finishedGoods.length || 1) * 100)}% Cobertura</span>
+          </div>
+        </div>
+
+        <div class="pricing-kpi-card kpi-profit">
+          <div class="pricing-kpi-info">
+            <span class="pricing-kpi-label"><span>\u{1F4B0}</span> Margen Promedio</span>
+            <span class="pricing-kpi-sub">Rentabilidad en caja</span>
+          </div>
+          <div class="pricing-kpi-data">
+            <span class="pricing-kpi-value" style="color: #047857;">${margenPromedio}%</span>
+            <span class="badge badge-success font-bold" style="font-size: 9.5px;">\u{1F7E2} Saludable</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cat\xE1logo de Productos con Precios y Costos -->
+      <div class="card p-3" style="border-radius: 12px;">
+        <div class="d-flex justify-between items-center mb-3">
+          <div>
+            <h3 style="font-size: 14.5px; font-weight: 800; margin: 0;">Lista de Productos y Precios Comerciales</h3>
+            <span class="text-xs text-muted">Selecciona cualquier producto para abrir el asistente y ajustar sus costos y ganancias</span>
+          </div>
+          <a href="#formulas-vault" class="btn btn-secondary btn-sm" style="font-size: 11.5px;">\u{1F9EA} Ver B\xF3veda de F\xF3rmulas</a>
+        </div>
+
+        ${finishedGoods.length === 0 ? `
+          <div class="text-center p-5 text-muted">
+            <div style="font-size: 32px; margin-bottom: 8px;">\u{1F3F7}\uFE0F</div>
+            <strong>A\xFAn no tienes productos terminados registrados.</strong>
+            <p class="text-xs mt-1">Crea productos en tu inventario o utiliza el asistente para simular un c\xE1lculo nuevo.</p>
+            <button class="btn btn-primary btn-sm mt-2" id="btn-asistente-vacio">\u2728 Abrir Asistente de Simulaci\xF3n</button>
+          </div>
+        ` : `
+          <div class="pricing-horizontal-tiers">
+            ${finishedGoods.map((p) => {
+        const costo = Number(p.costo || 0);
+        const precio = Number(p.precioVenta || 0);
+        const ganancia = Math.max(0, precio - costo);
+        const pct = precio > 0 ? Math.round(ganancia / precio * 100 * 10) / 10 : 0;
+        const tieneReceta = this.recipes.some((r) => r.productoTerminadoId === p.id);
+        return `
+                <div class="pricing-tier-card" style="border-left: 4px solid ${pct >= 30 ? "#10b981" : pct >= 15 ? "#f59e0b" : "#ef4444"};">
+                  <div class="tier-col-segment">
+                    <div class="d-flex items-center gap-2">
+                      <span style="font-size: 20px;">\u{1F9F4}</span>
+                      <div>
+                        <strong style="font-size: 13.5px; color: var(--text-main);">${p.nombre}</strong>
+                        <div class="text-xs text-muted">
+                          SKU: ${p.sku || "-"} ${tieneReceta ? '\u2022 <span class="text-primary font-bold">\u{1F9EA} Con Receta</span>' : ""}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tier-col-profit">
+                    <span class="text-xs text-muted d-block" style="font-size: 10.5px;">Costo Fabricaci\xF3n:</span>
+                    <strong style="font-size: 13.5px; color: #0284c7;">${Formatters.currency(costo)}</strong>
+                  </div>
+
+                  <div class="tier-col-net">
+                    <span class="text-xs text-muted d-block" style="font-size: 10.5px;">Precio Mostrador (sin IVA):</span>
+                    <strong style="font-size: 14px; color: var(--text-main);">${Formatters.currency(precio)}</strong>
+                  </div>
+
+                  <div class="tier-col-gross">
+                    <span class="text-xs text-muted d-block" style="font-size: 10.5px;">Ganancia Limpia:</span>
+                    <span class="badge ${pct >= 30 ? "badge-success" : pct >= 15 ? "badge-warning" : "badge-danger"} font-bold" style="font-size: 11px;">
+                      +${Formatters.currency(ganancia)} (${pct}%)
+                    </span>
+                  </div>
+
+                  <div class="d-flex gap-2" style="flex-shrink: 0;">
+                    <button class="btn btn-primary btn-sm btn-abrir-asistente-prod" data-id="${p.id}" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700;">
+                      \u2728 Asistente
+                    </button>
+                  </div>
+                </div>
+              `;
+      }).join("")}
+          </div>
+        `}
+      </div>
+    `;
+      const btnNuevo = container.querySelector("#btn-abrir-asistente-nuevo");
+      if (btnNuevo)
+        btnNuevo.addEventListener("click", () => this.openPricingWizard(null, null, () => this.render(container)));
+      const btnVacio = container.querySelector("#btn-asistente-vacio");
+      if (btnVacio)
+        btnVacio.addEventListener("click", () => this.openPricingWizard(null, null, () => this.render(container)));
+      container.querySelectorAll(".btn-abrir-asistente-prod").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const prod = this.products.find((p) => p.id === id);
+          this.openPricingWizard(prod, null, () => this.render(container));
+        });
+      });
+      const btnExp = container.querySelector("#btn-explicar-sencillo");
+      if (btnExp)
+        btnExp.addEventListener("click", () => this.openExplainer());
+    },
+    /**
+     * ASISTENTE MODAL GUIADO PASO A PASO (WIZARD DE PRECIOS)
+     */
+    openPricingWizard(targetProduct = null, targetFormula = null, onSaved = null) {
+      const finishedGoods = this.products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO");
+      const rawMaterials = this.products.filter((p) => p.tipoItem === "MATERIA_PRIMA");
+      const wiz = {
+        step: 1,
+        productId: targetProduct ? targetProduct.id : targetFormula ? targetFormula.productoTerminadoId : "",
+        productName: targetProduct ? targetProduct.nombre : targetFormula ? targetFormula.nombreFormula : "Mi Producto",
+        costoQuimico: 3500,
+        costoEnvase: 1200,
+        costoTapa: 400,
+        costoEtiqueta: 350,
+        costoCajaMasterUnit: 250,
+        costoManoObraUnit: 500,
+        costoServiciosUnit: 300,
+        pctMerma: 2,
+        modoCalculo: "QUIERO_MARGEN",
+        margenDeseadoPct: 35,
+        precioVentaManual: 11e3,
+        aplicaIva: true,
+        tasaIva: 19
+      };
+      if (targetFormula) {
+        let totalReceta = 0;
+        (targetFormula.insumos || []).forEach((ins) => {
+          const mp = rawMaterials.find((m) => m.id === ins.productoId) || {};
+          const uCost = mp.costo || mp.precioCompra || 0;
+          totalReceta += ins.cantidad * uCost;
+        });
+        const batch = Number(targetFormula.cantidadProducir) || 1;
+        wiz.costoQuimico = batch > 0 ? Math.round(totalReceta / batch) : Math.round(totalReceta);
+        wiz.step = 2;
+      } else if (targetProduct && targetProduct.costo > 0) {
+        wiz.costoQuimico = Math.round(targetProduct.costo * 0.6);
+        wiz.costoEnvase = Math.round(targetProduct.costo * 0.25);
+        wiz.costoTapa = Math.round(targetProduct.costo * 0.08);
+        wiz.costoEtiqueta = Math.round(targetProduct.costo * 0.07);
+        if (targetProduct.precioVenta > 0) {
+          wiz.precioVentaManual = targetProduct.precioVenta;
+        }
+      }
+      const dialog = Modal.show({
+        title: "\u2728 Asistente Guiado: Fijaci\xF3n Inteligente de Precios",
+        size: "lg",
+        content: '<div id="wizard-pricing-container"></div>',
+        footerButtons: []
+        // Manejaremos los botones internamente en el wizard
+      });
+      const root = dialog.querySelector("#wizard-pricing-container");
+      const renderStep = () => {
+        const costoEmpaqueTotal = wiz.costoEnvase + wiz.costoTapa + wiz.costoEtiqueta + wiz.costoCajaMasterUnit;
+        const costoTrabajoTotal = wiz.costoManoObraUnit + wiz.costoServiciosUnit;
+        const subtotalDirecto = wiz.costoQuimico + costoEmpaqueTotal + costoTrabajoTotal;
+        const costoDesperdicio = Math.round(subtotalDirecto * (wiz.pctMerma / 100));
+        const costoTotalFinal = subtotalDirecto + costoDesperdicio;
+        const pctQuimico = costoTotalFinal > 0 ? Math.round(wiz.costoQuimico / costoTotalFinal * 100) : 0;
+        const pctEmpaque = costoTotalFinal > 0 ? Math.round(costoEmpaqueTotal / costoTotalFinal * 100) : 0;
+        const pctTrabajo = costoTotalFinal > 0 ? Math.max(0, 100 - pctQuimico - pctEmpaque) : 0;
+        let precioSinIva = 0;
+        let gananciaLimpiaDinero = 0;
+        let porcentajeGananciaReal = 0;
+        if (wiz.modoCalculo === "QUIERO_MARGEN") {
+          const margenFrac = (wiz.margenDeseadoPct || 0) / 100;
+          precioSinIva = margenFrac >= 0.95 ? costoTotalFinal * 2 : Math.round(costoTotalFinal / (1 - margenFrac));
+          gananciaLimpiaDinero = precioSinIva - costoTotalFinal;
+          porcentajeGananciaReal = wiz.margenDeseadoPct;
+          wiz.precioVentaManual = precioSinIva;
+        } else {
+          precioSinIva = Math.round(wiz.precioVentaManual || 0);
+          gananciaLimpiaDinero = precioSinIva - costoTotalFinal;
+          porcentajeGananciaReal = precioSinIva > 0 ? Math.round(gananciaLimpiaDinero / precioSinIva * 100 * 10) / 10 : 0;
+          wiz.margenDeseadoPct = Math.max(0, porcentajeGananciaReal);
+        }
+        const valorIva = wiz.aplicaIva ? Math.round(precioSinIva * (wiz.tasaIva / 100)) : 0;
+        const precioFinalConIva = precioSinIva + valorIva;
+        let semaforo = {
+          color: "#10b981",
+          bg: "rgba(16, 185, 129, 0.1)",
+          border: "#10b981",
+          icon: "\u{1F7E2}",
+          titulo: "\xA1Excelente Ganancia!",
+          desc: "Margen saludable y blindado para venta al p\xFAblico y mostrador."
+        };
+        if (porcentajeGananciaReal < 15) {
+          semaforo = {
+            color: "#ef4444",
+            bg: "rgba(239, 68, 68, 0.1)",
+            border: "#ef4444",
+            icon: "\u{1F534}",
+            titulo: "Ganancia Peligrosamente Baja",
+            desc: "A este precio cualquier imprevisto te deja en p\xE9rdida."
+          };
+        } else if (porcentajeGananciaReal < 30) {
+          semaforo = {
+            color: "#f59e0b",
+            bg: "rgba(245, 158, 11, 0.1)",
+            border: "#f59e0b",
+            icon: "\u{1F7E1}",
+            titulo: "Ganancia Moderada",
+            desc: "Margen ajustado, ideal para clientes mayoristas o por volumen."
+          };
+        }
+        const calcTier = (m) => {
+          const p = Math.round(costoTotalFinal / (1 - m / 100));
+          const g = p - costoTotalFinal;
+          const iva = wiz.aplicaIva ? Math.round(p * 0.19) : 0;
+          return { p, g, iva, conIva: p + iva, m };
+        };
+        const tiers = {
+          t1: calcTier(50),
+          t2: calcTier(38),
+          t3: calcTier(28),
+          t4: calcTier(18)
+        };
+        const stepperHtml = `
+        <div class="wizard-stepper">
+          <div class="wizard-step-item ${wiz.step === 1 ? "active" : wiz.step > 1 ? "completed" : ""}">
+            <div class="step-circle">${wiz.step > 1 ? "\u2713" : "1"}</div>
+            <span>1. Producto</span>
+          </div>
+          <div class="wizard-step-item ${wiz.step === 2 ? "active" : wiz.step > 2 ? "completed" : ""}">
+            <div class="step-circle">${wiz.step > 2 ? "\u2713" : "2"}</div>
+            <span>2. Costos Fabricaci\xF3n</span>
+          </div>
+          <div class="wizard-step-item ${wiz.step === 3 ? "active" : wiz.step > 3 ? "completed" : ""}">
+            <div class="step-circle">${wiz.step > 3 ? "\u2713" : "3"}</div>
+            <span>3. Margen & Ganancia</span>
+          </div>
+          <div class="wizard-step-item ${wiz.step === 4 ? "active" : ""}">
+            <div class="step-circle">4</div>
+            <span>4. Precios Comerciales</span>
+          </div>
+        </div>
+      `;
+        let bodyHtml = "";
+        if (wiz.step === 1) {
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 1 de 4:</strong> Selecciona el producto al que deseas calcularle el costo y fijarle precios, o simula uno nuevo.
+          </div>
+
+          <div class="form-group mb-3">
+            <label class="font-bold text-xs">Seleccionar Producto del Cat\xE1logo:</label>
+            <select class="form-select font-bold" id="wiz-sel-prod" style="font-size: 14px;">
+              <option value="">-- Simulaci\xF3n Libre (Escribir nombre abajo) --</option>
               ${finishedGoods.map((fg) => `
-                <option value="${fg.id}" ${this.state.selectedProductId === fg.id ? "selected" : ""}>
-                  ${fg.nombre} (${fg.sku}) - Costo actual: ${Formatters.currency(fg.costo || 0)}
+                <option value="${fg.id}" ${wiz.productId === fg.id ? "selected" : ""}>
+                  ${fg.nombre} (${fg.sku || "Sin SKU"}) - Costo registrado: ${Formatters.currency(fg.costo || 0)}
                 </option>
               `).join("")}
             </select>
           </div>
-          <div>
-            <a href="#formulas-vault" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11.5px;">\u{1F9EA} B\xF3veda</a>
-          </div>
-        </div>
-      </div>
 
-      <!-- ================================================================ -->
-      <!-- 3 MINI-WIDGETS KPI EJECUTIVOS (COMPACTOS, ALINEADOS Y ELEGANTES) -->
-      <!-- ================================================================ -->
-      <div class="pricing-kpi-grid">
-        
-        <!-- KPI 1: Costo Total -->
-        <div class="pricing-kpi-card kpi-cost">
-          <div class="pricing-kpi-info">
-            <span class="pricing-kpi-label">
-              <span>\u{1F3ED}</span> Costo Total
-            </span>
-            <span class="pricing-kpi-sub">Insumo + Empaque + Labor</span>
-          </div>
-          <div class="pricing-kpi-data">
-            <span class="pricing-kpi-value" style="color: #0284c7;">${Formatters.currency(costoTotalFinal)}</span>
-            <span class="badge badge-info" style="font-size: 9.5px; padding: 2px 6px;">100% Costo Base</span>
-          </div>
-        </div>
-
-        <!-- KPI 2: Precio de Venta -->
-        <div class="pricing-kpi-card kpi-price">
-          <div class="pricing-kpi-info">
-            <span class="pricing-kpi-label">
-              <span>\u{1F3F7}\uFE0F</span> Venta Sugerida
-            </span>
-            <span class="pricing-kpi-sub">${this.state.aplicaIva ? `Con IVA: <strong>${Formatters.currency(precioFinalConIva)}</strong>` : "Precio sin IVA"}</span>
-          </div>
-          <div class="pricing-kpi-data">
-            <span class="pricing-kpi-value" style="color: var(--brand-primary);">${Formatters.currency(precioSinIva)}</span>
-            <span class="badge badge-primary" style="font-size: 9.5px; padding: 2px 6px;">${this.state.modoCalculo === "QUIERO_MARGEN" ? "Margen Deseado" : "Precio Fijo"}</span>
-          </div>
-        </div>
-
-        <!-- KPI 3: Ganancia Limpia -->
-        <div class="pricing-kpi-card kpi-profit">
-          <div class="pricing-kpi-info">
-            <span class="pricing-kpi-label">
-              <span>\u{1F4B0}</span> Ganancia Neta
-            </span>
-            <span class="pricing-kpi-sub">Utilidad libre en caja</span>
-          </div>
-          <div class="pricing-kpi-data">
-            <span class="pricing-kpi-value" style="color: #047857;">+${Formatters.currency(gananciaLimpiaDinero)}</span>
-            <span class="badge badge-success font-bold" style="font-size: 10px; padding: 2px 7px;">
-              ${semaforo.icon} ${porcentajeGananciaReal}% Margen
-            </span>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ================================================================ -->
-      <!-- DOS PANELES PRINCIPALES: F\xC1BRICA Y ESTRATEGIA (ESPACIO \xD3PTIMO)   -->
-      <!-- ================================================================ -->
-      <div class="nexa-two-columns mb-2">
-
-        <!-- PANEL IZQUIERDO: INPUTS DE COSTOS (CUADR\xCDCULA COMPACTA DE 4 COL) -->
-        <div class="card p-3" style="margin-bottom: 0; border-radius: 12px;">
-          <div class="d-flex justify-between items-center mb-2">
-            <h3 style="font-size: 13.5px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
-              <span>1\uFE0F\u20E3</span> Costos de Fabricaci\xF3n (1 Unidad)
-            </h3>
-            <span class="text-xs text-muted">Empaque: <strong>${Formatters.currency(costoEmpaqueTotal)}</strong></span>
+          <div class="form-group mb-3">
+            <label class="font-bold text-xs">Nombre del Producto:</label>
+            <input type="text" id="wiz-inp-prodname" class="form-control font-bold" value="${wiz.productName}" placeholder="Ej: Desengrasante Multiusos 1 Litro">
           </div>
 
-          <!-- CUADR\xCDCULA COMPACTA DE INPUTS -->
-          <div class="cost-inputs-grid mb-2">
-            
-            <!-- Insumo Qu\xEDmico (Span 2) -->
+          <div class="p-3 card mb-0" style="background: var(--bg-surface-solid); border-radius: 8px;">
+            <div class="d-flex justify-between items-center">
+              <div>
+                <strong style="font-size: 12.5px;">\u{1F9EA} \xBFFabricaste este producto con una f\xF3rmula qu\xEDmica?</strong>
+                <p class="text-xs text-muted mb-0">Podemos traer el costo exacto de los ingredientes guardados en tu B\xF3veda.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm font-bold" id="wiz-btn-cargar-boveda">
+                Importar de B\xF3veda
+              </button>
+            </div>
+          </div>
+        `;
+        } else if (wiz.step === 2) {
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 2 de 4:</strong> \xBFCu\xE1nto cuesta fabricar <strong>1 sola unidad</strong> de "${wiz.productName}"? 
+            Ingresa el valor del l\xEDquido, los empaques y la mano de obra.
+          </div>
+
+          <div class="cost-inputs-grid mb-3">
+            <!-- Qu\xEDmico -->
             <div class="input-card-box-compact cost-input-span-2" style="border-left: 3px solid #0284c7;">
               <div class="box-label">
                 <span style="color: #0284c7; font-weight: 800;">\u{1F9EA} Qu\xEDmico / L\xEDquido:</span>
-                <span class="badge badge-info" style="font-size: 9px; padding: 1px 5px;">${pctQuimico}%</span>
+                <span class="badge badge-info" style="font-size: 9.5px;">${pctQuimico}%</span>
               </div>
               <div class="box-input-wrap">
-                <span class="font-bold text-muted" style="font-size: 11px;">$</span>
-                <input type="number" step="any" min="0" id="inp-cost-chem" value="${this.state.costoQuimico}">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="wiz-inp-chem" value="${wiz.costoQuimico}">
               </div>
             </div>
 
-            <!-- Botella / Tarro -->
+            <!-- Botella -->
             <div class="input-card-box-compact">
               <div class="box-label">\u{1F9F4} Tarro / Botella:</div>
               <div class="box-input-wrap">
-                <span class="font-bold text-muted" style="font-size: 11px;">$</span>
-                <input type="number" step="any" min="0" id="inp-cost-bottle" value="${this.state.costoEnvase}">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="wiz-inp-bottle" value="${wiz.costoEnvase}">
               </div>
             </div>
 
-            <!-- Tapa / Atomizador -->
+            <!-- Tapa -->
             <div class="input-card-box-compact">
-              <div class="box-label">\u{1F518} Tapa/Atomizador:</div>
+              <div class="box-label">\u{1F518} Tapa / Atomizador:</div>
               <div class="box-input-wrap">
-                <span class="font-bold text-muted" style="font-size: 11px;">$</span>
-                <input type="number" step="any" min="0" id="inp-cost-cap" value="${this.state.costoTapa}">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="wiz-inp-cap" value="${wiz.costoTapa}">
               </div>
             </div>
 
             <!-- Etiqueta -->
             <div class="input-card-box-compact">
-              <div class="box-label">\u{1F3F7}\uFE0F Etiqueta:</div>
+              <div class="box-label">\u{1F3F7}\uFE0F Etiqueta adhesiva:</div>
               <div class="box-input-wrap">
-                <span class="font-bold text-muted" style="font-size: 11px;">$</span>
-                <input type="number" step="any" min="0" id="inp-cost-label" value="${this.state.costoEtiqueta}">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="wiz-inp-label" value="${wiz.costoEtiqueta}">
               </div>
             </div>
 
-            <!-- Caja m\xE1ster unitaria -->
+            <!-- Caja -->
             <div class="input-card-box-compact">
               <div class="box-label">\u{1F4E6} Caja x unidad:</div>
               <div class="box-input-wrap">
-                <span class="font-bold text-muted" style="font-size: 11px;">$</span>
-                <input type="number" step="any" min="0" id="inp-cost-box" value="${this.state.costoCajaMasterUnit}">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="wiz-inp-box" value="${wiz.costoCajaMasterUnit}">
               </div>
             </div>
 
-            <!-- Mano de Obra -->
+            <!-- Labor -->
             <div class="input-card-box-compact">
-              <div class="box-label">\u{1F477} Labor/Envasado:</div>
+              <div class="box-label">\u{1F477} Labor / Envasado:</div>
               <div class="box-input-wrap">
-                <span class="font-bold text-muted" style="font-size: 11px;">$</span>
-                <input type="number" step="any" min="0" id="inp-cost-mod" value="${this.state.costoManoObraUnit}">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="wiz-inp-mod" value="${wiz.costoManoObraUnit}">
               </div>
             </div>
 
-            <!-- Servicios y Luz -->
+            <!-- Luz y Servicios -->
             <div class="input-card-box-compact">
-              <div class="box-label">\u26A1 Luz/M\xE1quinas:</div>
+              <div class="box-label">\u26A1 Luz y Servicios:</div>
               <div class="box-input-wrap">
-                <span class="font-bold text-muted" style="font-size: 11px;">$</span>
-                <input type="number" step="any" min="0" id="inp-cost-serv" value="${this.state.costoServiciosUnit}">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="wiz-inp-serv" value="${wiz.costoServiciosUnit}">
               </div>
             </div>
 
-            <!-- Merma T\xE9cnica (deslizador horizontal span 4) -->
-            <div class="input-card-box-compact cost-input-span-4" style="padding: 4px 10px;">
-              <div class="box-label" style="margin-bottom: 2px;">
-                <span>\u{1F4A7} Desperdicio inevitable (Merma): <strong class="text-danger">${this.state.pctMerma}%</strong> (+${Formatters.currency(costoDesperdicio)})</span>
-                <span class="text-muted text-xs">Ajuste t\xE9cnico</span>
+            <!-- Merma -->
+            <div class="input-card-box-compact cost-input-span-4" style="padding: 6px 10px;">
+              <div class="box-label">
+                <span>\u{1F4A7} Desperdicio inevitable (Merma): <strong class="text-danger">${wiz.pctMerma}%</strong> (+${Formatters.currency(costoDesperdicio)})</span>
+                <span class="text-muted text-xs">P\xE9rdidas de l\xEDquido en mangueras y filtros</span>
               </div>
-              <input type="range" min="0" max="8" step="0.5" id="range-cost-merma" value="${this.state.pctMerma}" class="form-range w-100" style="height: 18px;">
-            </div>
-
-          </div>
-
-          <!-- Barra Gr\xE1fica de Distribuci\xF3n Compacta -->
-          <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
-            <div style="height: 8px; width: 100%; display: flex; border-radius: 4px; overflow: hidden;">
-              <div style="width: ${pctQuimico}%; background: #0284c7;" title="Qu\xEDmicos: ${pctQuimico}%"></div>
-              <div style="width: ${pctEmpaque}%; background: #f59e0b;" title="Empaque: ${pctEmpaque}%"></div>
-              <div style="width: ${pctTrabajo}%; background: #8b5cf6;" title="Labor: ${pctTrabajo}%"></div>
-            </div>
-            <div class="d-flex justify-between text-xs mt-1" style="font-size: 10.5px;">
-              <span style="color: #0284c7;">\u25CF Qu\xEDmico: <strong>${pctQuimico}%</strong></span>
-              <span style="color: #d97706;">\u25CF Empaque: <strong>${pctEmpaque}%</strong></span>
-              <span style="color: #7c3aed;">\u25CF Labor/Merma: <strong>${pctTrabajo}%</strong></span>
+              <input type="range" min="0" max="8" step="0.5" id="wiz-range-merma" value="${wiz.pctMerma}" class="form-range w-100" style="height: 18px;">
             </div>
           </div>
 
-        </div>
+          <!-- Totalizador Grande del Costo -->
+          <div class="p-3 text-center mb-2" style="background: rgba(2, 132, 199, 0.08); border: 2px dashed #0284c7; border-radius: 10px;">
+            <div class="text-xs text-muted font-bold">COSTO TOTAL PARA TENER 1 UNIDAD LISTA:</div>
+            <div style="font-size: 26px; font-weight: 900; color: #0284c7; margin: 2px 0;">
+              ${Formatters.currency(costoTotalFinal)} COP
+            </div>
+            <div class="text-xs text-muted">
+              Qu\xEDmico: ${Formatters.currency(wiz.costoQuimico)} (${pctQuimico}%) | Empaque: ${Formatters.currency(costoEmpaqueTotal)} (${pctEmpaque}%) | Labor/Merma: ${Formatters.currency(costoTrabajoTotal + costoDesperdicio)} (${pctTrabajo}%)
+            </div>
+          </div>
+        `;
+        } else if (wiz.step === 3) {
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 3 de 4:</strong> \xBFC\xF3mo quieres definir el precio de venta al p\xFAblico? 
+            Puedes fijar qu\xE9 porcentaje de margen quieres ganar, o escribir el precio al que compite en el mercado.
+          </div>
 
-        <!-- PANEL DERECHO: ESTRATEGIA Y SIMULADOR DE GANANCIA -->
-        <div class="card p-3" style="margin-bottom: 0; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
-          <div>
-            <div class="d-flex justify-between items-center mb-2">
-              <h3 style="font-size: 13.5px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
-                <span>2\uFE0F\u20E3</span> Estrategia y Ganancia
-              </h3>
-              <span class="badge badge-success font-bold" style="font-size: 10.5px;">Simulador</span>
+          <!-- 2 Opciones Claras -->
+          <div class="nexa-grid-2 mb-3">
+            <div class="wizard-option-card ${wiz.modoCalculo === "QUIERO_MARGEN" ? "selected" : ""}" id="card-mode-margen">
+              <div class="font-bold" style="font-size: 13px; color: var(--text-main);">\u{1F7E2} Opci\xF3n A: Quiero ganar un %</div>
+              <div class="text-xs text-muted mt-1">El sistema calcula el precio para que te quede ese % neto en el bolsillo.</div>
             </div>
 
-            <!-- Botones Compactos de Selecci\xF3n de Modo -->
-            <div class="nexa-grid-2 mb-2">
-              <button class="btn ${this.state.modoCalculo === "QUIERO_MARGEN" ? "btn-primary" : "btn-secondary"} p-2 text-left mode-btn" data-mode="QUIERO_MARGEN" style="border-radius: 8px; height: auto;">
-                <div class="font-bold" style="font-size: 12px;">\u{1F7E2} Opci\xF3n A: Quiero ganar un %</div>
-                <div class="text-xs opacity-80" style="font-size: 10.5px;">Fijar margen deseado (ej: 35%)</div>
-              </button>
-
-              <button class="btn ${this.state.modoCalculo === "TENGO_PRECIO" ? "btn-primary" : "btn-secondary"} p-2 text-left mode-btn" data-mode="TENGO_PRECIO" style="border-radius: 8px; height: auto;">
-                <div class="font-bold" style="font-size: 12px;">\u{1F535} Opci\xF3n B: Tengo un precio fijo</div>
-                <div class="text-xs opacity-80" style="font-size: 10.5px;">C\xE1lculo inverso desde precio</div>
-              </button>
-            </div>
-
-            <!-- Entrada de Datos Din\xE1mica -->
-            ${this.state.modoCalculo === "QUIERO_MARGEN" ? `
-              <div class="input-card-box-compact mb-2" style="background: rgba(0, 113, 227, 0.04); border-color: rgba(0, 113, 227, 0.2);">
-                <div class="box-label">
-                  <span class="text-primary font-bold">Porcentaje de Margen Deseado:</span>
-                  <span class="badge badge-primary font-bold" style="font-size: 12px;">${this.state.margenDeseadoPct}%</span>
-                </div>
-                <input type="range" min="10" max="70" step="1" id="range-num-margen" value="${this.state.margenDeseadoPct}" class="form-range w-100 my-1">
-                <div class="d-flex justify-between text-xs text-muted" style="font-size: 10px;">
-                  <span>15% Distribuidor</span>
-                  <span>35% Negocio</span>
-                  <span>50% Detal</span>
-                </div>
-              </div>
-            ` : `
-              <div class="input-card-box-compact mb-2" style="background: rgba(0, 113, 227, 0.04); border-color: rgba(0, 113, 227, 0.2);">
-                <div class="box-label text-primary font-bold">Precio de Venta Sugerido ($ COP sin IVA):</div>
-                <div class="box-input-wrap">
-                  <span style="font-size: 18px; font-weight: 800; color: var(--brand-primary);">$</span>
-                  <input type="number" step="100" min="${costoTotalFinal + 100}" id="inp-precio-calle" value="${precioSinIva}" style="font-size: 16px; color: var(--brand-primary); height: 34px;">
-                </div>
-              </div>
-            `}
-
-            <!-- Sem\xE1foro de Salud Compacto -->
-            <div class="p-2 mb-2" style="background: ${semaforo.bg}; border: 1px solid ${semaforo.border}; border-radius: 8px; display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 18px;">${semaforo.icon}</span>
-              <div style="line-height: 1.2;">
-                <strong style="color: ${semaforo.color}; font-size: 11.5px;">${semaforo.titulo}:</strong>
-                <span style="font-size: 11px; color: var(--text-main);"> ${semaforo.desc}</span>
-              </div>
+            <div class="wizard-option-card ${wiz.modoCalculo === "TENGO_PRECIO" ? "selected" : ""}" id="card-mode-precio">
+              <div class="font-bold" style="font-size: 13px; color: var(--text-main);">\u{1F535} Opci\xF3n B: Ya tengo un precio fijo</div>
+              <div class="text-xs text-muted mt-1">Escribes el precio de la calle y calculamos tu utilidad real.</div>
             </div>
           </div>
 
-          <!-- Checkbox IVA Compacto -->
-          <div class="d-flex justify-between items-center p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px; font-size: 11.5px;">
-            <div class="d-flex items-center gap-2">
-              <input type="checkbox" id="chk-iva-simple" ${this.state.aplicaIva ? "checked" : ""} style="width: 14px; height: 14px; cursor: pointer;">
-              <label for="chk-iva-simple" class="font-bold" style="cursor: pointer; margin: 0;">\xBFCobras IVA a tus clientes? (19%)</label>
+          <!-- Input seg\xFAn modo -->
+          ${wiz.modoCalculo === "QUIERO_MARGEN" ? `
+            <div class="input-card-box-compact mb-3" style="background: rgba(0, 113, 227, 0.04); border-color: rgba(0, 113, 227, 0.25); padding: 12px 14px;">
+              <div class="box-label">
+                <span class="text-primary font-bold" style="font-size: 12.5px;">Margen de Ganancia sobre el Precio de Venta:</span>
+                <span class="badge badge-primary font-bold" style="font-size: 14px;">${wiz.margenDeseadoPct}%</span>
+              </div>
+              <input type="range" min="10" max="70" step="1" id="wiz-range-margen" value="${wiz.margenDeseadoPct}" class="form-range w-100 my-2">
+              <div class="d-flex justify-between text-xs text-muted">
+                <span>15% Distribuidor</span>
+                <span>35% Est\xE1ndar Negocio</span>
+                <span>50% Mostrador / Detal</span>
+              </div>
             </div>
+          ` : `
+            <div class="input-card-box-compact mb-3" style="background: rgba(0, 113, 227, 0.04); border-color: rgba(0, 113, 227, 0.25); padding: 12px 14px;">
+              <div class="box-label text-primary font-bold" style="font-size: 12.5px;">Precio de Venta Mostrador ($ COP sin IVA):</div>
+              <div class="box-input-wrap">
+                <span style="font-size: 22px; font-weight: 800; color: var(--brand-primary);">$</span>
+                <input type="number" step="100" min="${costoTotalFinal + 100}" id="wiz-inp-precio-calle" value="${precioSinIva}" style="font-size: 18px; color: var(--brand-primary); height: 38px;">
+              </div>
+            </div>
+          `}
+
+          <!-- Resultado y Sem\xE1foro -->
+          <div class="nexa-grid-2 mb-3">
+            <div class="p-3 text-center" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 10px;">
+              <div class="text-xs text-muted font-bold">PRECIO MOSTRADOR:</div>
+              <div style="font-size: 22px; font-weight: 900; color: var(--brand-primary); margin: 2px 0;">
+                ${Formatters.currency(precioSinIva)} COP
+              </div>
+              <span class="text-xs text-muted">${wiz.aplicaIva ? `Con IVA: ${Formatters.currency(precioFinalConIva)}` : "Sin IVA"}</span>
+            </div>
+
+            <div class="p-3 text-center" style="background: rgba(16, 185, 129, 0.08); border: 1px solid #10b981; border-radius: 10px;">
+              <div class="text-xs text-muted font-bold">TU GANANCIA LIMPIA:</div>
+              <div style="font-size: 22px; font-weight: 900; color: #047857; margin: 2px 0;">
+                +${Formatters.currency(gananciaLimpiaDinero)} COP
+              </div>
+              <span class="badge badge-success font-bold" style="font-size: 11px;">
+                ${semaforo.icon} ${porcentajeGananciaReal}% Margen Neto
+              </span>
+            </div>
+          </div>
+
+          <!-- Sem\xE1foro explicativo -->
+          <div class="p-2 mb-3" style="background: ${semaforo.bg}; border: 1px solid ${semaforo.border}; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">${semaforo.icon}</span>
             <div>
-              ${this.state.aplicaIva ? `
-                <span>Final con IVA: <strong style="color: var(--brand-primary); font-size: 12.5px;">${Formatters.currency(precioFinalConIva)}</strong></span>
-              ` : `
-                <span class="badge badge-secondary" style="font-size: 10px;">Sin IVA</span>
-              `}
+              <strong style="color: ${semaforo.color}; font-size: 12px;">${semaforo.titulo}:</strong>
+              <span style="font-size: 11.5px; color: var(--text-main);"> ${semaforo.desc}</span>
             </div>
           </div>
 
-        </div>
+          <!-- Checkbox IVA -->
+          <div class="d-flex justify-between items-center p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px;">
+            <div class="d-flex items-center gap-2">
+              <input type="checkbox" id="wiz-chk-iva" ${wiz.aplicaIva ? "checked" : ""} style="cursor: pointer;">
+              <label for="wiz-chk-iva" class="font-bold" style="cursor: pointer; margin: 0;">\xBFCobras IVA a tus clientes? (19%)</label>
+            </div>
+            <span>${wiz.aplicaIva ? `Precio final c/IVA: <strong style="color: var(--brand-primary);">${Formatters.currency(precioFinalConIva)}</strong>` : "Precio exento de IVA"}</span>
+          </div>
+        `;
+        } else if (wiz.step === 4) {
+          bodyHtml = `
+          <div class="wizard-helper-box">
+            <strong>Paso 4 de 4:</strong> \xA1C\xE1lculo completado con \xE9xito! Aqu\xED tienes la cascada de precios recomendada para vender 
+            sin p\xE9rdidas en cada canal de tu negocio.
+          </div>
 
-      </div>
+          <!-- 4 Tarjetas de Precios Estrat\xE9gicos -->
+          <div class="pricing-horizontal-tiers mb-3">
+            
+            <!-- Mostrador -->
+            <div class="pricing-tier-card tier-p1">
+              <div class="tier-col-segment">
+                <div class="d-flex items-center gap-2">
+                  <span>\u{1F6D2}</span>
+                  <div>
+                    <strong style="font-size: 13px; color: var(--text-main);">1. Cliente Mostrador (Detal)</strong>
+                    <div class="text-xs text-muted">Venta a personas que van al local</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tier-col-profit">
+                <span class="badge badge-success font-bold">+${Formatters.currency(tiers.t1.g)} (50%)</span>
+              </div>
+              <div class="tier-col-net">
+                <span class="text-xs text-muted">Base:</span>
+                <strong style="font-size: 14px;">${Formatters.currency(tiers.t1.p)}</strong>
+              </div>
+              <div class="tier-col-gross">
+                <span class="text-xs text-muted">Con IVA:</span>
+                <strong style="font-size: 14.5px; color: #10b981;">${Formatters.currency(tiers.t1.conIva)}</strong>
+              </div>
+            </div>
 
-      <!-- ================================================================ -->
-      <!-- 4 TARJETAS HORIZONTALES ESBELTAS PARA PRECIOS SUGERIDOS          -->
-      <!-- ================================================================ -->
-      <div class="card p-3" style="border-radius: 12px;">
-        <div class="d-flex justify-between items-center mb-2">
+            <!-- Talleres -->
+            <div class="pricing-tier-card tier-p2">
+              <div class="tier-col-segment">
+                <div class="d-flex items-center gap-2">
+                  <span>\u{1F697}</span>
+                  <div>
+                    <strong style="font-size: 13px; color: var(--text-main);">2. Talleres & Lavaderos</strong>
+                    <div class="text-xs text-muted">Clientes comerciales frecuentes</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tier-col-profit">
+                <span class="badge badge-info font-bold">+${Formatters.currency(tiers.t2.g)} (38%)</span>
+              </div>
+              <div class="tier-col-net">
+                <span class="text-xs text-muted">Base:</span>
+                <strong style="font-size: 14px;">${Formatters.currency(tiers.t2.p)}</strong>
+              </div>
+              <div class="tier-col-gross">
+                <span class="text-xs text-muted">Con IVA:</span>
+                <strong style="font-size: 14.5px; color: #0284c7;">${Formatters.currency(tiers.t2.conIva)}</strong>
+              </div>
+            </div>
+
+            <!-- Mayorista -->
+            <div class="pricing-tier-card tier-p3">
+              <div class="tier-col-segment">
+                <div class="d-flex items-center gap-2">
+                  <span>\u{1F4E6}</span>
+                  <div>
+                    <strong style="font-size: 13px; color: var(--text-main);">3. Mayorista (Cajas x 12)</strong>
+                    <div class="text-xs text-muted">Compras por volumen en empaque cerrado</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tier-col-profit">
+                <span class="badge badge-warning font-bold">+${Formatters.currency(tiers.t3.g)} (28%)</span>
+              </div>
+              <div class="tier-col-net">
+                <span class="text-xs text-muted">Base:</span>
+                <strong style="font-size: 14px;">${Formatters.currency(tiers.t3.p)}</strong>
+              </div>
+              <div class="tier-col-gross">
+                <span class="text-xs text-muted">Con IVA:</span>
+                <strong style="font-size: 14.5px; color: #d97706;">${Formatters.currency(tiers.t3.conIva)}</strong>
+              </div>
+            </div>
+
+            <!-- Distribuidor -->
+            <div class="pricing-tier-card tier-p4">
+              <div class="tier-col-segment">
+                <div class="d-flex items-center gap-2">
+                  <span>\u{1F69B}</span>
+                  <div>
+                    <strong style="font-size: 13px; color: var(--text-main);">4. Distribuidor</strong>
+                    <div class="text-xs text-muted">Grandes pedidos por pallets / revendedores</div>
+                  </div>
+                </div>
+              </div>
+              <div class="tier-col-profit">
+                <span class="badge badge-secondary font-bold">+${Formatters.currency(tiers.t4.g)} (18%)</span>
+              </div>
+              <div class="tier-col-net">
+                <span class="text-xs text-muted">Base:</span>
+                <strong style="font-size: 14px;">${Formatters.currency(tiers.t4.p)}</strong>
+              </div>
+              <div class="tier-col-gross">
+                <span class="text-xs text-muted">Con IVA:</span>
+                <strong style="font-size: 14.5px; color: #7c3aed;">${Formatters.currency(tiers.t4.conIva)}</strong>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="p-3 card mb-0" style="background: rgba(16, 185, 129, 0.05); border: 1px solid #10b981; border-radius: 8px;">
+            <div class="d-flex justify-between items-center">
+              <div>
+                <strong style="color: #047857; font-size: 13px;">\xBFDeseas aplicar estos precios al cat\xE1logo?</strong>
+                <div class="text-xs text-muted">Se actualizar\xE1 el costo unitario en <strong>${Formatters.currency(costoTotalFinal)}</strong> y el precio de venta en <strong>${Formatters.currency(precioSinIva)}</strong>.</div>
+              </div>
+              <span class="badge badge-success font-bold">Listo para Guardar</span>
+            </div>
+          </div>
+        `;
+        }
+        const footerHtml = `
+        <div class="wizard-footer">
           <div>
-            <h3 style="font-size: 13.5px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
-              <span>\u{1F4CB}</span> Los 4 Precios Sugeridos para tu Negocio
-            </h3>
-            <span class="text-xs text-muted">Precios escalonados calculados para garantizar rentabilidad en cada canal</span>
+            ${wiz.step > 1 ? `
+              <button type="button" class="btn btn-secondary btn-sm font-bold" id="wiz-btn-prev">
+                \u2B05\uFE0F Atr\xE1s
+              </button>
+            ` : `
+              <button type="button" class="btn btn-secondary btn-sm" id="wiz-btn-cancel">
+                Cancelar
+              </button>
+            `}
           </div>
-          <span class="badge badge-info font-bold" style="font-size: 10.5px;">4 Canales</span>
+
+          <div>
+            ${wiz.step < 4 ? `
+              <button type="button" class="btn btn-primary btn-sm font-bold" id="wiz-btn-next">
+                Siguiente \u2794
+              </button>
+            ` : `
+              <button type="button" class="btn btn-success btn-sm font-bold" id="wiz-btn-save" style="padding: 6px 18px; font-size: 13px;">
+                \u{1F4BE} Guardar Precios en el Producto
+              </button>
+            `}
+          </div>
         </div>
-
-        <div class="pricing-horizontal-tiers">
-          
-          <!-- Tarjeta 1: Mostrador / Detal -->
-          <div class="pricing-tier-card tier-p1">
-            <div class="tier-col-segment">
-              <div class="d-flex items-center gap-2">
-                <span>\u{1F6D2}</span>
-                <div>
-                  <strong style="font-size: 12.5px; color: var(--text-main);">1. Cliente Mostrador</strong>
-                  <div class="text-xs text-muted" style="font-size: 10px;">Venta directa al detal</div>
-                </div>
-              </div>
-            </div>
-            <div class="tier-col-profit">
-              <span class="badge badge-success font-bold" style="font-size: 11px; padding: 3px 8px;">
-                +${Formatters.currency(tiers.t1.g)} (50%)
-              </span>
-            </div>
-            <div class="tier-col-net">
-              <span class="text-xs text-muted">Base:</span>
-              <strong style="font-size: 13.5px; color: var(--text-main);"> ${Formatters.currency(tiers.t1.p)}</strong>
-            </div>
-            <div class="tier-col-gross">
-              <span class="text-xs text-muted">Con IVA:</span>
-              <strong style="font-size: 14px; color: #10b981;"> ${Formatters.currency(tiers.t1.conIva)}</strong>
-            </div>
+      `;
+        root.innerHTML = `
+        <div class="wizard-body">
+          <div class="wizard-step-content">
+            ${stepperHtml}
+            ${bodyHtml}
           </div>
-
-          <!-- Tarjeta 2: Talleres & Lavaderos -->
-          <div class="pricing-tier-card tier-p2">
-            <div class="tier-col-segment">
-              <div class="d-flex items-center gap-2">
-                <span>\u{1F697}</span>
-                <div>
-                  <strong style="font-size: 12.5px; color: var(--text-main);">2. Talleres & Lavaderos</strong>
-                  <div class="text-xs text-muted" style="font-size: 10px;">Consumo comercial continuo</div>
-                </div>
-              </div>
-            </div>
-            <div class="tier-col-profit">
-              <span class="badge badge-info font-bold" style="font-size: 11px; padding: 3px 8px;">
-                +${Formatters.currency(tiers.t2.g)} (38%)
-              </span>
-            </div>
-            <div class="tier-col-net">
-              <span class="text-xs text-muted">Base:</span>
-              <strong style="font-size: 13.5px; color: var(--text-main);"> ${Formatters.currency(tiers.t2.p)}</strong>
-            </div>
-            <div class="tier-col-gross">
-              <span class="text-xs text-muted">Con IVA:</span>
-              <strong style="font-size: 14px; color: #0284c7;"> ${Formatters.currency(tiers.t2.conIva)}</strong>
-            </div>
-          </div>
-
-          <!-- Tarjeta 3: Mayorista -->
-          <div class="pricing-tier-card tier-p3">
-            <div class="tier-col-segment">
-              <div class="d-flex items-center gap-2">
-                <span>\u{1F4E6}</span>
-                <div>
-                  <strong style="font-size: 12.5px; color: var(--text-main);">3. Mayorista</strong>
-                  <div class="text-xs text-muted" style="font-size: 10px;">Por cajas x 12 unidades</div>
-                </div>
-              </div>
-            </div>
-            <div class="tier-col-profit">
-              <span class="badge badge-warning font-bold" style="font-size: 11px; padding: 3px 8px;">
-                +${Formatters.currency(tiers.t3.g)} (28%)
-              </span>
-            </div>
-            <div class="tier-col-net">
-              <span class="text-xs text-muted">Base:</span>
-              <strong style="font-size: 13.5px; color: var(--text-main);"> ${Formatters.currency(tiers.t3.p)}</strong>
-            </div>
-            <div class="tier-col-gross">
-              <span class="text-xs text-muted">Con IVA:</span>
-              <strong style="font-size: 14px; color: #d97706;"> ${Formatters.currency(tiers.t3.conIva)}</strong>
-            </div>
-          </div>
-
-          <!-- Tarjeta 4: Distribuidor -->
-          <div class="pricing-tier-card tier-p4">
-            <div class="tier-col-segment">
-              <div class="d-flex items-center gap-2">
-                <span>\u{1F69B}</span>
-                <div>
-                  <strong style="font-size: 12.5px; color: var(--text-main);">4. Distribuidor</strong>
-                  <div class="text-xs text-muted" style="font-size: 10px;">Volumen alto por pallets</div>
-                </div>
-              </div>
-            </div>
-            <div class="tier-col-profit">
-              <span class="badge badge-secondary font-bold" style="font-size: 11px; padding: 3px 8px;">
-                +${Formatters.currency(tiers.t4.g)} (18%)
-              </span>
-            </div>
-            <div class="tier-col-net">
-              <span class="text-xs text-muted">Base:</span>
-              <strong style="font-size: 13.5px; color: var(--text-main);"> ${Formatters.currency(tiers.t4.p)}</strong>
-            </div>
-            <div class="tier-col-gross">
-              <span class="text-xs text-muted">Con IVA:</span>
-              <strong style="font-size: 14px; color: #7c3aed;"> ${Formatters.currency(tiers.t4.conIva)}</strong>
-            </div>
-          </div>
-
+          ${footerHtml}
         </div>
-      </div>
-    `;
-      this.bindEvents(container, tenantId, products, recipes, {
-        costoTotalFinal,
-        precioSinIva,
-        precioFinalConIva,
-        tiers
-      });
-    },
-    bindEvents(container, tenantId, products, recipes, calc) {
-      const refresh = () => this.renderView(container, tenantId, products, recipes);
-      const sel = container.querySelector("#sel-calc-product");
-      sel.addEventListener("change", () => {
-        const pid = sel.value;
-        if (!pid) {
-          this.state.selectedProductId = null;
-          refresh();
-          return;
-        }
-        const p = products.find((prod) => prod.id === pid);
-        if (p) {
-          this.state.selectedProductId = p.id;
-          this.state.productName = p.nombre;
-          if (p.costo > 0) {
-            this.state.costoQuimico = Math.round(p.costo * 0.6);
-            this.state.costoEnvase = Math.round(p.costo * 0.25);
-            this.state.costoTapa = Math.round(p.costo * 0.08);
-            this.state.costoEtiqueta = Math.round(p.costo * 0.07);
-          }
-          if (p.precioVenta > 0) {
-            this.state.precioVentaManual = p.precioVenta;
-          }
-          Toast.info(`Datos cargados de: ${p.nombre}`);
-          refresh();
-        }
-      });
-      const wire = (sel2, k) => {
-        const el = container.querySelector(sel2);
-        if (el)
-          el.addEventListener("input", () => {
-            this.state[k] = Number(el.value) || 0;
-            refresh();
+      `;
+        const btnCancel = root.querySelector("#wiz-btn-cancel");
+        if (btnCancel)
+          btnCancel.addEventListener("click", () => Modal.close());
+        const btnPrev = root.querySelector("#wiz-btn-prev");
+        if (btnPrev)
+          btnPrev.addEventListener("click", () => {
+            wiz.step = Math.max(1, wiz.step - 1);
+            renderStep();
           });
+        const btnNext = root.querySelector("#wiz-btn-next");
+        if (btnNext)
+          btnNext.addEventListener("click", () => {
+            wiz.step = Math.min(4, wiz.step + 1);
+            renderStep();
+          });
+        if (wiz.step === 1) {
+          const selP = root.querySelector("#wiz-sel-prod");
+          const inpN = root.querySelector("#wiz-inp-prodname");
+          selP.addEventListener("change", () => {
+            wiz.productId = selP.value;
+            const found = finishedGoods.find((p) => p.id === selP.value);
+            if (found) {
+              wiz.productName = found.nombre;
+              inpN.value = found.nombre;
+              if (found.costo > 0) {
+                wiz.costoQuimico = Math.round(found.costo * 0.6);
+                wiz.costoEnvase = Math.round(found.costo * 0.25);
+                wiz.costoTapa = Math.round(found.costo * 0.08);
+                wiz.costoEtiqueta = Math.round(found.costo * 0.07);
+              }
+              if (found.precioVenta > 0)
+                wiz.precioVentaManual = found.precioVenta;
+            }
+          });
+          inpN.addEventListener("input", () => {
+            wiz.productName = inpN.value;
+          });
+          const btnCargarBov = root.querySelector("#wiz-btn-cargar-boveda");
+          btnCargarBov.addEventListener("click", () => {
+            this.pickRecipeFromVaultModal((rec) => {
+              let total = 0;
+              (rec.insumos || []).forEach((ins) => {
+                const mp = rawMaterials.find((m) => m.id === ins.productoId) || {};
+                const uCost = mp.costo || mp.precioCompra || 0;
+                total += ins.cantidad * uCost;
+              });
+              const b = Number(rec.cantidadProducir) || 1;
+              wiz.costoQuimico = b > 0 ? Math.round(total / b) : Math.round(total);
+              wiz.productName = rec.nombreFormula || wiz.productName;
+              inpN.value = wiz.productName;
+              Toast.success(`\xA1Costo qu\xEDmico importado de "${rec.nombreFormula}"! ($${Formatters.currency(wiz.costoQuimico)})`);
+            });
+          });
+        }
+        if (wiz.step === 2) {
+          const bindWizInp = (id, key) => {
+            const el = root.querySelector(id);
+            if (el)
+              el.addEventListener("input", () => {
+                wiz[key] = Number(el.value) || 0;
+                renderStep();
+              });
+          };
+          bindWizInp("#wiz-inp-chem", "costoQuimico");
+          bindWizInp("#wiz-inp-bottle", "costoEnvase");
+          bindWizInp("#wiz-inp-cap", "costoTapa");
+          bindWizInp("#wiz-inp-label", "costoEtiqueta");
+          bindWizInp("#wiz-inp-box", "costoCajaMasterUnit");
+          bindWizInp("#wiz-inp-mod", "costoManoObraUnit");
+          bindWizInp("#wiz-inp-serv", "costoServiciosUnit");
+          bindWizInp("#wiz-range-merma", "pctMerma");
+        }
+        if (wiz.step === 3) {
+          const cardM = root.querySelector("#card-mode-margen");
+          const cardP = root.querySelector("#card-mode-precio");
+          if (cardM)
+            cardM.addEventListener("click", () => {
+              wiz.modoCalculo = "QUIERO_MARGEN";
+              renderStep();
+            });
+          if (cardP)
+            cardP.addEventListener("click", () => {
+              wiz.modoCalculo = "TENGO_PRECIO";
+              renderStep();
+            });
+          const rngM = root.querySelector("#wiz-range-margen");
+          if (rngM)
+            rngM.addEventListener("input", () => {
+              wiz.margenDeseadoPct = Number(rngM.value) || 0;
+              renderStep();
+            });
+          const inpC = root.querySelector("#wiz-inp-precio-calle");
+          if (inpC)
+            inpC.addEventListener("input", () => {
+              wiz.precioVentaManual = Number(inpC.value) || 0;
+              renderStep();
+            });
+          const chkI = root.querySelector("#wiz-chk-iva");
+          if (chkI)
+            chkI.addEventListener("change", () => {
+              wiz.aplicaIva = chkI.checked;
+              renderStep();
+            });
+        }
+        if (wiz.step === 4) {
+          const btnSave = root.querySelector("#wiz-btn-save");
+          if (btnSave)
+            btnSave.addEventListener("click", async () => {
+              let target = this.products.find((p) => p.id === wiz.productId);
+              if (!target) {
+                target = {
+                  id: "prod_" + Date.now(),
+                  tenantId: this.tenantId,
+                  nombre: wiz.productName || "Producto Nuevo",
+                  sku: "PT-" + Math.floor(1e3 + Math.random() * 9e3),
+                  tipoItem: "PRODUCTO_TERMINADO",
+                  unidadMedida: "UNIDAD",
+                  costo: costoTotalFinal,
+                  precioVenta: precioSinIva,
+                  stock: 0,
+                  preciosEspeciales: {
+                    plist_1: tiers.t1.p,
+                    plist_2: tiers.t2.p,
+                    plist_3: tiers.t3.p,
+                    plist_4: tiers.t4.p
+                  },
+                  fechaCreacion: (/* @__PURE__ */ new Date()).toISOString()
+                };
+                await DB2.update(STORES.PRODUCTS, target);
+                Toast.success(`\xA1Producto "${target.nombre}" creado y precios guardados!`);
+              } else {
+                target.costo = costoTotalFinal;
+                target.precioVenta = precioSinIva;
+                target.preciosEspeciales = {
+                  ...target.preciosEspeciales || {},
+                  plist_1: tiers.t1.p,
+                  plist_2: tiers.t2.p,
+                  plist_3: tiers.t3.p,
+                  plist_4: tiers.t4.p
+                };
+                target.fechaModificacion = (/* @__PURE__ */ new Date()).toISOString();
+                await DB2.update(STORES.PRODUCTS, target);
+                Toast.success(`\xA1Precios actualizados para "${target.nombre}"!`);
+              }
+              Modal.close();
+              if (onSaved)
+                onSaved();
+            });
+        }
       };
-      wire("#inp-cost-chem", "costoQuimico");
-      wire("#inp-cost-bottle", "costoEnvase");
-      wire("#inp-cost-cap", "costoTapa");
-      wire("#inp-cost-label", "costoEtiqueta");
-      wire("#inp-cost-box", "costoCajaMasterUnit");
-      wire("#inp-cost-mod", "costoManoObraUnit");
-      wire("#inp-cost-serv", "costoServiciosUnit");
-      wire("#range-cost-merma", "pctMerma");
-      container.querySelectorAll(".mode-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          this.state.modoCalculo = btn.getAttribute("data-mode");
-          refresh();
-        });
-      });
-      const rngM = container.querySelector("#range-num-margen");
-      if (rngM)
-        rngM.addEventListener("input", () => {
-          this.state.margenDeseadoPct = Number(rngM.value) || 0;
-          refresh();
-        });
-      const inpP = container.querySelector("#inp-precio-calle");
-      if (inpP)
-        inpP.addEventListener("input", () => {
-          this.state.precioVentaManual = Number(inpP.value) || 0;
-          refresh();
-        });
-      const chkIva = container.querySelector("#chk-iva-simple");
-      if (chkIva)
-        chkIva.addEventListener("change", () => {
-          this.state.aplicaIva = chkIva.checked;
-          refresh();
-        });
-      container.querySelector("#btn-explicar-sencillo").addEventListener("click", () => {
-        this.openExplainer(calc);
-      });
-      container.querySelector("#btn-guardar-catalogo").addEventListener("click", () => {
-        this.saveToCatalog(tenantId, products, calc);
-      });
+      renderStep();
     },
-    openExplainer(calc) {
+    /**
+     * Modal auxiliar para elegir una fórmula de la Bóveda
+     */
+    pickRecipeFromVaultModal(onPicked) {
+      if (this.recipes.length === 0) {
+        Toast.warning("No hay recetas guardadas en la B\xF3veda a\xFAn.");
+        return;
+      }
+      Modal.show({
+        title: "\u{1F9EA} Importar Costo desde B\xF3veda de F\xF3rmulas",
+        size: "md",
+        content: `
+        <p class="text-xs text-muted mb-3">Elige la f\xF3rmula qu\xEDmica cuya tanda deseas usar para calcular el costo por unidad:</p>
+        <div class="list-group">
+          ${this.recipes.map((r) => `
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-between items-center p-3 btn-pick-rec" data-id="${r.id}" style="text-align: left;">
+              <div>
+                <strong style="font-size: 13px;">${r.nombreFormula}</strong>
+                <div class="text-xs text-muted">Tanda de ${r.cantidadProducir || 200} ${r.unidadMedida || "Litros"}</div>
+              </div>
+              <span class="badge badge-primary font-bold">Seleccionar</span>
+            </button>
+          `).join("")}
+        </div>
+      `,
+        footerButtons: [{ label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }]
+      });
+      setTimeout(() => {
+        document.querySelectorAll(".btn-pick-rec").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            const r = this.recipes.find((rec) => rec.id === id);
+            if (r) {
+              Modal.close();
+              onPicked(r);
+            }
+          });
+        });
+      }, 50);
+    },
+    /**
+     * Modal Explicativo Sencillo
+     */
+    openExplainer() {
       Modal.show({
         title: "\u{1F4A1} Explicaci\xF3n Sencilla de tus Ganancias",
         content: `
@@ -11077,70 +11598,21 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
               Si fabricar la botella te cost\xF3 <strong>$10.000</strong> y le sumas el 30% ($13.000), tu ganancia real en el bolsillo es de apenas el <strong>23%</strong>, porque $3.000 dividido en $13.000 da 23%.
             </p>
             <p style="margin-bottom: 0;">
-              El sistema de Nexa calcula el precio real para que te quede el 30% neto de cada venta en la caja.
+              El Asistente de Nexa calcula el precio real para que te quede exactamente el 30% neto de cada venta en la caja.
             </p>
           </div>
 
           <div class="card p-3 mb-0" style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981;">
             <h4 style="font-size: 14px; font-weight: 800; color: #047857; margin-bottom: 4px;">
-              2. Tu Ganancia en este Producto
+              2. Los 4 Precios Sugeridos
             </h4>
             <p style="margin-bottom: 0;">
-              Por cada botella vendida a <strong>${Formatters.currency(calc.precioSinIva)}</strong>:<br>
-              - Se te van <strong>${Formatters.currency(calc.costoTotalFinal)}</strong> en reponer insumos y envasado.<br>
-              - Te quedan limpios <strong>+${Formatters.currency(calc.precioSinIva - calc.costoTotalFinal)} COP</strong> libres.
+              No puedes venderle al mismo precio a quien te compra 1 botella en mostrador que a quien te compra 20 cajas. El asistente te calcula 4 escalones para que ganes siempre sin importar el volumen.
             </p>
           </div>
         </div>
       `,
         footerButtons: [{ label: "\xA1Entendido!", class: "btn-primary", onClick: () => Modal.close() }]
-      });
-    },
-    saveToCatalog(tenantId, products, calc) {
-      const finished = products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO");
-      Modal.show({
-        title: "Guardar Precios en el Cat\xE1logo",
-        content: `
-        <p class="text-xs text-muted mb-3">Elige a qu\xE9 producto deseas aplicarle estos precios:</p>
-        <div class="form-group mb-3">
-          <select class="form-select font-bold" id="modal-sel-save-prod">
-            ${finished.map((p) => `
-              <option value="${p.id}" ${this.state.selectedProductId === p.id ? "selected" : ""}>
-                ${p.nombre} (${p.sku})
-              </option>
-            `).join("")}
-          </select>
-        </div>
-        <div class="p-2 text-xs" style="background: var(--bg-surface-solid); border-radius: 6px;">
-          Se guardar\xE1 el Costo en <strong>${Formatters.currency(calc.costoTotalFinal)}</strong> y el Precio Mostrador en <strong>${Formatters.currency(calc.precioSinIva)}</strong>.
-        </div>
-      `,
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: "Guardar Precios",
-            class: "btn-primary",
-            onClick: async () => {
-              const pid = document.getElementById("modal-sel-save-prod").value;
-              const target = products.find((p) => p.id === pid);
-              if (target) {
-                target.costo = calc.costoTotalFinal;
-                target.precioVenta = calc.precioSinIva;
-                target.preciosEspeciales = {
-                  ...target.preciosEspeciales || {},
-                  plist_1: calc.tiers.t1.p,
-                  plist_2: calc.tiers.t2.p,
-                  plist_3: calc.tiers.t3.p,
-                  plist_4: calc.tiers.t4.p
-                };
-                target.fechaModificacion = (/* @__PURE__ */ new Date()).toISOString();
-                await DB2.update(STORES.PRODUCTS, target);
-                Toast.success(`\xA1Precios guardados con \xE9xito para ${target.nombre}!`);
-                Modal.close();
-              }
-            }
-          }
-        ]
       });
     }
   };
