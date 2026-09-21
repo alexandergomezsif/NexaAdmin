@@ -9,7 +9,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // ../js/services/db-service.js
+  // js/services/db-service.js
   var db_service_exports = {};
   __export(db_service_exports, {
     DB: () => DB2,
@@ -17,7 +17,7 @@
   });
   var DB_NAME, DB_VERSION, STORES, DBService, DB2;
   var init_db_service = __esm({
-    "../js/services/db-service.js"() {
+    "js/services/db-service.js"() {
       DB_NAME = "NexaERP_DB";
       DB_VERSION = 2;
       STORES = {
@@ -311,10 +311,10 @@
     }
   });
 
-  // ../js/utils/event-bus.js
+  // js/utils/event-bus.js
   var EventBusService, EventBus;
   var init_event_bus = __esm({
-    "../js/utils/event-bus.js"() {
+    "js/utils/event-bus.js"() {
       EventBusService = class {
         constructor() {
           this.events = {};
@@ -356,10 +356,10 @@
     }
   });
 
-  // ../js/services/audit-service.js
+  // js/services/audit-service.js
   var AuditServiceManager, AuditService;
   var init_audit_service = __esm({
-    "../js/services/audit-service.js"() {
+    "js/services/audit-service.js"() {
       init_db_service();
       AuditServiceManager = class {
         /**
@@ -409,7 +409,7 @@
     }
   });
 
-  // ../js/services/auth-service.js
+  // js/services/auth-service.js
   var auth_service_exports = {};
   __export(auth_service_exports, {
     AuthServiceInstance: () => AuthServiceInstance,
@@ -419,7 +419,7 @@
   });
   var ROLES, PERMISSIONS, ROLE_ALLOWED_MODULES, AuthService, AuthServiceInstance;
   var init_auth_service = __esm({
-    "../js/services/auth-service.js"() {
+    "js/services/auth-service.js"() {
       init_db_service();
       init_event_bus();
       init_audit_service();
@@ -663,14 +663,14 @@
     }
   });
 
-  // ../js/components/toast.js
+  // js/components/toast.js
   var toast_exports = {};
   __export(toast_exports, {
     Toast: () => Toast
   });
   var ToastManager, Toast;
   var init_toast = __esm({
-    "../js/components/toast.js"() {
+    "js/components/toast.js"() {
       ToastManager = class {
         constructor() {
           this.container = null;
@@ -738,10 +738,10 @@
     }
   });
 
-  // ../js/utils/formatters.js
+  // js/utils/formatters.js
   var Formatters;
   var init_formatters = __esm({
-    "../js/utils/formatters.js"() {
+    "js/utils/formatters.js"() {
       Formatters = {
         /**
          * Formatea un valor numérico a Pesos Colombianos (COP) sin decimales o con decimales según se requiera
@@ -839,14 +839,14 @@
     }
   });
 
-  // ../js/services/export-service.js
+  // js/services/export-service.js
   var export_service_exports = {};
   __export(export_service_exports, {
     ExportService: () => ExportService
   });
   var ExportService;
   var init_export_service = __esm({
-    "../js/services/export-service.js"() {
+    "js/services/export-service.js"() {
       init_formatters();
       ExportService = {
         /**
@@ -1043,10 +1043,10 @@
     }
   });
 
-  // ../js/services/tenant-service.js
+  // js/services/tenant-service.js
   init_db_service();
 
-  // ../js/data/seed-rayopro.js
+  // js/data/seed-rayopro.js
   var RAYO_PRO_TENANT_ID = "tenant_rayopro";
   var ALT_DEMO_TENANT_ID = "tenant_autobrillo";
   var SeedData = {
@@ -1999,7 +1999,7 @@
     ]
   };
 
-  // ../js/utils/dian-dv.js
+  // js/utils/dian-dv.js
   var DianDV = {
     // Factores de ponderación oficiales DIAN (hasta 15 dígitos)
     WEIGHTS: [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71],
@@ -2044,7 +2044,7 @@
     }
   };
 
-  // ../js/services/tenant-service.js
+  // js/services/tenant-service.js
   init_event_bus();
   var TenantService = class {
     constructor() {
@@ -2358,10 +2358,10 @@
   };
   var TenantServiceInstance = new TenantService();
 
-  // ../js/app.js
+  // js/app.js
   init_auth_service();
 
-  // ../js/services/cash-service.js
+  // js/services/cash-service.js
   init_db_service();
   init_audit_service();
   var CashService = {
@@ -2485,11 +2485,11 @@
     }
   };
 
-  // ../js/app.js
+  // js/app.js
   init_event_bus();
   init_toast();
 
-  // ../js/components/modal.js
+  // js/components/modal.js
   var Modal = {
     activeModal: null,
     /**
@@ -2590,11 +2590,11 @@
     }
   };
 
-  // ../js/modules/dashboard.js
+  // js/modules/dashboard.js
   init_db_service();
   init_formatters();
 
-  // ../js/components/kpi-card.js
+  // js/components/kpi-card.js
   function renderKpiCard({
     label,
     value,
@@ -2627,7 +2627,7 @@
   `;
   }
 
-  // ../js/modules/dashboard.js
+  // js/modules/dashboard.js
   init_toast();
   var DashboardModule = {
     async render(container) {
@@ -3170,11 +3170,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/clients.js
+  // js/modules/clients.js
   init_db_service();
   init_formatters();
 
-  // ../js/components/data-table.js
+  // js/components/data-table.js
   var DataTable = class {
     constructor({
       containerId,
@@ -3368,7 +3368,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/clients.js
+  // js/modules/clients.js
   init_toast();
   init_audit_service();
   var CLIENT_SEGMENTS = {
@@ -3981,7 +3981,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/products.js
+  // js/modules/products.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -4305,11 +4305,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/inventory.js
+  // js/modules/inventory.js
   init_db_service();
   init_formatters();
 
-  // ../js/services/kardex-service.js
+  // js/services/kardex-service.js
   init_db_service();
   init_audit_service();
   var MOVEMENT_TYPES = {
@@ -4414,7 +4414,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/inventory.js
+  // js/modules/inventory.js
   init_toast();
   var InventoryModule = {
     async render(container) {
@@ -4786,11 +4786,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/production.js
+  // js/modules/production.js
   init_db_service();
   init_formatters();
 
-  // ../js/services/production-service.js
+  // js/services/production-service.js
   init_db_service();
   init_audit_service();
   var ProductionService = {
@@ -4945,10 +4945,10 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/production.js
+  // js/modules/production.js
   init_export_service();
 
-  // ../js/components/print-template.js
+  // js/components/print-template.js
   init_formatters();
   var PrintTemplates = {
     /**
@@ -5301,7 +5301,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/production.js
+  // js/modules/production.js
   init_toast();
   var ProductionModule = {
     async render(container) {
@@ -5661,7 +5661,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/purchases.js
+  // js/modules/purchases.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -5975,11 +5975,11 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/sales-pos.js
+  // js/modules/sales-pos.js
   init_db_service();
   init_formatters();
 
-  // ../js/services/tax-service.js
+  // js/services/tax-service.js
   var TaxService = {
     /**
      * Calcula el subtotal, descuento, base gravable, IVA y total de una lista de ítems.
@@ -6025,7 +6025,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/sales-pos.js
+  // js/modules/sales-pos.js
   init_export_service();
   init_toast();
   init_audit_service();
@@ -6665,7 +6665,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/shipping.js
+  // js/modules/shipping.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -6977,7 +6977,7 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // ../js/modules/cash.js
+  // js/modules/cash.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -7433,7 +7433,7 @@ _Reporte generado autom\xE1ticamente desde Nexa Admin ERP._`;
     }
   };
 
-  // ../js/modules/expenses.js
+  // js/modules/expenses.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -7605,7 +7605,7 @@ _Reporte generado autom\xE1ticamente desde Nexa Admin ERP._`;
     }
   };
 
-  // ../js/modules/cxc.js
+  // js/modules/cxc.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -7949,7 +7949,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/cxp.js
+  // js/modules/cxp.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -8090,7 +8090,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/users.js
+  // js/modules/users.js
   init_db_service();
   init_auth_service();
   init_toast();
@@ -8378,7 +8378,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/audit.js
+  // js/modules/audit.js
   init_db_service();
   init_formatters();
   init_export_service();
@@ -8482,7 +8482,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/reports.js
+  // js/modules/reports.js
   init_db_service();
   init_formatters();
   init_export_service();
@@ -8768,7 +8768,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/settings.js
+  // js/modules/settings.js
   init_db_service();
   init_toast();
   init_auth_service();
@@ -9368,7 +9368,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/backup.js
+  // js/modules/backup.js
   init_db_service();
   init_toast();
   init_auth_service();
@@ -9488,7 +9488,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/importer.js
+  // js/modules/importer.js
   init_db_service();
   init_toast();
   var ImporterModule = {
@@ -9728,7 +9728,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/integrations.js
+  // js/modules/integrations.js
   var IntegrationsModule = {
     render(container) {
       container.innerHTML = `
@@ -9860,7 +9860,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/documents.js
+  // js/modules/documents.js
   init_db_service();
   init_export_service();
   var DocumentsModule = {
@@ -9981,7 +9981,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/formulas-vault.js
+  // js/modules/formulas-vault.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -10067,27 +10067,27 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         </div>
       </div>
 
-      <!-- Tarjetas Resumen -->
-      <div class="grid grid-cols-3 gap-3 mb-3">
-        <div class="card p-3" style="border-radius: 10px;">
+      <!-- 3 TARJETAS RESUMEN LADO A LADO EN GRID -->
+      <div class="nexa-grid-3 mb-3">
+        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid var(--brand-primary);">
           <div class="text-xs text-muted font-bold">RECETAS REGISTRADAS</div>
           <div style="font-size: 24px; font-weight: 800; color: var(--brand-primary); margin-top: 2px;">${recipes.length} f\xF3rmulas</div>
           <div class="text-xs text-muted">Protegidas con clave</div>
         </div>
-        <div class="card p-3" style="border-radius: 10px;">
+        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid #10b981;">
           <div class="text-xs text-muted font-bold">QU\xCDMICOS EN INVENTARIO</div>
           <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 2px;">${rawMaterials.length} insumos</div>
           <div class="text-xs text-muted">Listos para mezclar</div>
         </div>
-        <div class="card p-3" style="border-radius: 10px;">
+        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid #8b5cf6;">
           <div class="text-xs text-muted font-bold">SEGURIDAD</div>
-          <div style="font-size: 14px; font-weight: 800; color: #059669; margin-top: 6px;">100% CONFIDENCIAL</div>
+          <div style="font-size: 14px; font-weight: 800; color: #7c3aed; margin-top: 6px;">100% CONFIDENCIAL</div>
           <div class="text-xs text-muted">Solo visible para gerencia</div>
         </div>
       </div>
 
       <!-- Listado de Recetas -->
-      <div class="card p-3" style="border-radius: 12px;">
+      <div class="card p-3" style="border-radius: 14px;">
         <div class="d-flex justify-between items-center mb-3">
           <h3 style="font-size: 15px; font-weight: 800; margin: 0;">Tus Recetas de Fabricaci\xF3n</h3>
         </div>
@@ -10114,15 +10114,15 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         const batch = Number(r.cantidadProducir) || 1;
         const costoPorLitro = batch > 0 ? Math.round(costoTanda / batch) : costoTanda;
         return `
-              <div class="card p-3 mb-0" style="border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface);">
-                <div class="d-flex justify-between items-start mb-2">
+              <div class="card p-4 mb-0" style="border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface);">
+                <div class="d-flex justify-between items-start mb-3">
                   <div>
                     <div class="d-flex items-center gap-2">
                       <span style="font-size: 20px;">\u{1F9EA}</span>
                       <h4 style="font-size: 16px; font-weight: 800; margin: 0; color: var(--text-main);">${r.nombreFormula || "Receta de " + (fg.nombre || "Producto")}</h4>
                     </div>
                     <div class="text-xs text-muted mt-1">
-                      Producto: <strong>${fg.nombre || "No asignado"}</strong> | Tama\xF1o de la tanda: <strong>${r.cantidadProducir || 200} ${r.unidadMedida || "Litros"}</strong>
+                      Producto: <strong>${fg.nombre || "No asignado"}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${r.unidadMedida || "Litros"}</strong>
                     </div>
                   </div>
 
@@ -10136,33 +10136,33 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   </div>
                 </div>
 
-                <!-- Resumen Econ\xF3mico de la Receta -->
-                <div class="grid grid-cols-3 gap-2 p-2 mb-2" style="background: rgba(0,0,0,0.02); border-radius: 8px; font-size: 12px;">
-                  <div>
-                    <span class="text-muted">Costo total de la tanda (${batch} ${r.unidadMedida || "L"}):</span>
-                    <div class="font-bold text-success">${Formatters.currency(costoTanda)}</div>
+                <!-- Resumen en 3 Tarjetitas -->
+                <div class="nexa-grid-3 mb-3">
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="text-muted text-xs">Costo total de la tanda:</div>
+                    <div class="font-bold text-success" style="font-size: 14px;">${Formatters.currency(costoTanda)}</div>
                   </div>
-                  <div>
-                    <span class="text-muted">Costo del l\xEDquido por cada litro:</span>
-                    <div class="font-bold text-primary">${Formatters.currency(costoPorLitro)} / L</div>
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="text-muted text-xs">Costo de l\xEDquido por litro:</div>
+                    <div class="font-bold text-primary" style="font-size: 14px;">${Formatters.currency(costoPorLitro)} / L</div>
                   </div>
-                  <div>
-                    <span class="text-muted">Suma de ingredientes:</span>
-                    <div class="font-bold ${Math.abs(sumaPorcentajes - 100) < 0.5 ? "text-success" : "text-warning"}">
-                      ${sumaPorcentajes.toFixed(1)}% ${Math.abs(sumaPorcentajes - 100) < 0.5 ? "\u2713 (Completo)" : "(Revisar)"}
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="text-muted text-xs">Suma de ingredientes:</div>
+                    <div class="font-bold ${Math.abs(sumaPorcentajes - 100) < 0.5 ? "text-success" : "text-warning"}" style="font-size: 14px;">
+                      ${sumaPorcentajes.toFixed(1)}% ${Math.abs(sumaPorcentajes - 100) < 0.5 ? "\u2713 (100%)" : "(Incompleto)"}
                     </div>
                   </div>
                 </div>
 
-                <!-- Tabla F\xE1cil de Ingredientes -->
+                <!-- Tabla de Ingredientes -->
                 <div class="table-responsive mb-2">
                   <table class="table table-sm text-xs" style="margin-bottom: 0;">
                     <thead>
                       <tr>
                         <th>Ingrediente Qu\xEDmico</th>
-                        <th class="text-center">Momento de echarlo</th>
+                        <th class="text-center">Momento de adici\xF3n</th>
                         <th class="text-center">Porcentaje (%)</th>
-                        <th class="text-center">Cantidad en la tanda</th>
+                        <th class="text-center">Cantidad en tanda</th>
                         <th class="text-right">Costo que aporta</th>
                       </tr>
                     </thead>
@@ -10180,11 +10180,10 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   </table>
                 </div>
 
-                <!-- Instrucciones paso a paso -->
                 ${r.instruccionesFases ? `
-                  <div class="p-2" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 12px;">
+                  <div class="p-3 mt-2" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 12px;">
                     <strong>\u{1F468}\u200D\u{1F52C} Paso a paso de preparaci\xF3n:</strong>
-                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.3;">${r.instruccionesFases}</div>
+                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.4;">${r.instruccionesFases}</div>
                   </div>
                 ` : ""}
 
@@ -10265,7 +10264,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       let insumos = recipe && recipe.insumos ? JSON.parse(JSON.stringify(recipe.insumos)) : [];
       const content = `
       <form id="form-recipe-easy">
-        <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="nexa-grid-2 mb-3">
           <div>
             <label class="font-bold text-xs">Nombre de la Receta</label>
             <input type="text" id="rec-name" class="form-control font-bold" value="${recipe?.nombreFormula || ""}" placeholder="Ej: Desengrasante Pesado Especial" required>
@@ -10281,7 +10280,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="nexa-grid-2 mb-3">
           <div>
             <label class="font-bold text-xs">\xBFCu\xE1ntos litros o galones preparas en una tanda?</label>
             <div class="d-flex gap-2">
@@ -10311,7 +10310,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
               <thead>
                 <tr>
                   <th>Ingrediente</th>
-                  <th style="width: 130px;">Momento</th>
+                  <th style="width: 140px;">Momento</th>
                   <th style="width: 90px;" class="text-center">%</th>
                   <th style="width: 100px;" class="text-center">Cantidad</th>
                   <th style="width: 30px;"></th>
@@ -10462,7 +10461,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/modules/pricing-calculator.js
+  // js/modules/pricing-calculator.js
   init_db_service();
   init_formatters();
   init_toast();
@@ -10470,31 +10469,21 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     state: {
       selectedProductId: null,
       productName: "Mi Producto",
-      // 1. Lo que va por dentro (Líquido/Químicos)
+      // Insumo Químico
       costoQuimico: 3500,
-      // 2. El Empaque
+      // Tarjetas de Empaque
       costoEnvase: 1200,
-      // Tarro / Botella
       costoTapa: 400,
-      // Tapa o atomizador
       costoEtiqueta: 350,
-      // Etiqueta
       costoCajaMasterUnit: 250,
-      // Caja de cartón (parte que le toca a esta botella)
-      // 3. Trabajo y Servicios
+      // Trabajo y Servicios
       costoManoObraUnit: 500,
-      // Lo que pagas por envasar cada botella
       costoServiciosUnit: 300,
-      // Luz, agua, desgaste de máquinas
       pctMerma: 2,
-      // Lo que se riega o evapora (2%)
-      // Modo de Simulación
+      // Estrategia
       modoCalculo: "QUIERO_MARGEN",
-      // 'QUIERO_MARGEN' o 'TENGO_PRECIO'
       margenDeseadoPct: 35,
-      // Quiero ganarme el 35%
       precioVentaManual: 11e3,
-      // O quiero venderlo a $11.000
       aplicaIva: true,
       tasaIva: 19
     },
@@ -10530,7 +10519,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       this.state.costoQuimico = unitChemCost;
       this.state.productName = formula.nombreFormula || "Producto de Receta";
       this.state.selectedProductId = formula.productoTerminadoId || null;
-      Toast.success(`\xA1Costo de ingredientes cargado desde la receta! ($${Formatters.currency(unitChemCost)})`);
+      Toast.success(`\xA1Costo cargado desde receta! ($${Formatters.currency(unitChemCost)})`);
     },
     renderView(container, tenantId, products, recipes) {
       const finishedGoods = products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO");
@@ -10547,11 +10536,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       let porcentajeGananciaReal = 0;
       if (this.state.modoCalculo === "QUIERO_MARGEN") {
         const margenFrac = (this.state.margenDeseadoPct || 0) / 100;
-        if (margenFrac >= 0.95) {
-          precioSinIva = costoTotalFinal * 2;
-        } else {
-          precioSinIva = Math.round(costoTotalFinal / (1 - margenFrac));
-        }
+        precioSinIva = margenFrac >= 0.95 ? costoTotalFinal * 2 : Math.round(costoTotalFinal / (1 - margenFrac));
         gananciaLimpiaDinero = precioSinIva - costoTotalFinal;
         porcentajeGananciaReal = this.state.margenDeseadoPct;
         this.state.precioVentaManual = precioSinIva;
@@ -10563,73 +10548,69 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       }
       const valorIva = this.state.aplicaIva ? Math.round(precioSinIva * (this.state.tasaIva / 100)) : 0;
       const precioFinalConIva = precioSinIva + valorIva;
-      let saludGanancia = {
+      let semaforo = {
         color: "#10b981",
-        fondo: "rgba(16, 185, 129, 0.1)",
-        borde: "#10b981",
-        icono: "\u{1F7E2}",
+        bg: "rgba(16, 185, 129, 0.1)",
+        border: "#10b981",
+        icon: "\u{1F7E2}",
         titulo: "\xA1Excelente Ganancia!",
-        mensaje: "Est\xE1s ganando un muy buen porcentaje por cada unidad que vendes."
+        desc: "Muy buen margen para venta al detalle / mostrador."
       };
       if (porcentajeGananciaReal < 15) {
-        saludGanancia = {
+        semaforo = {
           color: "#ef4444",
-          fondo: "rgba(239, 68, 68, 0.1)",
-          borde: "#ef4444",
-          icono: "\u{1F534}",
-          titulo: "Cuidado: Ganancia muy baja",
-          mensaje: "A este precio te queda muy poco dinero. Cualquier imprevisto te dejar\xE1 en p\xE9rdidas."
+          bg: "rgba(239, 68, 68, 0.1)",
+          border: "#ef4444",
+          icon: "\u{1F534}",
+          titulo: "Alerta: Ganancia Peligrosamente Baja",
+          desc: "A este precio cualquier imprevisto te deja en p\xE9rdida."
         };
       } else if (porcentajeGananciaReal < 30) {
-        saludGanancia = {
+        semaforo = {
           color: "#f59e0b",
-          fondo: "rgba(245, 158, 11, 0.1)",
-          borde: "#f59e0b",
-          icono: "\u{1F7E1}",
-          titulo: "Ganancia Moderada (Ideal para Mayoristas)",
-          mensaje: "Buen precio para vender por cajas completas o distribuidores que compran en volumen."
+          bg: "rgba(245, 158, 11, 0.1)",
+          border: "#f59e0b",
+          icon: "\u{1F7E1}",
+          titulo: "Ganancia Moderada (Ideal Mayorista)",
+          desc: "Margen ajustado para compras en volumen / cajas completas."
         };
       }
-      const calcularPrecioCanal = (margenCanal) => {
-        const p = Math.round(costoTotalFinal / (1 - margenCanal / 100));
-        const gan = p - costoTotalFinal;
+      const calcTier = (m) => {
+        const p = Math.round(costoTotalFinal / (1 - m / 100));
+        const g = p - costoTotalFinal;
         const iva = this.state.aplicaIva ? Math.round(p * 0.19) : 0;
-        return { precioSinIva: p, ganancia: gan, conIva: p + iva, margen: margenCanal };
+        return { p, g, iva, conIva: p + iva, m };
       };
-      const preciosCanales = {
-        p1: calcularPrecioCanal(50),
-        // 50% Mostrador
-        p2: calcularPrecioCanal(38),
-        // 38% Talleres / Lavaderos
-        p3: calcularPrecioCanal(28),
-        // 28% Mayorista
-        p4: calcularPrecioCanal(18)
-        // 18% Distribuidor
+      const tiers = {
+        t1: calcTier(50),
+        t2: calcTier(38),
+        t3: calcTier(28),
+        t4: calcTier(18)
       };
       container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
           <div class="d-flex items-center gap-2">
             <h1>Calculadora F\xE1cil de Costos y Ganancias</h1>
-            <span class="badge badge-success">INTUITIVO & VISUAL</span>
+            <span class="badge badge-success">SISTEMA POR TARJETAS</span>
           </div>
-          <p>Conoce exactamente cu\xE1nto te cuesta fabricar cada producto y cu\xE1nto dinero limpio te queda en el bolsillo</p>
+          <p>Conoce exactamente cu\xE1nto cuesta fabricar tu producto y fija precios inteligentes con un solo clic</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-explicar-sencillo">\u2753 \xBFC\xF3mo funciona esta matem\xE1tica?</button>
-          <button class="btn btn-primary btn-sm" id="btn-guardar-catalogo">\u{1F4BE} Guardar Precios en el Cat\xE1logo</button>
+          <button class="btn btn-secondary btn-sm" id="btn-explicar-sencillo">\u2753 \xBFC\xF3mo funciona?</button>
+          <button class="btn btn-primary btn-sm" id="btn-guardar-catalogo">\u{1F4BE} Guardar en Cat\xE1logo</button>
         </div>
       </div>
 
-      <!-- Selector F\xE1cil de Producto -->
-      <div class="card p-3 mb-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 12px;">
+      <!-- Selector de Producto Destacado -->
+      <div class="card p-3 mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px;">
         <div class="d-flex justify-between items-center gap-3">
           <div class="d-flex items-center gap-2" style="flex: 1;">
             <span style="font-size: 24px;">\u{1F3F7}\uFE0F</span>
             <div style="flex: 1;">
-              <label class="text-xs font-bold text-muted">\xBFEST\xC1S CALCULANDO UN PRODUCTO YA REGISTRADO?</label>
-              <select class="form-select form-select-sm font-bold" id="sel-calc-product">
-                <option value="">-- No, estoy calculando una idea libre desde cero --</option>
+              <div class="text-xs font-bold text-muted">SELECCIONA UN PRODUCTO PARA CARGAR SUS DATOS:</div>
+              <select class="form-select form-select-sm font-bold" id="sel-calc-product" style="font-size: 13.5px;">
+                <option value="">-- Modo Libre (Calcular cualquier producto nuevo) --</option>
                 ${finishedGoods.map((fg) => `
                   <option value="${fg.id}" ${this.state.selectedProductId === fg.id ? "selected" : ""}>
                     ${fg.nombre} (${fg.sku}) - Costo registrado: ${Formatters.currency(fg.costo || 0)}
@@ -10639,211 +10620,244 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             </div>
           </div>
           <div>
-            <a href="#formulas-vault" class="btn btn-secondary btn-sm">\u{1F9EA} Traer de mi B\xF3veda de Recetas</a>
+            <a href="#formulas-vault" class="btn btn-secondary btn-sm">\u{1F9EA} Importar de B\xF3veda</a>
           </div>
         </div>
       </div>
 
-      <!-- CONTENEDOR PRINCIPAL: PASO A PASO -->
-      <div class="grid grid-cols-12 gap-3">
-        
-        <!-- PASO 1: CU\xC1NTO CUESTA FABRICARLO (5 columnas) -->
-        <div class="col-span-5 d-flex flex-col gap-3">
+      <!-- DOS COLUMNAS PRINCIPALES LADO A LADO -->
+      <div class="nexa-two-columns">
+
+        <!-- ========================================================== -->
+        <!-- COLUMNA 1: \xBFCU\xC1NTO CUESTA FABRICARLO? (TARJETAS DE INGRESO) -->
+        <!-- ========================================================== -->
+        <div class="card p-4" style="margin-bottom: 0; border-radius: 14px;">
           
-          <div class="card p-3" style="margin-bottom: 0; border-radius: 12px;">
-            <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+          <div class="d-flex justify-between items-center mb-3">
+            <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
               <span>1\uFE0F\u20E3</span> \xBFCu\xE1nto cuesta fabricar 1 unidad?
             </h3>
+            <span class="badge badge-primary font-bold">Costo Real</span>
+          </div>
 
-            <!-- Qu\xEDmicos -->
-            <div class="mb-3 p-2" style="background: rgba(2, 132, 199, 0.05); border-radius: 8px; border: 1px solid rgba(2, 132, 199, 0.2);">
-              <div class="d-flex justify-between items-center mb-1">
-                <span class="font-bold text-xs" style="color: #0284c7;">\u{1F9EA} Lo que va por dentro (L\xEDquido / Qu\xEDmico):</span>
-                <strong style="color: #0284c7; font-size: 14px;">$ <input type="number" step="any" min="0" id="inp-cost-chem" value="${this.state.costoQuimico}" style="width: 85px; font-weight: 800; text-align: right; border: 1px solid #93c5fd; border-radius: 4px; padding: 2px 4px;"></strong>
-              </div>
-              <span class="text-xs text-muted">El valor del l\xEDquido que cabe exactamente en 1 botella.</span>
+          <!-- Tarjeta Insumo Qu\xEDmico -->
+          <div class="input-card-box mb-3" style="border-left: 4px solid #0284c7;">
+            <div class="box-label">
+              <span style="color: #0284c7;">\u{1F9EA} Lo que va por dentro (L\xEDquido / Qu\xEDmico):</span>
+              <span class="badge badge-info">${pctQuimico}% del total</span>
+            </div>
+            <div class="box-input-wrap">
+              <span class="font-bold text-muted">$</span>
+              <input type="number" step="any" min="0" id="inp-cost-chem" value="${this.state.costoQuimico}">
+            </div>
+            <span class="text-xs text-muted mt-1" style="font-size: 11px;">El valor del qu\xEDmico que cabe exactamente en una botella.</span>
+          </div>
+
+          <!-- Cuadros Tarjeta: Empaque (Grid de 2x2) -->
+          <div class="mb-3">
+            <div class="d-flex justify-between items-center mb-2">
+              <span class="text-xs font-bold" style="color: #d97706;">\u{1F9F4} El Empaque (Tarro, Tapa y Etiquetas):</span>
+              <strong style="color: #d97706; font-size: 12px;">Subtotal: ${Formatters.currency(costoEmpaqueTotal)} (${pctEmpaque}%)</strong>
             </div>
 
-            <!-- Empaque -->
-            <div class="mb-3 p-2" style="background: rgba(245, 158, 11, 0.05); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.2);">
-              <div class="d-flex justify-between items-center mb-2">
-                <span class="font-bold text-xs" style="color: #d97706;">\u{1F9F4} El Empaque (Tarro, Tapa y Etiquetas):</span>
-                <strong style="color: #d97706;">${Formatters.currency(costoEmpaqueTotal)}</strong>
+            <div class="nexa-grid-2">
+              <div class="input-card-box">
+                <div class="box-label">Tarro / Botella:</div>
+                <div class="box-input-wrap">
+                  <span class="font-bold text-muted">$</span>
+                  <input type="number" step="any" min="0" id="inp-cost-bottle" value="${this.state.costoEnvase}">
+                </div>
               </div>
-              
-              <div class="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span class="text-muted">Tarro / Botella:</span>
-                  <input type="number" step="any" min="0" class="form-control form-control-sm" id="inp-cost-bottle" value="${this.state.costoEnvase}">
+
+              <div class="input-card-box">
+                <div class="box-label">Tapa o Atomizador:</div>
+                <div class="box-input-wrap">
+                  <span class="font-bold text-muted">$</span>
+                  <input type="number" step="any" min="0" id="inp-cost-cap" value="${this.state.costoTapa}">
                 </div>
-                <div>
-                  <span class="text-muted">Tapa o Atomizador:</span>
-                  <input type="number" step="any" min="0" class="form-control form-control-sm" id="inp-cost-cap" value="${this.state.costoTapa}">
+              </div>
+
+              <div class="input-card-box">
+                <div class="box-label">Etiqueta:</div>
+                <div class="box-input-wrap">
+                  <span class="font-bold text-muted">$</span>
+                  <input type="number" step="any" min="0" id="inp-cost-label" value="${this.state.costoEtiqueta}">
                 </div>
-                <div>
-                  <span class="text-muted">Etiqueta:</span>
-                  <input type="number" step="any" min="0" class="form-control form-control-sm" id="inp-cost-label" value="${this.state.costoEtiqueta}">
+              </div>
+
+              <div class="input-card-box">
+                <div class="box-label">Caja x unidad:</div>
+                <div class="box-input-wrap">
+                  <span class="font-bold text-muted">$</span>
+                  <input type="number" step="any" min="0" id="inp-cost-box" value="${this.state.costoCajaMasterUnit}">
                 </div>
-                <div>
-                  <span class="text-muted">Caja de cart\xF3n (x unid):</span>
-                  <input type="number" step="any" min="0" class="form-control form-control-sm" id="inp-cost-box" value="${this.state.costoCajaMasterUnit}">
+              </div>
+            </div>
+          </div>
+
+          <!-- Cuadros Tarjeta: Trabajo y Servicios -->
+          <div class="mb-3">
+            <div class="d-flex justify-between items-center mb-2">
+              <span class="text-xs font-bold" style="color: #7c3aed;">\u26A1 Trabajo, Servicios y Desperdicio:</span>
+              <strong style="color: #7c3aed; font-size: 12px;">Subtotal: ${Formatters.currency(costoTrabajoTotal + costoDesperdicio)} (${pctTrabajo}%)</strong>
+            </div>
+
+            <div class="nexa-grid-2 mb-2">
+              <div class="input-card-box">
+                <div class="box-label">Pago por envasar:</div>
+                <div class="box-input-wrap">
+                  <span class="font-bold text-muted">$</span>
+                  <input type="number" step="any" min="0" id="inp-cost-mod" value="${this.state.costoManoObraUnit}">
+                </div>
+              </div>
+
+              <div class="input-card-box">
+                <div class="box-label">Luz, agua y m\xE1quinas:</div>
+                <div class="box-input-wrap">
+                  <span class="font-bold text-muted">$</span>
+                  <input type="number" step="any" min="0" id="inp-cost-serv" value="${this.state.costoServiciosUnit}">
                 </div>
               </div>
             </div>
 
-            <!-- Trabajo y Desperdicio -->
-            <div class="mb-3 p-2" style="background: rgba(139, 92, 246, 0.05); border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.2);">
-              <div class="d-flex justify-between items-center mb-2">
-                <span class="font-bold text-xs" style="color: #7c3aed;">\u26A1 Trabajo, Servicios y Desperdicio:</span>
-                <strong style="color: #7c3aed;">${Formatters.currency(costoTrabajoTotal + costoDesperdicio)}</strong>
+            <!-- Merma / Desperdicio -->
+            <div class="input-card-box">
+              <div class="box-label">
+                <span>Desperdicio inevitable (Merma):</span>
+                <strong class="text-danger">${this.state.pctMerma}% (+${Formatters.currency(costoDesperdicio)})</strong>
               </div>
-              
-              <div class="grid grid-cols-2 gap-2 text-xs mb-2">
-                <div>
-                  <span class="text-muted">Pago por envasar (Mano de obra):</span>
-                  <input type="number" step="any" min="0" class="form-control form-control-sm" id="inp-cost-mod" value="${this.state.costoManoObraUnit}">
-                </div>
-                <div>
-                  <span class="text-muted">Luz, agua y m\xE1quinas:</span>
-                  <input type="number" step="any" min="0" class="form-control form-control-sm" id="inp-cost-serv" value="${this.state.costoServiciosUnit}">
-                </div>
-              </div>
-              <div class="text-xs">
-                <div class="d-flex justify-between items-center">
-                  <span class="text-muted">Lo que se riega o evapora (Merma):</span>
-                  <strong class="text-danger">${this.state.pctMerma}% (+${Formatters.currency(costoDesperdicio)})</strong>
-                </div>
-                <input type="range" min="0" max="8" step="0.5" class="form-range w-100" id="range-cost-merma" value="${this.state.pctMerma}">
-              </div>
+              <input type="range" min="0" max="8" step="0.5" id="range-cost-merma" value="${this.state.pctMerma}" class="form-range w-100">
             </div>
+          </div>
 
-            <!-- GR\xC1FICO VISUAL: EN QU\xC9 SE VA TU DINERO (Barra Multicolor) -->
-            <div class="mb-3">
-              <div class="d-flex justify-between items-center text-xs font-bold mb-1">
-                <span>\xBFEn qu\xE9 se va tu dinero por botella?</span>
-                <span>Total: ${Formatters.currency(costoTotalFinal)}</span>
-              </div>
-              <div style="height: 18px; width: 100%; display: flex; border-radius: 9px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);">
-                <div style="width: ${pctQuimico}%; background: #0284c7;" title="Qu\xEDmicos: ${pctQuimico}%"></div>
-                <div style="width: ${pctEmpaque}%; background: #f59e0b;" title="Empaque: ${pctEmpaque}%"></div>
-                <div style="width: ${pctTrabajo}%; background: #8b5cf6;" title="Trabajo y Luz: ${pctTrabajo}%"></div>
-              </div>
-              <div class="d-flex justify-between text-xs mt-1 text-muted" style="font-size: 11px;">
-                <span style="color: #0284c7;">\u25CF Qu\xEDmicos: <strong>${pctQuimico}%</strong> (${Formatters.currency(this.state.costoQuimico)})</span>
-                <span style="color: #d97706;">\u25CF Empaque: <strong>${pctEmpaque}%</strong> (${Formatters.currency(costoEmpaqueTotal)})</span>
-                <span style="color: #7c3aed;">\u25CF Trabajo: <strong>${pctTrabajo}%</strong> (${Formatters.currency(costoTrabajoTotal + costoDesperdicio)})</span>
-              </div>
+          <!-- Barra Gr\xE1fica de Distribuci\xF3n de Costo -->
+          <div class="p-3 mb-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 10px;">
+            <div class="d-flex justify-between items-center text-xs font-bold mb-2">
+              <span>\xBFEn qu\xE9 se va tu dinero por botella?</span>
+              <span class="text-primary">${Formatters.currency(costoTotalFinal)}</span>
             </div>
-
-            <!-- Tarjeta Total Destacada -->
-            <div class="p-3 text-center" style="background: rgba(16, 185, 129, 0.1); border: 2px dashed #10b981; border-radius: 10px;">
-              <span class="text-xs text-muted font-bold">COSTO TOTAL DE CADA UNIDAD TERMINADA:</span>
-              <div style="font-size: 28px; font-weight: 900; color: #047857; line-height: 1.2; margin-top: 2px;">
-                ${Formatters.currency(costoTotalFinal)} COP
-              </div>
-              <span class="text-xs text-muted">Esto es lo m\xEDnimo que te cuesta tener la botella lista para vender.</span>
+            <div style="height: 16px; width: 100%; display: flex; border-radius: 8px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);">
+              <div style="width: ${pctQuimico}%; background: #0284c7;" title="Qu\xEDmicos: ${pctQuimico}%"></div>
+              <div style="width: ${pctEmpaque}%; background: #f59e0b;" title="Empaque: ${pctEmpaque}%"></div>
+              <div style="width: ${pctTrabajo}%; background: #8b5cf6;" title="Trabajo: ${pctTrabajo}%"></div>
             </div>
+            <div class="d-flex justify-between text-xs mt-2" style="font-size: 11px;">
+              <span style="color: #0284c7;">\u25CF Qu\xEDmicos: <strong>${pctQuimico}%</strong></span>
+              <span style="color: #d97706;">\u25CF Empaque: <strong>${pctEmpaque}%</strong></span>
+              <span style="color: #7c3aed;">\u25CF Trabajo: <strong>${pctTrabajo}%</strong></span>
+            </div>
+          </div>
 
+          <!-- Tarjeta Grande: COSTO TOTAL -->
+          <div class="p-3 text-center" style="background: rgba(16, 185, 129, 0.1); border: 2px dashed #10b981; border-radius: 12px;">
+            <span class="text-xs text-muted font-bold">COSTO TOTAL DE CADA BOTELLA TERMINADA:</span>
+            <div style="font-size: 30px; font-weight: 900; color: #047857; margin-top: 2px;">
+              ${Formatters.currency(costoTotalFinal)} COP
+            </div>
+            <span class="text-xs text-muted">Es lo que te cuesta tener la botella lista para entregar.</span>
           </div>
 
         </div>
 
-        <!-- PASO 2: SIMULADOR DE GANANCIA Y PRECIO (7 columnas) -->
-        <div class="col-span-7 d-flex flex-col gap-3">
+        <!-- ========================================================== -->
+        <!-- COLUMNA 2: \xBFCU\xC1NTO QUIERES GANAR? (SIMULADOR Y GANANCIAS) -->
+        <!-- ========================================================== -->
+        <div class="d-flex flex-col gap-3">
           
-          <div class="card p-4" style="margin-bottom: 0; border-radius: 12px;">
+          <div class="card p-4" style="margin-bottom: 0; border-radius: 14px;">
             <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
               <span>2\uFE0F\u20E3</span> \xBFCu\xE1nto quieres ganar o a cu\xE1nto quieres vender?
             </h3>
 
-            <!-- Selector de Modo Gigante y Amigable -->
-            <div class="grid grid-cols-2 gap-2 mb-4">
-              <button class="btn ${this.state.modoCalculo === "QUIERO_MARGEN" ? "btn-primary" : "btn-secondary"} p-3 text-left mode-btn" data-mode="QUIERO_MARGEN" style="border-radius: 10px;">
+            <!-- 2 Botones de Selecci\xF3n Gigantes -->
+            <div class="nexa-grid-2 mb-3">
+              <button class="btn ${this.state.modoCalculo === "QUIERO_MARGEN" ? "btn-primary" : "btn-secondary"} p-3 text-left mode-btn" data-mode="QUIERO_MARGEN" style="border-radius: 10px; height: auto;">
                 <div class="font-bold" style="font-size: 13px;">\u{1F7E2} OPCI\xD3N A: Quiero ganar un %</div>
-                <div class="text-xs opacity-80" style="margin-top: 2px;">"Quiero asegurarme de ganarle el 35% a cada venta"</div>
+                <div class="text-xs opacity-80" style="margin-top: 2px;">"Quiero ganarme el 35% de la venta"</div>
               </button>
 
-              <button class="btn ${this.state.modoCalculo === "TENGO_PRECIO" ? "btn-primary" : "btn-secondary"} p-3 text-left mode-btn" data-mode="TENGO_PRECIO" style="border-radius: 10px;">
-                <div class="font-bold" style="font-size: 13px;">\u{1F535} OPCI\xD3N B: Ya tengo un precio fijo</div>
-                <div class="text-xs opacity-80" style="margin-top: 2px;">"Quiero venderla a $12.000, \xBFcu\xE1nto me queda limpio?"</div>
+              <button class="btn ${this.state.modoCalculo === "TENGO_PRECIO" ? "btn-primary" : "btn-secondary"} p-3 text-left mode-btn" data-mode="TENGO_PRECIO" style="border-radius: 10px; height: auto;">
+                <div class="font-bold" style="font-size: 13px;">\u{1F535} OPCI\xD3N B: Ya tengo un precio</div>
+                <div class="text-xs opacity-80" style="margin-top: 2px;">"Quiero venderla a $11.000 fijos"</div>
               </button>
             </div>
 
-            <!-- Entrada de Datos seg\xFAn la Opci\xF3n Elegida -->
+            <!-- Entrada de Datos -->
             ${this.state.modoCalculo === "QUIERO_MARGEN" ? `
-              <div class="p-3 mb-3" style="background: rgba(0, 113, 227, 0.05); border-radius: 10px; border: 1px solid rgba(0, 113, 227, 0.2);">
-                <div class="d-flex justify-between items-center mb-2">
-                  <label class="font-bold text-xs text-primary" style="margin: 0;">Mueve la barra para elegir qu\xE9 porcentaje quieres ganar:</label>
-                  <div class="d-flex items-center gap-1">
-                    <input type="number" min="5" max="85" step="1" id="inp-num-margen" value="${this.state.margenDeseadoPct}" class="form-control form-control-sm text-center font-bold" style="width: 70px; font-size: 15px;">
-                    <span class="font-bold text-primary">%</span>
-                  </div>
+              <div class="input-card-box mb-3" style="background: rgba(0, 113, 227, 0.04); border-color: rgba(0, 113, 227, 0.25);">
+                <div class="box-label">
+                  <span class="text-primary font-bold">Porcentaje de Ganancia que deseas:</span>
+                  <span class="badge badge-primary" style="font-size: 13px;">${this.state.margenDeseadoPct}%</span>
                 </div>
-                <input type="range" min="10" max="70" step="1" id="range-num-margen" value="${this.state.margenDeseadoPct}" class="form-range w-100">
-                <div class="d-flex justify-between text-xs text-muted mt-1" style="font-size: 11px;">
-                  <span>15% (Para Distribuidores)</span>
-                  <span>35% (Normal Empresas)</span>
+                <input type="range" min="10" max="70" step="1" id="range-num-margen" value="${this.state.margenDeseadoPct}" class="form-range w-100 my-2">
+                <div class="d-flex justify-between text-xs text-muted">
+                  <span>15% (Distribuidor)</span>
+                  <span>35% (Est\xE1ndar Negocio)</span>
                   <span>50% (Venta al P\xFAblico)</span>
                 </div>
               </div>
             ` : `
-              <div class="p-3 mb-3" style="background: rgba(0, 113, 227, 0.05); border-radius: 10px; border: 1px solid rgba(0, 113, 227, 0.2);">
-                <label class="font-bold text-xs text-primary mb-1">Escribe el precio al que quieres vender en la calle ($ COP sin IVA):</label>
-                <div class="d-flex items-center gap-2">
+              <div class="input-card-box mb-3" style="background: rgba(0, 113, 227, 0.04); border-color: rgba(0, 113, 227, 0.25);">
+                <div class="box-label text-primary font-bold">Escribe el precio de venta en la calle ($ COP sin IVA):</div>
+                <div class="box-input-wrap">
                   <span style="font-size: 22px; font-weight: 800; color: var(--brand-primary);">$</span>
-                  <input type="number" step="100" min="${costoTotalFinal + 100}" id="inp-precio-calle" value="${precioSinIva}" class="form-control font-bold" style="font-size: 20px; color: var(--brand-primary); height: 44px;">
+                  <input type="number" step="100" min="${costoTotalFinal + 100}" id="inp-precio-calle" value="${precioSinIva}" style="font-size: 20px; color: var(--brand-primary); height: 44px;">
                 </div>
-                <span class="text-xs text-muted mt-1 d-block">El sistema te dir\xE1 al instante si est\xE1s ganando o perdiendo plata.</span>
               </div>
             `}
 
-            <!-- TARJET\xD3N DE RESULTADO CLARO (Lo que entra vs lo que queda) -->
-            <div class="grid grid-cols-2 gap-3 p-3 mb-3" style="background: var(--bg-surface); border: 2px solid var(--border-color); border-radius: 12px;">
-              <div class="p-2">
-                <span class="text-xs text-muted font-bold">PRECIO DE VENTA SUGERIDO:</span>
-                <div style="font-size: 24px; font-weight: 900; color: var(--brand-primary);">${Formatters.currency(precioSinIva)} COP</div>
+            <!-- TARJET\xD3N RESULTADO: PRECIO VS GANANCIA LIMPIA -->
+            <div class="nexa-grid-2 mb-3">
+              <div class="p-3" style="background: var(--bg-surface-solid); border: 2px solid var(--border-color); border-radius: 12px; text-align: center;">
+                <span class="text-xs text-muted font-bold">PRECIO DE VENTA:</span>
+                <div style="font-size: 22px; font-weight: 900; color: var(--brand-primary); margin: 4px 0;">
+                  ${Formatters.currency(precioSinIva)}
+                </div>
                 <span class="text-xs text-muted">Antes de cobrar el IVA</span>
               </div>
-              <div class="p-2" style="border-left: 2px dashed var(--border-color);">
-                <span class="text-xs text-muted font-bold">TU GANANCIA LIMPIA POR BOTELLA:</span>
-                <div style="font-size: 24px; font-weight: 900; color: #10b981;">+${Formatters.currency(gananciaLimpiaDinero)} COP</div>
-                <span class="badge badge-success font-bold" style="font-size: 12px;">
+
+              <div class="p-3" style="background: rgba(16, 185, 129, 0.08); border: 2px solid #10b981; border-radius: 12px; text-align: center;">
+                <span class="text-xs text-muted font-bold">TU GANANCIA LIMPIA:</span>
+                <div style="font-size: 22px; font-weight: 900; color: #047857; margin: 4px 0;">
+                  +${Formatters.currency(gananciaLimpiaDinero)}
+                </div>
+                <span class="badge badge-success font-bold" style="font-size: 11px;">
                   Margen: ${porcentajeGananciaReal}% en tu bolsillo
                 </span>
               </div>
             </div>
 
             <!-- SEM\xC1FORO DE SALUD DE GANANCIA -->
-            <div class="p-3 mb-3" style="background: ${saludGanancia.fondo}; border: 1px solid ${saludGanancia.borde}; border-radius: 10px; display: flex; align-items: center; gap: 12px;">
-              <div style="font-size: 28px;">${saludGanancia.icono}</div>
+            <div class="p-3 mb-3" style="background: ${semaforo.bg}; border: 1px solid ${semaforo.border}; border-radius: 10px; display: flex; align-items: center; gap: 12px;">
+              <div style="font-size: 26px;">${semaforo.icon}</div>
               <div>
-                <strong style="color: ${saludGanancia.color}; font-size: 13.5px;">${saludGanancia.titulo}</strong>
-                <div style="font-size: 12px; color: var(--text-main); margin-top: 1px;">${saludGanancia.mensaje}</div>
+                <strong style="color: ${semaforo.color}; font-size: 13px;">${semaforo.titulo}</strong>
+                <div style="font-size: 11.5px; color: var(--text-main); margin-top: 2px;">${semaforo.desc}</div>
               </div>
             </div>
 
-            <!-- Checkbox de IVA sencillo -->
-            <div class="d-flex justify-between items-center p-2" style="background: rgba(0,0,0,0.02); border-radius: 8px; font-size: 12px;">
+            <!-- Checkbox IVA -->
+            <div class="d-flex justify-between items-center p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px;">
               <div class="d-flex items-center gap-2">
                 <input type="checkbox" id="chk-iva-simple" ${this.state.aplicaIva ? "checked" : ""} style="width: 16px; height: 16px; cursor: pointer;">
                 <label for="chk-iva-simple" class="font-bold" style="cursor: pointer; margin: 0;">\xBFCobras IVA a tus clientes? (19%)</label>
               </div>
               <div>
                 ${this.state.aplicaIva ? `
-                  <span>Precio final al cliente con IVA: <strong style="font-size: 14px; color: var(--brand-primary);">${Formatters.currency(precioFinalConIva)}</strong></span>
+                  <span>Precio final con IVA: <strong style="font-size: 14px; color: var(--brand-primary);">${Formatters.currency(precioFinalConIva)}</strong></span>
                 ` : `
-                  <span class="badge badge-secondary">Exento de IVA</span>
+                  <span class="badge badge-secondary">Sin IVA</span>
                 `}
               </div>
             </div>
 
           </div>
 
-          <!-- TABLA DE PRECIOS SUGERIDOS PARA TU NEGOCIO -->
-          <div class="card p-3" style="margin-bottom: 0; border-radius: 12px;">
+          <!-- TABLA DE LOS 4 PRECIOS DE TU NEGOCIO -->
+          <div class="card p-3" style="margin-bottom: 0; border-radius: 14px;">
             <div class="d-flex justify-between items-center mb-2">
-              <h4 style="font-size: 14px; font-weight: 800; margin: 0;">\u{1F4CB} Los 4 Precios Sugeridos para tu Negocio</h4>
-              <span class="text-xs text-muted">Calculados autom\xE1ticamente</span>
+              <h4 style="font-size: 13.5px; font-weight: 800; margin: 0;">\u{1F4CB} Los 4 Precios Sugeridos para tu Negocio</h4>
+              <span class="text-xs text-muted">Calculados para ganar siempre</span>
             </div>
 
             <div class="table-responsive">
@@ -10851,35 +10865,35 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 <thead>
                   <tr>
                     <th>\xBFA qui\xE9n le vendes?</th>
-                    <th class="text-center">Tu Ganancia Limpia ($ y %)</th>
+                    <th class="text-center">Tu Ganancia</th>
                     <th class="text-right">Precio Sin IVA</th>
-                    <th class="text-right">Precio Final con IVA</th>
+                    <th class="text-right">Precio Con IVA</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td><strong>1. Cliente Mostrador / Calle</strong> <span class="text-muted">(Detal)</span></td>
-                    <td class="text-center"><span class="badge badge-success font-bold">+${Formatters.currency(preciosCanales.p1.ganancia)} (50%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(preciosCanales.p1.precioSinIva)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(preciosCanales.p1.conIva)}</td>
+                    <td><strong>1. Cliente Mostrador</strong> <span class="text-muted">(Detal)</span></td>
+                    <td class="text-center"><span class="badge badge-success font-bold">+${Formatters.currency(tiers.t1.g)} (50%)</span></td>
+                    <td class="text-right font-bold">${Formatters.currency(tiers.t1.p)}</td>
+                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t1.conIva)}</td>
                   </tr>
                   <tr>
-                    <td><strong>2. Talleres & Lavaderos</strong> <span class="text-muted">(Profesional)</span></td>
-                    <td class="text-center"><span class="badge badge-info font-bold">+${Formatters.currency(preciosCanales.p2.ganancia)} (38%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(preciosCanales.p2.precioSinIva)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(preciosCanales.p2.conIva)}</td>
+                    <td><strong>2. Talleres & Lavaderos</strong></td>
+                    <td class="text-center"><span class="badge badge-info font-bold">+${Formatters.currency(tiers.t2.g)} (38%)</span></td>
+                    <td class="text-right font-bold">${Formatters.currency(tiers.t2.p)}</td>
+                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t2.conIva)}</td>
                   </tr>
                   <tr>
-                    <td><strong>3. Mayorista</strong> <span class="text-muted">(Cajas x 12 completas)</span></td>
-                    <td class="text-center"><span class="badge badge-warning font-bold">+${Formatters.currency(preciosCanales.p3.ganancia)} (28%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(preciosCanales.p3.precioSinIva)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(preciosCanales.p3.conIva)}</td>
+                    <td><strong>3. Mayorista</strong> <span class="text-muted">(Cajas x 12)</span></td>
+                    <td class="text-center"><span class="badge badge-warning font-bold">+${Formatters.currency(tiers.t3.g)} (28%)</span></td>
+                    <td class="text-right font-bold">${Formatters.currency(tiers.t3.p)}</td>
+                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t3.conIva)}</td>
                   </tr>
                   <tr>
-                    <td><strong>4. Distribuidor</strong> <span class="text-muted">(Reventa por volumen)</span></td>
-                    <td class="text-center"><span class="badge badge-secondary font-bold">+${Formatters.currency(preciosCanales.p4.ganancia)} (18%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(preciosCanales.p4.precioSinIva)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(preciosCanales.p4.conIva)}</td>
+                    <td><strong>4. Distribuidor</strong> <span class="text-muted">(Por volumen)</span></td>
+                    <td class="text-center"><span class="badge badge-secondary font-bold">+${Formatters.currency(tiers.t4.g)} (18%)</span></td>
+                    <td class="text-right font-bold">${Formatters.currency(tiers.t4.p)}</td>
+                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t4.conIva)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -10894,10 +10908,10 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         costoTotalFinal,
         precioSinIva,
         precioFinalConIva,
-        preciosCanales
+        tiers
       });
     },
-    bindEvents(container, tenantId, products, recipes, calculated) {
+    bindEvents(container, tenantId, products, recipes, calc) {
       const refresh = () => this.renderView(container, tenantId, products, recipes);
       const sel = container.querySelector("#sel-calc-product");
       sel.addEventListener("change", () => {
@@ -10924,35 +10938,29 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           refresh();
         }
       });
-      const wireInput = (selector, key) => {
-        const el = container.querySelector(selector);
+      const wire = (sel2, k) => {
+        const el = container.querySelector(sel2);
         if (el)
           el.addEventListener("input", () => {
-            this.state[key] = Number(el.value) || 0;
+            this.state[k] = Number(el.value) || 0;
             refresh();
           });
       };
-      wireInput("#inp-cost-chem", "costoQuimico");
-      wireInput("#inp-cost-bottle", "costoEnvase");
-      wireInput("#inp-cost-cap", "costoTapa");
-      wireInput("#inp-cost-label", "costoEtiqueta");
-      wireInput("#inp-cost-box", "costoCajaMasterUnit");
-      wireInput("#inp-cost-mod", "costoManoObraUnit");
-      wireInput("#inp-cost-serv", "costoServiciosUnit");
-      wireInput("#range-cost-merma", "pctMerma");
+      wire("#inp-cost-chem", "costoQuimico");
+      wire("#inp-cost-bottle", "costoEnvase");
+      wire("#inp-cost-cap", "costoTapa");
+      wire("#inp-cost-label", "costoEtiqueta");
+      wire("#inp-cost-box", "costoCajaMasterUnit");
+      wire("#inp-cost-mod", "costoManoObraUnit");
+      wire("#inp-cost-serv", "costoServiciosUnit");
+      wire("#range-cost-merma", "pctMerma");
       container.querySelectorAll(".mode-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           this.state.modoCalculo = btn.getAttribute("data-mode");
           refresh();
         });
       });
-      const inpM = container.querySelector("#inp-num-margen");
       const rngM = container.querySelector("#range-num-margen");
-      if (inpM)
-        inpM.addEventListener("input", () => {
-          this.state.margenDeseadoPct = Number(inpM.value) || 0;
-          refresh();
-        });
       if (rngM)
         rngM.addEventListener("input", () => {
           this.state.margenDeseadoPct = Number(rngM.value) || 0;
@@ -10971,66 +10979,52 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           refresh();
         });
       container.querySelector("#btn-explicar-sencillo").addEventListener("click", () => {
-        this.openSimpleExplainer(calculated);
+        this.openExplainer(calc);
       });
       container.querySelector("#btn-guardar-catalogo").addEventListener("click", () => {
-        this.saveToCatalog(tenantId, products, calculated);
+        this.saveToCatalog(tenantId, products, calc);
       });
     },
-    openSimpleExplainer(calc) {
+    openExplainer(calc) {
       Modal.show({
         title: "\u{1F4A1} Explicaci\xF3n Sencilla de tus Ganancias",
         content: `
         <div style="font-size: 13.5px; line-height: 1.5; color: var(--text-main);">
-          
           <div class="card p-3 mb-3" style="background: rgba(0, 113, 227, 0.05); border-left: 4px solid var(--brand-primary);">
-            <h4 style="font-size: 14px; font-weight: 800; color: var(--brand-primary); margin-bottom: 6px;">
-              1. La Trampa del Porcentaje (Por qu\xE9 muchos due\xF1os pierden dinero)
+            <h4 style="font-size: 14px; font-weight: 800; color: var(--brand-primary); margin-bottom: 4px;">
+              1. La Trampa del Porcentaje
             </h4>
             <p>
-              Mucha gente dice: <em>"Fabricar la botella me cost\xF3 $10.000, le voy a ganar el 30%, entonces la vendo en $13.000"</em>.
-            </p>
-            <p>
-              <strong>\xA1Ese c\xE1lculo est\xE1 mal!</strong> Porque si vendes en $13.000 y te ganas $3.000, $3.000 dividido en $13.000 es apenas el <strong>23% de ganancia real</strong>, perdiste casi 7 puntos de plata.
+              Si fabricar la botella te cost\xF3 <strong>$10.000</strong> y le sumas el 30% ($13.000), tu ganancia real en el bolsillo es de apenas el <strong>23%</strong>, porque $3.000 dividido en $13.000 da 23%.
             </p>
             <p style="margin-bottom: 0;">
-              El sistema de Nexa calcula con la f\xF3rmula de las grandes empresas: para ganarte el 30% real de lo que te entra a la caja, debes venderla a <strong>$14.285</strong>.
+              El sistema de Nexa calcula el precio real para que te quede el 30% neto de cada venta en la caja.
             </p>
           </div>
 
-          <div class="card p-3 mb-3" style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981;">
-            <h4 style="font-size: 14px; font-weight: 800; color: #047857; margin-bottom: 6px;">
-              2. Tu Ganancia Limpia en este Producto
+          <div class="card p-3 mb-0" style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981;">
+            <h4 style="font-size: 14px; font-weight: 800; color: #047857; margin-bottom: 4px;">
+              2. Tu Ganancia en este Producto
             </h4>
             <p style="margin-bottom: 0;">
-              Por cada botella que vendas a <strong>${Formatters.currency(calc.precioSinIva)}</strong>:<br>
-              - Se te van <strong>${Formatters.currency(calc.costoTotalFinal)}</strong> en reponer l\xEDquido, tarro, tapa y pagar al personal.<br>
-              - Te quedan limpios en tu bolsillo <strong>+${Formatters.currency(calc.precioSinIva - calc.costoTotalFinal)} COP</strong> libres.
+              Por cada botella vendida a <strong>${Formatters.currency(calc.precioSinIva)}</strong>:<br>
+              - Se te van <strong>${Formatters.currency(calc.costoTotalFinal)}</strong> en reponer insumos y envasado.<br>
+              - Te quedan limpios <strong>+${Formatters.currency(calc.precioSinIva - calc.costoTotalFinal)} COP</strong> libres.
             </p>
           </div>
-
-          <div class="card p-3 mb-0" style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b;">
-            <h4 style="font-size: 14px; font-weight: 800; color: #b45309; margin-bottom: 6px;">
-              3. \xBFPor qu\xE9 el IVA no se cuenta como ganancia?
-            </h4>
-            <p style="margin-bottom: 0;">
-              El IVA del 19% no es plata tuya; t\xFA solo se la guardas unos d\xEDas al cliente para entreg\xE1rsela al gobierno (la DIAN). Por eso, tus ganancias siempre las calculamos sobre el precio <strong>sin IVA</strong>.
-            </p>
-          </div>
-
         </div>
       `,
-        footerButtons: [{ label: "\xA1Ahora s\xED entend\xED perfecto!", class: "btn-primary", onClick: () => Modal.close() }]
+        footerButtons: [{ label: "\xA1Entendido!", class: "btn-primary", onClick: () => Modal.close() }]
       });
     },
     saveToCatalog(tenantId, products, calc) {
       const finished = products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO");
       Modal.show({
-        title: "Guardar estos precios en tu Cat\xE1logo",
+        title: "Guardar Precios en el Cat\xE1logo",
         content: `
-        <p class="text-xs text-muted mb-3">Elige a qu\xE9 producto de tu inventario deseas aplicarle este nuevo costo y su lista de precios:</p>
+        <p class="text-xs text-muted mb-3">Elige a qu\xE9 producto deseas aplicarle estos precios:</p>
         <div class="form-group mb-3">
-          <select class="form-select font-bold" id="modal-sel-final-prod">
+          <select class="form-select font-bold" id="modal-sel-save-prod">
             ${finished.map((p) => `
               <option value="${p.id}" ${this.state.selectedProductId === p.id ? "selected" : ""}>
                 ${p.nombre} (${p.sku})
@@ -11038,8 +11032,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             `).join("")}
           </select>
         </div>
-        <div class="p-2 text-xs" style="background: rgba(0,0,0,0.03); border-radius: 6px;">
-          Se guardar\xE1 el Costo en <strong>${Formatters.currency(calc.costoTotalFinal)}</strong> y el precio de venta en <strong>${Formatters.currency(calc.precioSinIva)}</strong>.
+        <div class="p-2 text-xs" style="background: var(--bg-surface-solid); border-radius: 6px;">
+          Se guardar\xE1 el Costo en <strong>${Formatters.currency(calc.costoTotalFinal)}</strong> y el Precio Mostrador en <strong>${Formatters.currency(calc.precioSinIva)}</strong>.
         </div>
       `,
         footerButtons: [
@@ -11048,17 +11042,17 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             label: "Guardar Precios",
             class: "btn-primary",
             onClick: async () => {
-              const pid = document.getElementById("modal-sel-final-prod").value;
+              const pid = document.getElementById("modal-sel-save-prod").value;
               const target = products.find((p) => p.id === pid);
               if (target) {
                 target.costo = calc.costoTotalFinal;
                 target.precioVenta = calc.precioSinIva;
                 target.preciosEspeciales = {
                   ...target.preciosEspeciales || {},
-                  plist_1: calc.preciosCanales.p1.precioSinIva,
-                  plist_2: calc.preciosCanales.p2.precioSinIva,
-                  plist_3: calc.preciosCanales.p3.precioSinIva,
-                  plist_4: calc.preciosCanales.p4.precioSinIva
+                  plist_1: calc.tiers.t1.p,
+                  plist_2: calc.tiers.t2.p,
+                  plist_3: calc.tiers.t3.p,
+                  plist_4: calc.tiers.t4.p
                 };
                 target.fechaModificacion = (/* @__PURE__ */ new Date()).toISOString();
                 await DB2.update(STORES.PRODUCTS, target);
@@ -11072,7 +11066,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
-  // ../js/app.js
+  // js/app.js
   window.addEventListener("error", (e) => {
     console.error("Nexa Global Error:", e.error || e.message);
     const container = document.getElementById("view-container");
