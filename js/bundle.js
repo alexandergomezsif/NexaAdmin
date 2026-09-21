@@ -10592,9 +10592,9 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         <div class="view-title-wrap">
           <div class="d-flex items-center gap-2">
             <h1>Calculadora F\xE1cil de Costos y Ganancias</h1>
-            <span class="badge badge-success">SISTEMA POR TARJETAS</span>
+            <span class="badge badge-primary">SISTEMA INTELIGENTE DE PRECIOS</span>
           </div>
-          <p>Conoce exactamente cu\xE1nto cuesta fabricar tu producto y fija precios inteligentes con un solo clic</p>
+          <p>Conoce exactamente cu\xE1nto cuesta fabricar tu producto y fija precios comerciales con rentabilidad garantizada</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-secondary btn-sm" id="btn-explicar-sencillo">\u2753 \xBFC\xF3mo funciona?</button>
@@ -10613,7 +10613,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 <option value="">-- Modo Libre (Calcular cualquier producto nuevo) --</option>
                 ${finishedGoods.map((fg) => `
                   <option value="${fg.id}" ${this.state.selectedProductId === fg.id ? "selected" : ""}>
-                    ${fg.nombre} (${fg.sku}) - Costo registrado: ${Formatters.currency(fg.costo || 0)}
+                    ${fg.nombre} (${fg.sku}) - Costo actual: ${Formatters.currency(fg.costo || 0)}
                   </option>
                 `).join("")}
               </select>
@@ -10625,175 +10625,221 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         </div>
       </div>
 
-      <!-- DOS COLUMNAS PRINCIPALES LADO A LADO -->
-      <div class="nexa-two-columns">
+      <!-- ================================================================ -->
+      <!-- 3 WIDGETS KPI EJECUTIVOS DESTACADOS (Costo, Precio, Ganancia)    -->
+      <!-- ================================================================ -->
+      <div class="pricing-kpi-grid">
+        
+        <!-- KPI 1: Costo Total -->
+        <div class="pricing-kpi-card kpi-cost">
+          <div class="pricing-kpi-header">
+            <span class="pricing-kpi-label">
+              <span>\u{1F3ED}</span> Costo Total de Fabricaci\xF3n
+            </span>
+            <span class="badge badge-info font-bold">Por Unidad</span>
+          </div>
+          <div class="pricing-kpi-value" style="color: #0284c7;">
+            ${Formatters.currency(costoTotalFinal)} COP
+          </div>
+          <div class="pricing-kpi-footer">
+            <span>Insumo + Empaque + Mano de Obra</span>
+            <strong style="color: #0284c7;">100% Costo</strong>
+          </div>
+        </div>
 
-        <!-- ========================================================== -->
-        <!-- COLUMNA 1: \xBFCU\xC1NTO CUESTA FABRICARLO? (TARJETAS DE INGRESO) -->
-        <!-- ========================================================== -->
+        <!-- KPI 2: Precio de Venta -->
+        <div class="pricing-kpi-card kpi-price">
+          <div class="pricing-kpi-header">
+            <span class="pricing-kpi-label">
+              <span>\u{1F3F7}\uFE0F</span> Precio de Venta Sugerido
+            </span>
+            <span class="badge badge-primary font-bold">Antes de IVA</span>
+          </div>
+          <div class="pricing-kpi-value" style="color: var(--brand-primary);">
+            ${Formatters.currency(precioSinIva)} COP
+          </div>
+          <div class="pricing-kpi-footer">
+            <span>${this.state.aplicaIva ? `Con IVA (19%): <strong>${Formatters.currency(precioFinalConIva)}</strong>` : "Precio Neto sin IVA"}</span>
+            <strong class="text-primary">${this.state.modoCalculo === "QUIERO_MARGEN" ? "Modo Margen %" : "Modo Fijo $"}</strong>
+          </div>
+        </div>
+
+        <!-- KPI 3: Ganancia Limpia -->
+        <div class="pricing-kpi-card kpi-profit">
+          <div class="pricing-kpi-header">
+            <span class="pricing-kpi-label">
+              <span>\u{1F4B0}</span> Tu Ganancia Limpia Libre
+            </span>
+            <span class="badge badge-success font-bold" style="background: rgba(16, 185, 129, 0.15); color: #047857;">
+              ${semaforo.icon} ${porcentajeGananciaReal}% Margen
+            </span>
+          </div>
+          <div class="pricing-kpi-value" style="color: #047857;">
+            +${Formatters.currency(gananciaLimpiaDinero)} COP
+          </div>
+          <div class="pricing-kpi-footer">
+            <span>Dinero libre en caja por unidad</span>
+            <strong style="color: #047857;">Utilidad Real</strong>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- DOS PANELES PRINCIPALES: F\xC1BRICA (GRID 3 COL) Y ESTRATEGIA      -->
+      <!-- ================================================================ -->
+      <div class="nexa-two-columns mb-3">
+
+        <!-- PANEL IZQUIERDO: INPUTS DE COSTOS EN REJILLA COMPACTA -->
         <div class="card p-4" style="margin-bottom: 0; border-radius: 14px;">
-          
           <div class="d-flex justify-between items-center mb-3">
-            <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
-              <span>1\uFE0F\u20E3</span> \xBFCu\xE1nto cuesta fabricar 1 unidad?
-            </h3>
-            <span class="badge badge-primary font-bold">Costo Real</span>
+            <div>
+              <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
+                <span>1\uFE0F\u20E3</span> Costos Directos de Fabricaci\xF3n
+              </h3>
+              <p class="text-xs text-muted mb-0 mt-1">Ingresa el valor de insumos, empaque y trabajo para fabricar 1 unidad</p>
+            </div>
+            <span class="badge badge-primary font-bold">Unidad</span>
           </div>
 
-          <!-- Tarjeta Insumo Qu\xEDmico -->
-          <div class="input-card-box mb-3" style="border-left: 4px solid #0284c7;">
-            <div class="box-label">
-              <span style="color: #0284c7;">\u{1F9EA} Lo que va por dentro (L\xEDquido / Qu\xEDmico):</span>
-              <span class="badge badge-info">${pctQuimico}% del total</span>
-            </div>
-            <div class="box-input-wrap">
-              <span class="font-bold text-muted">$</span>
-              <input type="number" step="any" min="0" id="inp-cost-chem" value="${this.state.costoQuimico}">
-            </div>
-            <span class="text-xs text-muted mt-1" style="font-size: 11px;">El valor del qu\xEDmico que cabe exactamente en una botella.</span>
-          </div>
-
-          <!-- Cuadros Tarjeta: Empaque (Grid de 2x2) -->
-          <div class="mb-3">
-            <div class="d-flex justify-between items-center mb-2">
-              <span class="text-xs font-bold" style="color: #d97706;">\u{1F9F4} El Empaque (Tarro, Tapa y Etiquetas):</span>
-              <strong style="color: #d97706; font-size: 12px;">Subtotal: ${Formatters.currency(costoEmpaqueTotal)} (${pctEmpaque}%)</strong>
-            </div>
-
-            <div class="nexa-grid-2">
-              <div class="input-card-box">
-                <div class="box-label">Tarro / Botella:</div>
-                <div class="box-input-wrap">
-                  <span class="font-bold text-muted">$</span>
-                  <input type="number" step="any" min="0" id="inp-cost-bottle" value="${this.state.costoEnvase}">
-                </div>
+          <!-- CUADR\xCDCULA COMPACTA DE 3 COLUMNAS -->
+          <div class="cost-inputs-grid mb-3">
+            
+            <!-- Insumo Qu\xEDmico (ocupa 2 columnas para destacar) -->
+            <div class="input-card-box cost-input-span-2" style="border-left: 4px solid #0284c7;">
+              <div class="box-label">
+                <span style="color: #0284c7; font-weight: 800;">\u{1F9EA} Qu\xEDmico / L\xEDquido:</span>
+                <span class="badge badge-info" style="font-size: 10px;">${pctQuimico}% del costo</span>
               </div>
-
-              <div class="input-card-box">
-                <div class="box-label">Tapa o Atomizador:</div>
-                <div class="box-input-wrap">
-                  <span class="font-bold text-muted">$</span>
-                  <input type="number" step="any" min="0" id="inp-cost-cap" value="${this.state.costoTapa}">
-                </div>
-              </div>
-
-              <div class="input-card-box">
-                <div class="box-label">Etiqueta:</div>
-                <div class="box-input-wrap">
-                  <span class="font-bold text-muted">$</span>
-                  <input type="number" step="any" min="0" id="inp-cost-label" value="${this.state.costoEtiqueta}">
-                </div>
-              </div>
-
-              <div class="input-card-box">
-                <div class="box-label">Caja x unidad:</div>
-                <div class="box-input-wrap">
-                  <span class="font-bold text-muted">$</span>
-                  <input type="number" step="any" min="0" id="inp-cost-box" value="${this.state.costoCajaMasterUnit}">
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Cuadros Tarjeta: Trabajo y Servicios -->
-          <div class="mb-3">
-            <div class="d-flex justify-between items-center mb-2">
-              <span class="text-xs font-bold" style="color: #7c3aed;">\u26A1 Trabajo, Servicios y Desperdicio:</span>
-              <strong style="color: #7c3aed; font-size: 12px;">Subtotal: ${Formatters.currency(costoTrabajoTotal + costoDesperdicio)} (${pctTrabajo}%)</strong>
-            </div>
-
-            <div class="nexa-grid-2 mb-2">
-              <div class="input-card-box">
-                <div class="box-label">Pago por envasar:</div>
-                <div class="box-input-wrap">
-                  <span class="font-bold text-muted">$</span>
-                  <input type="number" step="any" min="0" id="inp-cost-mod" value="${this.state.costoManoObraUnit}">
-                </div>
-              </div>
-
-              <div class="input-card-box">
-                <div class="box-label">Luz, agua y m\xE1quinas:</div>
-                <div class="box-input-wrap">
-                  <span class="font-bold text-muted">$</span>
-                  <input type="number" step="any" min="0" id="inp-cost-serv" value="${this.state.costoServiciosUnit}">
-                </div>
+              <div class="box-input-wrap">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="inp-cost-chem" value="${this.state.costoQuimico}">
               </div>
             </div>
 
-            <!-- Merma / Desperdicio -->
+            <!-- Botella / Tarro -->
+            <div class="input-card-box">
+              <div class="box-label">\u{1F9F4} Tarro / Botella:</div>
+              <div class="box-input-wrap">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="inp-cost-bottle" value="${this.state.costoEnvase}">
+              </div>
+            </div>
+
+            <!-- Tapa / Atomizador -->
+            <div class="input-card-box">
+              <div class="box-label">\u{1F518} Tapa / Atomizador:</div>
+              <div class="box-input-wrap">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="inp-cost-cap" value="${this.state.costoTapa}">
+              </div>
+            </div>
+
+            <!-- Etiqueta -->
+            <div class="input-card-box">
+              <div class="box-label">\u{1F3F7}\uFE0F Etiqueta:</div>
+              <div class="box-input-wrap">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="inp-cost-label" value="${this.state.costoEtiqueta}">
+              </div>
+            </div>
+
+            <!-- Caja m\xE1ster unitaria -->
+            <div class="input-card-box">
+              <div class="box-label">\u{1F4E6} Caja x unidad:</div>
+              <div class="box-input-wrap">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="inp-cost-box" value="${this.state.costoCajaMasterUnit}">
+              </div>
+            </div>
+
+            <!-- Mano de Obra -->
+            <div class="input-card-box">
+              <div class="box-label">\u{1F477} Envasado / Labor:</div>
+              <div class="box-input-wrap">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="inp-cost-mod" value="${this.state.costoManoObraUnit}">
+              </div>
+            </div>
+
+            <!-- Servicios y Luz -->
+            <div class="input-card-box">
+              <div class="box-label">\u26A1 Luz y M\xE1quinas:</div>
+              <div class="box-input-wrap">
+                <span class="font-bold text-muted">$</span>
+                <input type="number" step="any" min="0" id="inp-cost-serv" value="${this.state.costoServiciosUnit}">
+              </div>
+            </div>
+
+            <!-- Merma T\xE9cnica (deslizador) -->
             <div class="input-card-box">
               <div class="box-label">
-                <span>Desperdicio inevitable (Merma):</span>
-                <strong class="text-danger">${this.state.pctMerma}% (+${Formatters.currency(costoDesperdicio)})</strong>
+                <span>\u{1F4A7} Merma:</span>
+                <strong class="text-danger">${this.state.pctMerma}%</strong>
               </div>
-              <input type="range" min="0" max="8" step="0.5" id="range-cost-merma" value="${this.state.pctMerma}" class="form-range w-100">
+              <input type="range" min="0" max="8" step="0.5" id="range-cost-merma" value="${this.state.pctMerma}" class="form-range w-100" style="margin-top: 4px;">
             </div>
+
           </div>
 
           <!-- Barra Gr\xE1fica de Distribuci\xF3n de Costo -->
-          <div class="p-3 mb-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 10px;">
+          <div class="p-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 10px;">
             <div class="d-flex justify-between items-center text-xs font-bold mb-2">
-              <span>\xBFEn qu\xE9 se va tu dinero por botella?</span>
-              <span class="text-primary">${Formatters.currency(costoTotalFinal)}</span>
+              <span>Distribuci\xF3n del Costo Unitario (${Formatters.currency(costoTotalFinal)}):</span>
+              <span class="text-muted text-xs">Empaque: ${Formatters.currency(costoEmpaqueTotal)} | Labor: ${Formatters.currency(costoTrabajoTotal + costoDesperdicio)}</span>
             </div>
-            <div style="height: 16px; width: 100%; display: flex; border-radius: 8px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);">
+            <div style="height: 14px; width: 100%; display: flex; border-radius: 7px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">
               <div style="width: ${pctQuimico}%; background: #0284c7;" title="Qu\xEDmicos: ${pctQuimico}%"></div>
               <div style="width: ${pctEmpaque}%; background: #f59e0b;" title="Empaque: ${pctEmpaque}%"></div>
-              <div style="width: ${pctTrabajo}%; background: #8b5cf6;" title="Trabajo: ${pctTrabajo}%"></div>
+              <div style="width: ${pctTrabajo}%; background: #8b5cf6;" title="Trabajo y Servicios: ${pctTrabajo}%"></div>
             </div>
             <div class="d-flex justify-between text-xs mt-2" style="font-size: 11px;">
               <span style="color: #0284c7;">\u25CF Qu\xEDmicos: <strong>${pctQuimico}%</strong></span>
               <span style="color: #d97706;">\u25CF Empaque: <strong>${pctEmpaque}%</strong></span>
-              <span style="color: #7c3aed;">\u25CF Trabajo: <strong>${pctTrabajo}%</strong></span>
+              <span style="color: #7c3aed;">\u25CF Trabajo y Merma: <strong>${pctTrabajo}%</strong></span>
             </div>
-          </div>
-
-          <!-- Tarjeta Grande: COSTO TOTAL -->
-          <div class="p-3 text-center" style="background: rgba(16, 185, 129, 0.1); border: 2px dashed #10b981; border-radius: 12px;">
-            <span class="text-xs text-muted font-bold">COSTO TOTAL DE CADA BOTELLA TERMINADA:</span>
-            <div style="font-size: 30px; font-weight: 900; color: #047857; margin-top: 2px;">
-              ${Formatters.currency(costoTotalFinal)} COP
-            </div>
-            <span class="text-xs text-muted">Es lo que te cuesta tener la botella lista para entregar.</span>
           </div>
 
         </div>
 
-        <!-- ========================================================== -->
-        <!-- COLUMNA 2: \xBFCU\xC1NTO QUIERES GANAR? (SIMULADOR Y GANANCIAS) -->
-        <!-- ========================================================== -->
-        <div class="d-flex flex-col gap-3">
-          
-          <div class="card p-4" style="margin-bottom: 0; border-radius: 14px;">
-            <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-              <span>2\uFE0F\u20E3</span> \xBFCu\xE1nto quieres ganar o a cu\xE1nto quieres vender?
-            </h3>
+        <!-- PANEL DERECHO: ESTRATEGIA Y SIMULADOR DE GANANCIA -->
+        <div class="card p-4" style="margin-bottom: 0; border-radius: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="d-flex justify-between items-center mb-3">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
+                  <span>2\uFE0F\u20E3</span> Estrategia y Ganancia Deseada
+                </h3>
+                <p class="text-xs text-muted mb-0 mt-1">Elige c\xF3mo deseas calcular la rentabilidad de tu producto</p>
+              </div>
+              <span class="badge badge-success font-bold">Rentabilidad</span>
+            </div>
 
-            <!-- 2 Botones de Selecci\xF3n Gigantes -->
+            <!-- Botones Grandes de Selecci\xF3n de Modo -->
             <div class="nexa-grid-2 mb-3">
               <button class="btn ${this.state.modoCalculo === "QUIERO_MARGEN" ? "btn-primary" : "btn-secondary"} p-3 text-left mode-btn" data-mode="QUIERO_MARGEN" style="border-radius: 10px; height: auto;">
                 <div class="font-bold" style="font-size: 13px;">\u{1F7E2} OPCI\xD3N A: Quiero ganar un %</div>
-                <div class="text-xs opacity-80" style="margin-top: 2px;">"Quiero ganarme el 35% de la venta"</div>
+                <div class="text-xs opacity-80" style="margin-top: 2px;">Fijar margen deseado (ej: 35%)</div>
               </button>
 
               <button class="btn ${this.state.modoCalculo === "TENGO_PRECIO" ? "btn-primary" : "btn-secondary"} p-3 text-left mode-btn" data-mode="TENGO_PRECIO" style="border-radius: 10px; height: auto;">
                 <div class="font-bold" style="font-size: 13px;">\u{1F535} OPCI\xD3N B: Ya tengo un precio</div>
-                <div class="text-xs opacity-80" style="margin-top: 2px;">"Quiero venderla a $11.000 fijos"</div>
+                <div class="text-xs opacity-80" style="margin-top: 2px;">C\xE1lculo inverso desde precio fijo</div>
               </button>
             </div>
 
-            <!-- Entrada de Datos -->
+            <!-- Entrada de Datos Din\xE1mica seg\xFAn Modo -->
             ${this.state.modoCalculo === "QUIERO_MARGEN" ? `
               <div class="input-card-box mb-3" style="background: rgba(0, 113, 227, 0.04); border-color: rgba(0, 113, 227, 0.25);">
                 <div class="box-label">
-                  <span class="text-primary font-bold">Porcentaje de Ganancia que deseas:</span>
+                  <span class="text-primary font-bold">Margen de Ganancia que deseas sobre la venta:</span>
                   <span class="badge badge-primary" style="font-size: 13px;">${this.state.margenDeseadoPct}%</span>
                 </div>
                 <input type="range" min="10" max="70" step="1" id="range-num-margen" value="${this.state.margenDeseadoPct}" class="form-range w-100 my-2">
                 <div class="d-flex justify-between text-xs text-muted">
                   <span>15% (Distribuidor)</span>
                   <span>35% (Est\xE1ndar Negocio)</span>
-                  <span>50% (Venta al P\xFAblico)</span>
+                  <span>50% (P\xFAblico Detal)</span>
                 </div>
               </div>
             ` : `
@@ -10806,28 +10852,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
               </div>
             `}
 
-            <!-- TARJET\xD3N RESULTADO: PRECIO VS GANANCIA LIMPIA -->
-            <div class="nexa-grid-2 mb-3">
-              <div class="p-3" style="background: var(--bg-surface-solid); border: 2px solid var(--border-color); border-radius: 12px; text-align: center;">
-                <span class="text-xs text-muted font-bold">PRECIO DE VENTA:</span>
-                <div style="font-size: 22px; font-weight: 900; color: var(--brand-primary); margin: 4px 0;">
-                  ${Formatters.currency(precioSinIva)}
-                </div>
-                <span class="text-xs text-muted">Antes de cobrar el IVA</span>
-              </div>
-
-              <div class="p-3" style="background: rgba(16, 185, 129, 0.08); border: 2px solid #10b981; border-radius: 12px; text-align: center;">
-                <span class="text-xs text-muted font-bold">TU GANANCIA LIMPIA:</span>
-                <div style="font-size: 22px; font-weight: 900; color: #047857; margin: 4px 0;">
-                  +${Formatters.currency(gananciaLimpiaDinero)}
-                </div>
-                <span class="badge badge-success font-bold" style="font-size: 11px;">
-                  Margen: ${porcentajeGananciaReal}% en tu bolsillo
-                </span>
-              </div>
-            </div>
-
-            <!-- SEM\xC1FORO DE SALUD DE GANANCIA -->
+            <!-- Sem\xE1foro de Salud Financiera -->
             <div class="p-3 mb-3" style="background: ${semaforo.bg}; border: 1px solid ${semaforo.border}; border-radius: 10px; display: flex; align-items: center; gap: 12px;">
               <div style="font-size: 26px;">${semaforo.icon}</div>
               <div>
@@ -10835,73 +10860,148 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 <div style="font-size: 11.5px; color: var(--text-main); margin-top: 2px;">${semaforo.desc}</div>
               </div>
             </div>
-
-            <!-- Checkbox IVA -->
-            <div class="d-flex justify-between items-center p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px;">
-              <div class="d-flex items-center gap-2">
-                <input type="checkbox" id="chk-iva-simple" ${this.state.aplicaIva ? "checked" : ""} style="width: 16px; height: 16px; cursor: pointer;">
-                <label for="chk-iva-simple" class="font-bold" style="cursor: pointer; margin: 0;">\xBFCobras IVA a tus clientes? (19%)</label>
-              </div>
-              <div>
-                ${this.state.aplicaIva ? `
-                  <span>Precio final con IVA: <strong style="font-size: 14px; color: var(--brand-primary);">${Formatters.currency(precioFinalConIva)}</strong></span>
-                ` : `
-                  <span class="badge badge-secondary">Sin IVA</span>
-                `}
-              </div>
-            </div>
-
           </div>
 
-          <!-- TABLA DE LOS 4 PRECIOS DE TU NEGOCIO -->
-          <div class="card p-3" style="margin-bottom: 0; border-radius: 14px;">
-            <div class="d-flex justify-between items-center mb-2">
-              <h4 style="font-size: 13.5px; font-weight: 800; margin: 0;">\u{1F4CB} Los 4 Precios Sugeridos para tu Negocio</h4>
-              <span class="text-xs text-muted">Calculados para ganar siempre</span>
+          <!-- Checkbox IVA -->
+          <div class="d-flex justify-between items-center p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px; font-size: 12px;">
+            <div class="d-flex items-center gap-2">
+              <input type="checkbox" id="chk-iva-simple" ${this.state.aplicaIva ? "checked" : ""} style="width: 16px; height: 16px; cursor: pointer;">
+              <label for="chk-iva-simple" class="font-bold" style="cursor: pointer; margin: 0;">\xBFCobras IVA a tus clientes? (19%)</label>
             </div>
-
-            <div class="table-responsive">
-              <table class="table table-sm text-xs" style="margin-bottom: 0;">
-                <thead>
-                  <tr>
-                    <th>\xBFA qui\xE9n le vendes?</th>
-                    <th class="text-center">Tu Ganancia</th>
-                    <th class="text-right">Precio Sin IVA</th>
-                    <th class="text-right">Precio Con IVA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>1. Cliente Mostrador</strong> <span class="text-muted">(Detal)</span></td>
-                    <td class="text-center"><span class="badge badge-success font-bold">+${Formatters.currency(tiers.t1.g)} (50%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(tiers.t1.p)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t1.conIva)}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>2. Talleres & Lavaderos</strong></td>
-                    <td class="text-center"><span class="badge badge-info font-bold">+${Formatters.currency(tiers.t2.g)} (38%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(tiers.t2.p)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t2.conIva)}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>3. Mayorista</strong> <span class="text-muted">(Cajas x 12)</span></td>
-                    <td class="text-center"><span class="badge badge-warning font-bold">+${Formatters.currency(tiers.t3.g)} (28%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(tiers.t3.p)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t3.conIva)}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>4. Distribuidor</strong> <span class="text-muted">(Por volumen)</span></td>
-                    <td class="text-center"><span class="badge badge-secondary font-bold">+${Formatters.currency(tiers.t4.g)} (18%)</span></td>
-                    <td class="text-right font-bold">${Formatters.currency(tiers.t4.p)}</td>
-                    <td class="text-right text-primary font-bold">${Formatters.currency(tiers.t4.conIva)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div>
+              ${this.state.aplicaIva ? `
+                <span>Precio con IVA: <strong style="font-size: 13.5px; color: var(--brand-primary);">${Formatters.currency(precioFinalConIva)}</strong></span>
+              ` : `
+                <span class="badge badge-secondary">Sin IVA</span>
+              `}
             </div>
           </div>
 
         </div>
 
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- 4 TARJETAS HORIZONTALES INDIVIDUALES PARA PRECIOS SUGERIDOS     -->
+      <!-- ================================================================ -->
+      <div class="card p-4" style="border-radius: 14px;">
+        <div class="d-flex justify-between items-center mb-3">
+          <div>
+            <h3 style="font-size: 15px; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 6px;">
+              <span>\u{1F4CB}</span> Los 4 Precios Sugeridos para tu Negocio
+            </h3>
+            <p class="text-xs text-muted mb-0 mt-1">Precios escalonados por canal de venta, calculados para blindar tu margen de rentabilidad</p>
+          </div>
+          <span class="badge badge-info font-bold">4 Niveles Estrat\xE9gicos</span>
+        </div>
+
+        <div class="pricing-horizontal-tiers">
+          
+          <!-- Tarjeta 1: Mostrador / Detal -->
+          <div class="pricing-tier-card tier-p1">
+            <div class="tier-col-segment">
+              <div class="d-flex items-center gap-2">
+                <span style="font-size: 18px;">\u{1F6D2}</span>
+                <div>
+                  <strong style="font-size: 13.5px; color: var(--text-main);">1. Cliente Mostrador</strong>
+                  <div class="text-xs text-muted">Venta directa al detal / consumidor final</div>
+                </div>
+              </div>
+            </div>
+            <div class="tier-col-profit">
+              <span class="badge badge-success font-bold" style="font-size: 12px; padding: 6px 10px;">
+                +${Formatters.currency(tiers.t1.g)} (50% ganancia)
+              </span>
+            </div>
+            <div class="tier-col-net">
+              <div class="text-xs text-muted">Precio Base (sin IVA):</div>
+              <strong style="font-size: 15px; color: var(--text-main);">${Formatters.currency(tiers.t1.p)}</strong>
+            </div>
+            <div class="tier-col-gross">
+              <div class="text-xs text-muted">Precio Final (con IVA):</div>
+              <strong style="font-size: 16px; color: #10b981;">${Formatters.currency(tiers.t1.conIva)}</strong>
+            </div>
+          </div>
+
+          <!-- Tarjeta 2: Talleres & Lavaderos -->
+          <div class="pricing-tier-card tier-p2">
+            <div class="tier-col-segment">
+              <div class="d-flex items-center gap-2">
+                <span style="font-size: 18px;">\u{1F697}</span>
+                <div>
+                  <strong style="font-size: 13.5px; color: var(--text-main);">2. Talleres & Lavaderos</strong>
+                  <div class="text-xs text-muted">Consumo comercial frecuente / compras semanales</div>
+                </div>
+              </div>
+            </div>
+            <div class="tier-col-profit">
+              <span class="badge badge-info font-bold" style="font-size: 12px; padding: 6px 10px;">
+                +${Formatters.currency(tiers.t2.g)} (38% ganancia)
+              </span>
+            </div>
+            <div class="tier-col-net">
+              <div class="text-xs text-muted">Precio Base (sin IVA):</div>
+              <strong style="font-size: 15px; color: var(--text-main);">${Formatters.currency(tiers.t2.p)}</strong>
+            </div>
+            <div class="tier-col-gross">
+              <div class="text-xs text-muted">Precio Final (con IVA):</div>
+              <strong style="font-size: 16px; color: #0284c7;">${Formatters.currency(tiers.t2.conIva)}</strong>
+            </div>
+          </div>
+
+          <!-- Tarjeta 3: Mayorista -->
+          <div class="pricing-tier-card tier-p3">
+            <div class="tier-col-segment">
+              <div class="d-flex items-center gap-2">
+                <span style="font-size: 18px;">\u{1F4E6}</span>
+                <div>
+                  <strong style="font-size: 13.5px; color: var(--text-main);">3. Mayorista</strong>
+                  <div class="text-xs text-muted">Por cajas completas (m\xEDnimo 12 unidades)</div>
+                </div>
+              </div>
+            </div>
+            <div class="tier-col-profit">
+              <span class="badge badge-warning font-bold" style="font-size: 12px; padding: 6px 10px;">
+                +${Formatters.currency(tiers.t3.g)} (28% ganancia)
+              </span>
+            </div>
+            <div class="tier-col-net">
+              <div class="text-xs text-muted">Precio Base (sin IVA):</div>
+              <strong style="font-size: 15px; color: var(--text-main);">${Formatters.currency(tiers.t3.p)}</strong>
+            </div>
+            <div class="tier-col-gross">
+              <div class="text-xs text-muted">Precio Final (con IVA):</div>
+              <strong style="font-size: 16px; color: #d97706;">${Formatters.currency(tiers.t3.conIva)}</strong>
+            </div>
+          </div>
+
+          <!-- Tarjeta 4: Distribuidor -->
+          <div class="pricing-tier-card tier-p4">
+            <div class="tier-col-segment">
+              <div class="d-flex items-center gap-2">
+                <span style="font-size: 18px;">\u{1F69B}</span>
+                <div>
+                  <strong style="font-size: 13.5px; color: var(--text-main);">4. Distribuidor</strong>
+                  <div class="text-xs text-muted">Por pallets / volumen alto de distribuci\xF3n regional</div>
+                </div>
+              </div>
+            </div>
+            <div class="tier-col-profit">
+              <span class="badge badge-secondary font-bold" style="font-size: 12px; padding: 6px 10px;">
+                +${Formatters.currency(tiers.t4.g)} (18% ganancia)
+              </span>
+            </div>
+            <div class="tier-col-net">
+              <div class="text-xs text-muted">Precio Base (sin IVA):</div>
+              <strong style="font-size: 15px; color: var(--text-main);">${Formatters.currency(tiers.t4.p)}</strong>
+            </div>
+            <div class="tier-col-gross">
+              <div class="text-xs text-muted">Precio Final (con IVA):</div>
+              <strong style="font-size: 16px; color: #7c3aed;">${Formatters.currency(tiers.t4.conIva)}</strong>
+            </div>
+          </div>
+
+        </div>
       </div>
     `;
       this.bindEvents(container, tenantId, products, recipes, {
