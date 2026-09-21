@@ -1,7 +1,6 @@
 /**
  * Nexa ERP - Bóveda Privada de Fórmulas y Recetas
- * Diseñada para ser súper intuitiva, con paso a paso de preparación (Fase 1, 2, 3)
- * y protección por PIN de seguridad.
+ * Diseñada en paneles tipo tarjeta (Card Grid) con paso a paso y KPI organizados.
  */
 
 import { DB, STORES } from '../services/db-service.js';
@@ -101,27 +100,27 @@ export const FormulasVaultModule = {
         </div>
       </div>
 
-      <!-- Tarjetas Resumen -->
-      <div class="grid grid-cols-3 gap-3 mb-3">
-        <div class="card p-3" style="border-radius: 10px;">
+      <!-- 3 TARJETAS RESUMEN LADO A LADO EN GRID -->
+      <div class="nexa-grid-3 mb-3">
+        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid var(--brand-primary);">
           <div class="text-xs text-muted font-bold">RECETAS REGISTRADAS</div>
           <div style="font-size: 24px; font-weight: 800; color: var(--brand-primary); margin-top: 2px;">${recipes.length} fórmulas</div>
           <div class="text-xs text-muted">Protegidas con clave</div>
         </div>
-        <div class="card p-3" style="border-radius: 10px;">
+        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid #10b981;">
           <div class="text-xs text-muted font-bold">QUÍMICOS EN INVENTARIO</div>
           <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 2px;">${rawMaterials.length} insumos</div>
           <div class="text-xs text-muted">Listos para mezclar</div>
         </div>
-        <div class="card p-3" style="border-radius: 10px;">
+        <div class="card p-3 mb-0" style="border-radius: 12px; border-left: 4px solid #8b5cf6;">
           <div class="text-xs text-muted font-bold">SEGURIDAD</div>
-          <div style="font-size: 14px; font-weight: 800; color: #059669; margin-top: 6px;">100% CONFIDENCIAL</div>
+          <div style="font-size: 14px; font-weight: 800; color: #7c3aed; margin-top: 6px;">100% CONFIDENCIAL</div>
           <div class="text-xs text-muted">Solo visible para gerencia</div>
         </div>
       </div>
 
       <!-- Listado de Recetas -->
-      <div class="card p-3" style="border-radius: 12px;">
+      <div class="card p-3" style="border-radius: 14px;">
         <div class="d-flex justify-between items-center mb-3">
           <h3 style="font-size: 15px; font-weight: 800; margin: 0;">Tus Recetas de Fabricación</h3>
         </div>
@@ -151,15 +150,15 @@ export const FormulasVaultModule = {
             const costoPorLitro = batch > 0 ? Math.round(costoTanda / batch) : costoTanda;
 
             return `
-              <div class="card p-3 mb-0" style="border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface);">
-                <div class="d-flex justify-between items-start mb-2">
+              <div class="card p-4 mb-0" style="border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface);">
+                <div class="d-flex justify-between items-start mb-3">
                   <div>
                     <div class="d-flex items-center gap-2">
                       <span style="font-size: 20px;">🧪</span>
                       <h4 style="font-size: 16px; font-weight: 800; margin: 0; color: var(--text-main);">${r.nombreFormula || 'Receta de ' + (fg.nombre || 'Producto')}</h4>
                     </div>
                     <div class="text-xs text-muted mt-1">
-                      Producto: <strong>${fg.nombre || 'No asignado'}</strong> | Tamaño de la tanda: <strong>${r.cantidadProducir || 200} ${r.unidadMedida || 'Litros'}</strong>
+                      Producto: <strong>${fg.nombre || 'No asignado'}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${r.unidadMedida || 'Litros'}</strong>
                     </div>
                   </div>
 
@@ -173,33 +172,33 @@ export const FormulasVaultModule = {
                   </div>
                 </div>
 
-                <!-- Resumen Económico de la Receta -->
-                <div class="grid grid-cols-3 gap-2 p-2 mb-2" style="background: rgba(0,0,0,0.02); border-radius: 8px; font-size: 12px;">
-                  <div>
-                    <span class="text-muted">Costo total de la tanda (${batch} ${r.unidadMedida || 'L'}):</span>
-                    <div class="font-bold text-success">${Formatters.currency(costoTanda)}</div>
+                <!-- Resumen en 3 Tarjetitas -->
+                <div class="nexa-grid-3 mb-3">
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="text-muted text-xs">Costo total de la tanda:</div>
+                    <div class="font-bold text-success" style="font-size: 14px;">${Formatters.currency(costoTanda)}</div>
                   </div>
-                  <div>
-                    <span class="text-muted">Costo del líquido por cada litro:</span>
-                    <div class="font-bold text-primary">${Formatters.currency(costoPorLitro)} / L</div>
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="text-muted text-xs">Costo de líquido por litro:</div>
+                    <div class="font-bold text-primary" style="font-size: 14px;">${Formatters.currency(costoPorLitro)} / L</div>
                   </div>
-                  <div>
-                    <span class="text-muted">Suma de ingredientes:</span>
-                    <div class="font-bold ${Math.abs(sumaPorcentajes - 100) < 0.5 ? 'text-success' : 'text-warning'}">
-                      ${sumaPorcentajes.toFixed(1)}% ${Math.abs(sumaPorcentajes - 100) < 0.5 ? '✓ (Completo)' : '(Revisar)'}
+                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="text-muted text-xs">Suma de ingredientes:</div>
+                    <div class="font-bold ${Math.abs(sumaPorcentajes - 100) < 0.5 ? 'text-success' : 'text-warning'}" style="font-size: 14px;">
+                      ${sumaPorcentajes.toFixed(1)}% ${Math.abs(sumaPorcentajes - 100) < 0.5 ? '✓ (100%)' : '(Incompleto)'}
                     </div>
                   </div>
                 </div>
 
-                <!-- Tabla Fácil de Ingredientes -->
+                <!-- Tabla de Ingredientes -->
                 <div class="table-responsive mb-2">
                   <table class="table table-sm text-xs" style="margin-bottom: 0;">
                     <thead>
                       <tr>
                         <th>Ingrediente Químico</th>
-                        <th class="text-center">Momento de echarlo</th>
+                        <th class="text-center">Momento de adición</th>
                         <th class="text-center">Porcentaje (%)</th>
-                        <th class="text-center">Cantidad en la tanda</th>
+                        <th class="text-center">Cantidad en tanda</th>
                         <th class="text-right">Costo que aporta</th>
                       </tr>
                     </thead>
@@ -217,11 +216,10 @@ export const FormulasVaultModule = {
                   </table>
                 </div>
 
-                <!-- Instrucciones paso a paso -->
                 ${r.instruccionesFases ? `
-                  <div class="p-2" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 12px;">
+                  <div class="p-3 mt-2" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 12px;">
                     <strong>👨‍🔬 Paso a paso de preparación:</strong>
-                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.3;">${r.instruccionesFases}</div>
+                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.4;">${r.instruccionesFases}</div>
                   </div>
                 ` : ''}
 
@@ -313,7 +311,7 @@ export const FormulasVaultModule = {
 
     const content = `
       <form id="form-recipe-easy">
-        <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="nexa-grid-2 mb-3">
           <div>
             <label class="font-bold text-xs">Nombre de la Receta</label>
             <input type="text" id="rec-name" class="form-control font-bold" value="${recipe?.nombreFormula || ''}" placeholder="Ej: Desengrasante Pesado Especial" required>
@@ -329,7 +327,7 @@ export const FormulasVaultModule = {
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="nexa-grid-2 mb-3">
           <div>
             <label class="font-bold text-xs">¿Cuántos litros o galones preparas en una tanda?</label>
             <div class="d-flex gap-2">
@@ -359,7 +357,7 @@ export const FormulasVaultModule = {
               <thead>
                 <tr>
                   <th>Ingrediente</th>
-                  <th style="width: 130px;">Momento</th>
+                  <th style="width: 140px;">Momento</th>
                   <th style="width: 90px;" class="text-center">%</th>
                   <th style="width: 100px;" class="text-center">Cantidad</th>
                   <th style="width: 30px;"></th>
