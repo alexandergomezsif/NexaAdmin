@@ -6033,6 +6033,7 @@ Generado por Nexa ERP.`;
     cart: [],
     selectedClient: null,
     selectedPriceListId: "plist_1",
+    currentReceiptB64: null,
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
       const tenantId = tenant ? tenant.id : "tenant_rayopro";
@@ -6042,9 +6043,10 @@ Generado por Nexa ERP.`;
         DB2.getAll(STORES.PRICE_LISTS, tenantId),
         CashService.getCurrentShift(tenantId)
       ]);
-      const sellableProducts = products.filter((p) => p.tipoItem !== "MATERIA_PRIMA");
-      this.cart = [];
-      this.selectedClient = clients[0] || null;
+      const sellableProducts = products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO" || !p.tipoItem);
+      if (!this.selectedClient && clients.length > 0) {
+        this.selectedClient = clients.find((c) => c.nitCc === "222222222222") || clients[0];
+      }
       this.selectedPriceListId = this.selectedClient ? this.selectedClient.listaPreciosId || "plist_1" : "plist_1";
       container.innerHTML = `
       <div class="view-header" style="margin-bottom: 16px;">
@@ -6060,7 +6062,7 @@ Generado por Nexa ERP.`;
           <p>Facturaci\xF3n r\xE1pida de mostrador, pedidos, cotizaciones y ventas a cr\xE9dito comercial</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-view-sales-history">\u{1F4DC} Historial Ventas</button>
+          <button class="btn btn-secondary btn-sm font-bold" id="btn-view-sales-history">\u{1F4DC} Historial Ventas</button>
           <button class="btn btn-secondary btn-sm" id="btn-clear-cart">\u{1F5D1}\uFE0F Limpiar Venta</button>
         </div>
       </div>
@@ -6101,11 +6103,11 @@ Generado por Nexa ERP.`;
             <div class="card-body" style="padding: 10px 12px;">
               <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; max-height: 340px; overflow-y: auto;">
                 ${sellableProducts.map((p) => {
-        const price = p.precios && p.precios[this.selectedPriceListId] || p.costoPromedio * 1.5;
+        const price = p.precios && p.precios[this.selectedPriceListId] || (p.costo || p.costoPromedio || 0) * 1.5;
         const isAvailable = p.stock > 0;
         return `
                     <div class="pos-product-card card" data-product-id="${p.id}" style="cursor: ${isAvailable ? "pointer" : "not-allowed"}; margin-bottom: 0; padding: 8px 10px; border: 1px solid ${isAvailable ? "var(--border-color)" : "rgba(239, 68, 68, 0.3)"}; background: ${isAvailable ? "var(--bg-surface)" : "rgba(239, 68, 68, 0.08)"}; transition: transform 0.15s ease;">
-                      <div class="text-xs font-bold" style="color: var(--brand-primary); font-size: 11px;">${p.sku}</div>
+                      <div class="text-xs font-bold" style="color: var(--brand-primary); font-size: 11px;">${p.sku || "-"}</div>
                       <div class="font-bold text-xs" style="margin: 2px 0; line-height: 1.2; height: 26px; overflow: hidden; font-size: 11.5px; color: var(--text-main);">${p.nombre}</div>
                       <div class="d-flex justify-between items-center mt-1">
                         <span class="text-xs font-bold" style="color: var(--text-main);">${Formatters.currency(price)}</span>
@@ -6125,73 +6127,59 @@ Generado por Nexa ERP.`;
             <div style="width: 100%;">
               <div class="d-flex justify-between items-center mb-1">
                 <div class="card-title" style="font-size: 13px;">\u{1F6D2} Detalle de la Venta</div>
-                <select class="form-select" id="pos-doc-type" style="width: auto; font-size: 11.5px; padding: 3px 6px;">
-                  <option value="POS">Venta POS / Mostrador</option>
-                  <option value="VENTA_CREDITO">Venta a Cr\xE9dito Comercial</option>
-                  <option value="COTIZACION">Cotizaci\xF3n / Presupuesto</option>
-                  <option value="REMISION">Remisi\xF3n de Entrega</option>
-                </select>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-add-client" style="padding: 2px 8px; font-size: 11px;">
+                  + Nuevo Cliente
+                </button>
               </div>
-
-              <!-- SELECTOR DE CLIENTE -->
-              <div class="d-flex items-center gap-2 mb-1">
-                <select class="form-select" id="pos-select-client" style="font-size: 11.5px; padding: 4px 8px;">
+              <div class="form-group mb-1">
+                <select class="form-select" id="pos-select-client" style="font-size: 12px; font-weight: 700; padding: 4px 8px;">
                   ${clients.map((c) => `
-                    <option value="${c.id}" ${this.selectedClient && this.selectedClient.id === c.id ? "selected" : ""}>
+                    <option value="${c.id}" ${this.selectedClient && c.id === this.selectedClient.id ? "selected" : ""}>
                       ${c.nombre} (${c.tipoCliente}) - Saldo: ${Formatters.currency(c.saldoPendiente || 0)}
                     </option>
                   `).join("")}
                 </select>
-                <button class="btn btn-secondary btn-sm" id="btn-pos-add-client" title="Nuevo Cliente" style="padding: 4px 8px;">\u{1F464}+</button>
               </div>
-
-              <!-- BADGE INFORMATIVO DE R\xC9GIMEN TRIBUTARIO DEL CLIENTE -->
-              <div id="pos-client-tax-badge" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 113, 227, 0.05); border: 1px solid rgba(0, 113, 227, 0.15); border-radius: 6px; padding: 3px 6px; font-size: 10.5px;">
+              <div class="d-flex justify-between items-center text-xs text-muted" style="font-size: 10.5px;">
                 <span id="pos-fe-status">\u26A1 Facturaci\xF3n Electr\xF3nica: <strong>S\xED</strong></span>
-                <span id="pos-iva-status" class="badge badge-success" style="font-size: 10px;">Con IVA (19%)</span>
+                <span id="pos-iva-status" class="badge badge-success">Con IVA (19%)</span>
               </div>
             </div>
           </div>
 
-          <!-- TABLA DE ITEMS EN CARRITO -->
-          <div class="card-body" style="padding: 6px 10px; flex: 1; overflow-y: auto; max-height: 220px;">
-            <div class="table-responsive">
-              <table class="data-table" style="font-size: 11.5px;" id="pos-cart-table">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th class="text-center" style="width: 55px;">Cant.</th>
-                    <th class="text-right" style="width: 80px;">Precio</th>
-                    <th class="text-right" style="width: 85px;">Total</th>
-                    <th style="width: 25px;"></th>
-                  </tr>
-                </thead>
-                <tbody id="pos-cart-tbody">
-                  <tr><td colspan="5" class="text-center text-muted" style="padding: 16px;">Carrito vac\xEDo. Seleccione productos de la izquierda.</td></tr>
-                </tbody>
-              </table>
-            </div>
+          <div class="card-body p-0" style="flex: 1; max-height: 250px; overflow-y: auto;">
+            <table class="table table-sm text-xs">
+              <thead>
+                <tr>
+                  <th>\xCDtem</th>
+                  <th class="text-center" style="width: 65px;">Cant</th>
+                  <th class="text-right" style="width: 75px;">Precio</th>
+                  <th class="text-right" style="width: 85px;">Subtotal</th>
+                  <th style="width: 30px;"></th>
+                </tr>
+              </thead>
+              <tbody id="pos-cart-tbody"></tbody>
+            </table>
           </div>
 
-          <!-- LIQUIDACI\xD3N TRIBUTARIA Y TOTALES COMPACTOS -->
-          <div class="card-footer" style="background: var(--bg-surface); padding: 10px 14px; border-top: 1px solid var(--border-color);">
-            <div class="d-flex justify-between text-xs mb-1" style="font-size: 11.5px; color: var(--text-secondary);">
-              <span>Subtotal Neto:</span>
-              <strong id="pos-lbl-subtotal" style="color: var(--text-main);">$ 0</strong>
+          <div class="card-footer" style="background: var(--bg-surface); padding: 12px 14px;">
+            <div class="d-flex justify-between text-xs mb-1">
+              <span>Subtotal:</span>
+              <strong id="pos-lbl-subtotal">$ 0</strong>
             </div>
-            <div class="d-flex justify-between text-xs mb-1" style="font-size: 11.5px; color: var(--text-secondary);">
-              <span>IVA Calculado:</span>
-              <span id="pos-lbl-iva" style="color: var(--text-main);">$ 0</span>
+            <div class="d-flex justify-between text-xs mb-1">
+              <span>IVA (19%):</span>
+              <span id="pos-lbl-iva">$ 0</span>
             </div>
-            <div class="d-flex justify-between text-base font-bold mb-2" style="font-size: 16px; color: var(--brand-primary); border-top: 1px solid var(--brand-primary); padding-top: 4px;">
-              <span>TOTAL A PAGAR:</span>
+            <div class="d-flex justify-between mb-2" style="font-size: 16px; font-weight: 800; color: var(--brand-primary); border-top: 1px dashed var(--border-color); padding-top: 4px;">
+              <span>TOTAL A COBRAR:</span>
               <span id="pos-lbl-total">$ 0</span>
             </div>
 
-            <!-- FORMA DE PAGO & BOT\xD3N COBRAR -->
+            <!-- FORMA DE PAGO Y PAGO RECIBIDO -->
             <div class="form-row mb-2">
-              <div class="form-group mb-0">
-                <label class="form-label text-xs">Medio de Pago:</label>
+              <div class="form-group mb-0" style="flex: 1.2;">
+                <label class="form-label text-xs font-bold">M\xC9TODO DE PAGO:</label>
                 <select class="form-select" id="pos-payment-method" style="padding: 4px 8px; font-size: 11.5px;">
                   <option value="Efectivo">\u{1F4B5} Efectivo</option>
                   <option value="Nequi">\u{1F4F1} Nequi</option>
@@ -6202,7 +6190,7 @@ Generado por Nexa ERP.`;
                 </select>
               </div>
               <div class="form-group mb-0">
-                <label class="form-label text-xs">Pago Recibido ($ COP):</label>
+                <label class="form-label text-xs font-bold">Pago Recibido ($ COP):</label>
                 <input type="number" class="form-control" id="pos-inp-received" placeholder="Monto entregado" style="padding: 4px 8px; font-size: 11.5px;">
               </div>
             </div>
@@ -6212,14 +6200,44 @@ Generado por Nexa ERP.`;
               <strong class="text-success" id="pos-lbl-change" style="font-size: 13px;">$ 0</strong>
             </div>
 
-            <!-- CONTENEDOR DE COMPROBANTE DE PAGO -->
-            <div id="pos-attachment-row" style="display: none; background: var(--bg-surface-solid); padding: 8px; border-radius: 6px; border: 1px dashed var(--brand-primary); text-align: center; margin-bottom: 8px;">
-              <label class="form-label text-xs d-block mb-1" style="color: var(--brand-primary); font-weight: 700;">\u{1F4F8} Foto del Comprobante (Opcional):</label>
-              <input type="file" id="pos-inp-receipt-file" accept="image/*" capture="environment" style="font-size: 10px; width: 100%;">
-              <input type="hidden" id="pos-inp-receipt-b64">
-              <div id="pos-receipt-preview" class="mt-2" style="display: none;">
-                <img src="" style="max-height: 80px; max-width: 100%; border-radius: 4px; object-fit: contain; border: 1px solid #ccc;">
+            <!-- CONTENEDOR DE COMPROBANTE DE PAGO CON C\xC1MARA Y ARCHIVO -->
+            <div id="pos-attachment-row" style="display: none; background: rgba(0, 113, 227, 0.04); padding: 8px 10px; border-radius: 8px; border: 1px dashed var(--brand-primary); margin-bottom: 8px;">
+              <div class="d-flex justify-between items-center mb-1">
+                <span class="text-xs font-bold" id="pos-lbl-attachment-method" style="color: var(--brand-primary);">\u{1F4F8} Comprobante de Pago:</span>
+                <span class="badge badge-info" style="font-size: 9.5px;">Opcional</span>
               </div>
+              
+              <div class="d-flex gap-2 mb-1" id="pos-voucher-buttons-wrap">
+                <button type="button" class="btn btn-secondary btn-sm" id="pos-btn-upload-file" style="flex: 1; font-size: 11px; padding: 4px 6px;">
+                  \u{1F4C1} Subir Imagen
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="pos-btn-open-cam" style="flex: 1; font-size: 11px; padding: 4px 6px;">
+                  \u{1F4F7} Tomar Foto
+                </button>
+                <input type="file" id="pos-inp-receipt-file" accept="image/*" style="display: none;">
+              </div>
+
+              <!-- Preview del comprobante cargado -->
+              <div id="pos-receipt-preview" style="display: none; align-items: center; justify-content: space-between; background: #fff; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); margin-top: 4px;">
+                <div class="d-flex items-center gap-2">
+                  <img id="pos-img-receipt-thumb" src="" style="width: 38px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer;">
+                  <div>
+                    <span class="text-xs font-bold text-success" style="font-size: 11px;">\u2713 Comprobante listo</span>
+                    <div class="text-muted" style="font-size: 9.5px;">Se adjuntar\xE1 a la factura</div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" id="pos-btn-remove-receipt" style="padding: 2px 6px; font-size: 11px;" title="Quitar foto">\u{1F5D1}\uFE0F</button>
+              </div>
+            </div>
+
+            <!-- TIPO DE DOCUMENTO COMERCIAL -->
+            <div class="form-group mb-2">
+              <select class="form-select" id="pos-doc-type" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700;">
+                <option value="FACTURA_ELECTRONICA">\u26A1 Factura Electr\xF3nica de Venta (DIAN)</option>
+                <option value="DOCUMENTO_EQUIVALENTE_POS">\u{1F9FE} Documento Equivalente POS (Ticket)</option>
+                <option value="VENTA_CREDITO">\u{1F4D1} Factura a Cr\xE9dito Comercial (CXC)</option>
+                <option value="COTIZACION">\u{1F4CB} Cotizaci\xF3n Comercial (No descuenta stock)</option>
+              </select>
             </div>
 
             <button class="btn btn-primary w-100" id="btn-process-sale" style="padding: 9px; font-size: 14px; font-weight: 700;">
@@ -6230,6 +6248,7 @@ Generado por Nexa ERP.`;
 
       </div>
     `;
+      this.currentReceiptB64 = null;
       const updateCartView = () => {
         const tbody = container.querySelector("#pos-cart-tbody");
         if (this.cart.length === 0) {
@@ -6285,7 +6304,7 @@ Generado por Nexa ERP.`;
           return;
         }
         const existing = this.cart.find((i) => i.productoId === prod.id);
-        const unitPrice = prod.precios && prod.precios[this.selectedPriceListId] || prod.costoPromedio * 1.5;
+        const unitPrice = prod.precios && prod.precios[this.selectedPriceListId] || (prod.costo || prod.costoPromedio || 0) * 1.5;
         if (existing) {
           if (existing.cantidad + 1 > prod.stock) {
             Toast.warning(`No hay m\xE1s existencias f\xEDsicas de ${prod.nombre} (Stock actual: ${prod.stock}).`);
@@ -6370,21 +6389,9 @@ Generado por Nexa ERP.`;
             }
             if (newClient) {
               this.selectedClient = newClient;
-              if (newClient.listaPreciosId) {
-                this.selectedPriceListId = newClient.listaPreciosId;
-                const plSel = container.querySelector("#pos-select-pricelist");
-                if (plSel)
-                  plSel.value = newClient.listaPreciosId;
-                this.cart.forEach((item) => {
-                  const p = sellableProducts.find((prod) => prod.id === item.productoId);
-                  if (p && p.precios && p.precios[this.selectedPriceListId]) {
-                    item.precioUnitario = p.precios[this.selectedPriceListId];
-                  }
-                });
-              }
               updateClientTaxBadge();
               updateCartView();
-              Toast.success(`\xA1Cliente "${newClient.nombre}" creado y vinculado a la venta!`);
+              Toast.success(`\xA1Cliente "${newClient.nombre}" creado y vinculado!`);
             }
           });
         });
@@ -6410,8 +6417,73 @@ Generado por Nexa ERP.`;
       container.querySelector("#pos-inp-received").addEventListener("input", updateCartView);
       container.querySelector("#btn-clear-cart").addEventListener("click", () => {
         this.cart = [];
+        this.currentReceiptB64 = null;
         updateCartView();
       });
+      const paymentSel = container.querySelector("#pos-payment-method");
+      const attachmentRow = container.querySelector("#pos-attachment-row");
+      const lblAttachment = container.querySelector("#pos-lbl-attachment-method");
+      const btnUploadFile = container.querySelector("#pos-btn-upload-file");
+      const btnOpenCam = container.querySelector("#pos-btn-open-cam");
+      const fileInp = container.querySelector("#pos-inp-receipt-file");
+      const previewWrap = container.querySelector("#pos-receipt-preview");
+      const thumbImg = container.querySelector("#pos-img-receipt-thumb");
+      const btnRemoveReceipt = container.querySelector("#pos-btn-remove-receipt");
+      const updatePaymentAttachmentVisibility = () => {
+        const method = paymentSel.value;
+        if (method !== "Efectivo") {
+          attachmentRow.style.display = "block";
+          lblAttachment.textContent = `\u{1F4F8} Comprobante de Pago (${method}):`;
+        } else {
+          attachmentRow.style.display = "none";
+          this.currentReceiptB64 = null;
+          previewWrap.style.display = "none";
+        }
+      };
+      paymentSel.addEventListener("change", updatePaymentAttachmentVisibility);
+      updatePaymentAttachmentVisibility();
+      btnUploadFile.addEventListener("click", () => fileInp.click());
+      fileInp.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          this.compressImage(file, (b64) => {
+            this.currentReceiptB64 = b64;
+            thumbImg.src = b64;
+            previewWrap.style.display = "flex";
+            Toast.success("\xA1Comprobante adjuntado correctamente!");
+          });
+        }
+      });
+      btnOpenCam.addEventListener("click", () => {
+        this.openCameraCaptureModal((b64) => {
+          this.currentReceiptB64 = b64;
+          thumbImg.src = b64;
+          previewWrap.style.display = "flex";
+          Toast.success("\xA1Foto tomada y comprobante adjuntado!");
+        });
+      });
+      btnRemoveReceipt.addEventListener("click", () => {
+        this.currentReceiptB64 = null;
+        fileInp.value = "";
+        previewWrap.style.display = "none";
+        Toast.info("Comprobante removido.");
+      });
+      thumbImg.addEventListener("click", () => {
+        if (this.currentReceiptB64) {
+          this.openVoucherPreviewModal({
+            consecutivo: "Venta en Curso",
+            metodoPago: paymentSel.value,
+            total: container.querySelector("#pos-lbl-total").textContent,
+            comprobantePagoUrl: this.currentReceiptB64
+          });
+        }
+      });
+      const btnHist = container.querySelector("#btn-view-sales-history");
+      if (btnHist) {
+        btnHist.addEventListener("click", () => {
+          this.openSalesHistoryModal(tenantId);
+        });
+      }
       container.querySelector("#btn-process-sale").addEventListener("click", () => {
         if (this.cart.length === 0) {
           Toast.warning("El carrito de venta est\xE1 vac\xEDo.");
@@ -6471,9 +6543,12 @@ Generado por Nexa ERP.`;
                 precioUnitario: i.precioUnitario,
                 cantidad: i.cantidad,
                 total: i.cantidad * i.precioUnitario
-              }))
+              })),
+              comprobantePagoUrl: this.currentReceiptB64 || null,
+              comprobanteFecha: this.currentReceiptB64 ? (/* @__PURE__ */ new Date()).toISOString() : null
             };
-            await DB2.add(STORES.SALES, sale);
+            const savedSale = await DB2.add(STORES.SALES, sale);
+            sale.id = savedSale.id;
             for (const item of this.cart) {
               await KardexService.registerMovement({
                 tenantId,
@@ -6528,7 +6603,6 @@ Generado por Nexa ERP.`;
               valorNuevo: `${Formatters.currency(totals.total)} (${metodoPago})`
             });
             Toast.success(`\xA1Venta ${consecutivo} registrada con \xE9xito!`);
-            await DB2.downloadAutoBackup("PostVenta_" + consecutivo);
             const cartSnapshot = JSON.parse(JSON.stringify(this.cart));
             const clientSnapshot = this.selectedClient ? { ...this.selectedClient } : null;
             const totalUnidades = cartSnapshot.reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
@@ -6557,50 +6631,88 @@ Generado por Nexa ERP.`;
               responsable: "Mateo Osorio (Bodega & Despachos)",
               cajasTotal,
               contenidoDescripcion: "Productos de mantenimiento y embellecimiento automotriz Rayo Pro",
-              observaciones: "Manejar con precauci\xF3n. Productos de mantenimiento y embellecimiento automotriz Rayo Pro. No volcar."
+              observaciones: "Manejar con precauci\xF3n. No volcar."
             };
             try {
               await DB2.add(STORES.ORDERS_SHIPPING, shippingRecord);
             } catch (err) {
-              console.warn("Registro de orden de despacho autom\xE1tico:", err);
+              console.warn("Registro de orden de despacho:", err);
             }
             const invoiceHtml = PrintTemplates.saleInvoice(sale, sale.items);
             const labelHtml = PrintTemplates.shippingBoxLabel(shippingRecord);
+            const isNonCash = sale.metodoPago !== "Efectivo";
             const modalDialog = Modal.show({
               title: `\u2705 Venta ${consecutivo} Registrada con \xC9xito`,
               size: "lg",
               content: `
-          <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: rgba(0, 113, 227, 0.05); padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(0, 113, 227, 0.15);">
-            <div>
-              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">TOTAL COBRADO:</span>
-              <strong style="font-size: 16px; color: var(--brand-primary); margin-left: 6px;">${Formatters.currency(totals.total)}</strong>
-              <span class="badge badge-info" style="margin-left: 6px;">${metodoPago}</span>
-            </div>
-            <div>
-              <span style="font-size: 12px; color: var(--text-secondary);">Cliente: <strong>${sale.clienteNombre}</strong></span>
-            </div>
-          </div>
+              <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: rgba(0, 113, 227, 0.05); padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(0, 113, 227, 0.15);">
+                <div>
+                  <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">TOTAL COBRADO:</span>
+                  <strong style="font-size: 16px; color: var(--brand-primary); margin-left: 6px;">${Formatters.currency(totals.total)}</strong>
+                  <span class="badge badge-info" style="margin-left: 6px;">${metodoPago}</span>
+                </div>
+                <div>
+                  <span style="font-size: 12px; color: var(--text-secondary);">Cliente: <strong>${sale.clienteNombre}</strong></span>
+                </div>
+              </div>
 
-          <!-- PESTA\xD1AS DE VISTA PREVIA INTERACTIVA -->
-          <div class="d-flex items-center gap-2 mb-3" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-            <button type="button" class="btn btn-sm btn-primary" id="btn-tab-preview-invoice" style="font-weight: 700;">
-              \u{1F9FE} Factura / Comprobante POS
-            </button>
-            <button type="button" class="btn btn-sm btn-secondary" id="btn-tab-preview-shipping" style="font-weight: 700;">
-              \u{1F3F7}\uFE0F R\xF3tulo de Despacho (${cajasTotal} ${cajasTotal === 1 ? "Caja" : "Cajas"})
-            </button>
-          </div>
+              <!-- SECCI\xD3N COMPROBANTE POST-VENTA (C\xC1MARA / ARCHIVO) -->
+              ${isNonCash ? `
+                <div id="post-sale-voucher-wrap" class="card p-2 mb-3" style="background: ${sale.comprobantePagoUrl ? "rgba(16, 185, 129, 0.06)" : "rgba(245, 158, 11, 0.08)"}; border: 1px solid ${sale.comprobantePagoUrl ? "#10b981" : "#f59e0b"}; border-radius: 8px;">
+                  <div class="d-flex justify-between items-center flex-wrap gap-2">
+                    <div class="d-flex items-center gap-2">
+                      ${sale.comprobantePagoUrl ? `
+                        <img src="${sale.comprobantePagoUrl}" id="post-sale-voucher-img" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc; cursor: pointer;">
+                        <div>
+                          <strong style="color: #047857; font-size: 12px;">\u2713 Comprobante de Pago Adjuntado (${sale.metodoPago})</strong>
+                          <div class="text-xs text-muted" style="font-size: 10.5px;">Haz clic en la imagen o en el bot\xF3n para ver en grande</div>
+                        </div>
+                      ` : `
+                        <span style="font-size: 22px;">\u{1F4F1}</span>
+                        <div>
+                          <strong style="color: #b45309; font-size: 12.5px;">Pago registrado con ${sale.metodoPago}</strong>
+                          <div class="text-xs text-muted" style="font-size: 11px;">\xBFDeseas adjuntar la foto del v\xE1ucher o captura de pantalla ahora?</div>
+                        </div>
+                      `}
+                    </div>
+                    <div class="d-flex gap-2">
+                      ${sale.comprobantePagoUrl ? `
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-post-view-voucher" style="font-size: 11px;">\u{1F441}\uFE0F Ver Foto</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-post-change-voucher" style="font-size: 11px;">\u270F\uFE0F Cambiar</button>
+                      ` : `
+                        <button type="button" class="btn btn-secondary btn-sm font-bold" id="btn-post-upload-file" style="font-size: 11px;">
+                          \u{1F4C1} Adjuntar Archivo
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm font-bold" id="btn-post-open-cam" style="font-size: 11px;">
+                          \u{1F4F7} Activar C\xE1mara
+                        </button>
+                      `}
+                      <input type="file" id="post-sale-hidden-file" accept="image/*" style="display: none;">
+                    </div>
+                  </div>
+                </div>
+              ` : ""}
 
-          <!-- CONTENEDOR VISTA PREVIA FACTURA -->
-          <div id="view-preview-invoice" style="display: block; max-height: 420px; overflow-y: auto; background: #ffffff; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); color: #1e293b;">
-            ${invoiceHtml}
-          </div>
+              <!-- PESTA\xD1AS DE VISTA PREVIA INTERACTIVA -->
+              <div class="d-flex items-center gap-2 mb-3" style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                <button type="button" class="btn btn-sm btn-primary" id="btn-tab-preview-invoice" style="font-weight: 700;">
+                  \u{1F9FE} Factura / Comprobante POS
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" id="btn-tab-preview-shipping" style="font-weight: 700;">
+                  \u{1F3F7}\uFE0F R\xF3tulo de Despacho (${cajasTotal} ${cajasTotal === 1 ? "Caja" : "Cajas"})
+                </button>
+              </div>
 
-          <!-- CONTENEDOR VISTA PREVIA R\xD3TULO -->
-          <div id="view-preview-shipping" style="display: none; max-height: 420px; overflow-y: auto; background: #ffffff; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); color: #1e293b;">
-            ${labelHtml}
-          </div>
-        `,
+              <!-- CONTENEDOR VISTA PREVIA FACTURA -->
+              <div id="view-preview-invoice" style="display: block; max-height: 400px; overflow-y: auto; background: #ffffff; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); color: #1e293b;">
+                ${invoiceHtml}
+              </div>
+
+              <!-- CONTENEDOR VISTA PREVIA R\xD3TULO -->
+              <div id="view-preview-shipping" style="display: none; max-height: 400px; overflow-y: auto; background: #ffffff; padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); color: #1e293b;">
+                ${labelHtml}
+              </div>
+            `,
               footerButtons: [
                 {
                   label: "\u{1F3F7}\uFE0F Imprimir R\xF3tulo de Env\xEDo",
@@ -6623,6 +6735,67 @@ Generado por Nexa ERP.`;
                 }
               ]
             });
+            if (modalDialog && isNonCash) {
+              const hiddenPostFile = modalDialog.querySelector("#post-sale-hidden-file");
+              const handleVoucherSaved = async (b64) => {
+                sale.comprobantePagoUrl = b64;
+                sale.comprobanteFecha = (/* @__PURE__ */ new Date()).toISOString();
+                await DB2.update(STORES.SALES, sale);
+                Toast.success("\xA1Comprobante de pago guardado exitosamente!");
+                const wrap = modalDialog.querySelector("#post-sale-voucher-wrap");
+                if (wrap) {
+                  wrap.style.background = "rgba(16, 185, 129, 0.06)";
+                  wrap.style.borderColor = "#10b981";
+                  wrap.innerHTML = `
+                  <div class="d-flex justify-between items-center flex-wrap gap-2">
+                    <div class="d-flex items-center gap-2">
+                      <img src="${b64}" id="post-sale-voucher-img" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc; cursor: pointer;">
+                      <div>
+                        <strong style="color: #047857; font-size: 12px;">\u2713 Comprobante de Pago Adjuntado (${sale.metodoPago})</strong>
+                        <div class="text-xs text-muted" style="font-size: 10.5px;">Haz clic en la imagen para ver en grande</div>
+                      </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-post-view-voucher" style="font-size: 11px;">\u{1F441}\uFE0F Ver Foto</button>
+                    </div>
+                  </div>
+                `;
+                  wrap.querySelector("#btn-post-view-voucher").addEventListener("click", () => {
+                    this.openVoucherPreviewModal(sale);
+                  });
+                  wrap.querySelector("#post-sale-voucher-img").addEventListener("click", () => {
+                    this.openVoucherPreviewModal(sale);
+                  });
+                }
+              };
+              const btnPostUpload = modalDialog.querySelector("#btn-post-upload-file");
+              if (btnPostUpload && hiddenPostFile) {
+                btnPostUpload.addEventListener("click", () => hiddenPostFile.click());
+                hiddenPostFile.addEventListener("change", (e) => {
+                  const f = e.target.files[0];
+                  if (f)
+                    this.compressImage(f, handleVoucherSaved);
+                });
+              }
+              const btnPostCam = modalDialog.querySelector("#btn-post-open-cam");
+              if (btnPostCam) {
+                btnPostCam.addEventListener("click", () => {
+                  this.openCameraCaptureModal((b64) => handleVoucherSaved(b64));
+                });
+              }
+              const btnViewV = modalDialog.querySelector("#btn-post-view-voucher");
+              if (btnViewV) {
+                btnViewV.addEventListener("click", () => this.openVoucherPreviewModal(sale));
+              }
+              const imgV = modalDialog.querySelector("#post-sale-voucher-img");
+              if (imgV) {
+                imgV.addEventListener("click", () => this.openVoucherPreviewModal(sale));
+              }
+              const btnChangeV = modalDialog.querySelector("#btn-post-change-voucher");
+              if (btnChangeV && hiddenPostFile) {
+                btnChangeV.addEventListener("click", () => hiddenPostFile.click());
+              }
+            }
             if (modalDialog) {
               const tabInvBtn = modalDialog.querySelector("#btn-tab-preview-invoice");
               const tabShipBtn = modalDialog.querySelector("#btn-tab-preview-shipping");
@@ -6644,6 +6817,7 @@ Generado por Nexa ERP.`;
               }
             }
             this.cart = [];
+            this.currentReceiptB64 = null;
             this.render(container);
           }
         });
@@ -6662,6 +6836,518 @@ Generado por Nexa ERP.`;
         }
       };
       window.addEventListener("keydown", handlePosKeys);
+    },
+    /**
+     * MODAL: HISTORIAL COMPLETO DE VENTAS Y FACTURACIÓN
+     */
+    async openSalesHistoryModal(tenantId) {
+      const [sales, shippingOrders] = await Promise.all([
+        DB2.getAll(STORES.SALES, tenantId),
+        DB2.getAll(STORES.ORDERS_SHIPPING, tenantId)
+      ]);
+      sales.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+      let filteredSales = [...sales];
+      const historyDialog = Modal.show({
+        title: "\u{1F4DC} Historial Completo de Ventas & Facturaci\xF3n Mostrador",
+        size: "xl",
+        content: '<div id="sales-history-modal-container"></div>',
+        footerButtons: [{ label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }]
+      });
+      const root = historyDialog.querySelector("#sales-history-modal-container");
+      const renderHistoryContent = () => {
+        const totalFacturado = filteredSales.reduce((acc, s) => acc + (Number(s.total) || 0), 0);
+        const conComprobante = filteredSales.filter((s) => !!s.comprobantePagoUrl).length;
+        root.innerHTML = `
+        <!-- KPIs Superiores de Ventas -->
+        <div class="pricing-kpi-grid mb-3">
+          <div class="pricing-kpi-card kpi-price">
+            <div class="pricing-kpi-info">
+              <span class="pricing-kpi-label"><span>\u{1F4B0}</span> Facturaci\xF3n Total</span>
+              <span class="pricing-kpi-sub">${filteredSales.length} facturas</span>
+            </div>
+            <div class="pricing-kpi-data">
+              <span class="pricing-kpi-value" style="color: var(--brand-primary);">${Formatters.currency(totalFacturado)}</span>
+              <span class="badge badge-primary" style="font-size: 9.5px;">Ventas</span>
+            </div>
+          </div>
+
+          <div class="pricing-kpi-card kpi-cost">
+            <div class="pricing-kpi-info">
+              <span class="pricing-kpi-label"><span>\u{1F9FE}</span> Facturas Registradas</span>
+              <span class="pricing-kpi-sub">Total emitidas</span>
+            </div>
+            <div class="pricing-kpi-data">
+              <span class="pricing-kpi-value" style="color: #0284c7;">${filteredSales.length}</span>
+              <span class="badge badge-info" style="font-size: 9.5px;">Documentos</span>
+            </div>
+          </div>
+
+          <div class="pricing-kpi-card kpi-profit">
+            <div class="pricing-kpi-info">
+              <span class="pricing-kpi-label"><span>\u{1F4F8}</span> Con Comprobante Adjunto</span>
+              <span class="pricing-kpi-sub">Vouchers verificados</span>
+            </div>
+            <div class="pricing-kpi-data">
+              <span class="pricing-kpi-value" style="color: #047857;">${conComprobante}</span>
+              <span class="badge badge-success font-bold" style="font-size: 9.5px;">Respaldados</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra de B\xFAsqueda y Filtro por M\xE9todo de Pago -->
+        <div class="card p-2 mb-3" style="background: var(--bg-surface-solid); border-radius: 8px;">
+          <div class="d-flex justify-between items-center gap-2 flex-wrap">
+            <div style="flex: 2; min-width: 220px;">
+              <input type="text" id="hist-search-inp" class="form-control form-control-sm" placeholder="\u{1F50D} Buscar por Factura, Cliente o NIT...">
+            </div>
+            <div style="flex: 1; min-width: 170px;">
+              <select id="hist-filter-method" class="form-select form-select-sm font-bold">
+                <option value="">-- Todos los M\xE9todos de Pago --</option>
+                <option value="Efectivo">\u{1F4B5} Efectivo</option>
+                <option value="Nequi">\u{1F4F1} Nequi</option>
+                <option value="Daviplata">\u{1F4F1} Daviplata</option>
+                <option value="Transferencia">\u{1F3E6} Transferencia Bancaria</option>
+                <option value="Tarjeta">\u{1F4B3} Tarjeta D\xE9bito / Cr\xE9dito</option>
+                <option value="Cr\xE9dito">\u{1F4D1} Cr\xE9dito</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Facturas -->
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-sm text-xs" style="margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th style="width: 110px;">No. Factura</th>
+                <th style="width: 130px;">Fecha / Hora</th>
+                <th>Cliente</th>
+                <th style="width: 120px;">M\xE9todo Pago</th>
+                <th class="text-right" style="width: 100px;">Total</th>
+                <th class="text-center" style="width: 120px;">Comprobante</th>
+                <th class="text-right" style="width: 190px;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="hist-sales-tbody">
+              ${renderRowsHtml(filteredSales)}
+            </tbody>
+          </table>
+        </div>
+        <input type="file" id="hist-hidden-attach-file" accept="image/*" style="display: none;">
+      `;
+        bindHistoryEvents();
+      };
+      const renderRowsHtml = (list) => {
+        if (list.length === 0) {
+          return `<tr><td colspan="7" class="text-center text-muted p-4">No se encontraron ventas con los filtros aplicados.</td></tr>`;
+        }
+        return list.map((s) => {
+          const isNonCash = s.metodoPago !== "Efectivo";
+          const d = new Date(s.fecha || Date.now());
+          const fechaStr = d.toLocaleDateString("es-CO");
+          const horaStr = d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+          return `
+          <tr>
+            <td>
+              <strong style="color: var(--brand-primary); font-size: 12px;">${s.consecutivo}</strong>
+              <div>
+                <span class="badge ${s.estado === "PAGADA" ? "badge-success" : "badge-warning"}" style="font-size: 9px;">
+                  ${s.estado || "PAGADA"}
+                </span>
+              </div>
+            </td>
+            <td>
+              <div>${fechaStr}</div>
+              <div class="text-muted" style="font-size: 10px;">${horaStr}</div>
+            </td>
+            <td>
+              <strong style="color: var(--text-main); font-size: 11.5px;">${s.clienteNombre || "Mostrador"}</strong>
+              <div class="text-muted" style="font-size: 10px;">NIT/CC: ${s.clienteNit || "-"}</div>
+            </td>
+            <td>
+              <span class="badge badge-info font-bold">${s.metodoPago || "Efectivo"}</span>
+            </td>
+            <td class="text-right font-bold" style="font-size: 12.5px; color: var(--text-main);">
+              ${Formatters.currency(s.total || 0)}
+            </td>
+            <td class="text-center">
+              ${s.comprobantePagoUrl ? `
+                <button type="button" class="btn btn-secondary btn-sm btn-view-voucher" data-id="${s.id}" style="padding: 2px 8px; font-size: 10.5px; font-weight: 700;">
+                  \u{1F4F8} Ver Foto
+                </button>
+              ` : isNonCash ? `
+                <button type="button" class="btn btn-primary btn-sm btn-attach-voucher-hist" data-id="${s.id}" style="padding: 2px 8px; font-size: 10.5px; font-weight: 700;">
+                  \u{1F4F7} + Adjuntar
+                </button>
+              ` : `
+                <span class="text-muted" style="font-size: 10.5px;">Efectivo</span>
+              `}
+            </td>
+            <td class="text-right">
+              <div class="d-flex justify-end gap-1">
+                <button type="button" class="btn btn-secondary btn-sm btn-hist-invoice" data-id="${s.id}" title="Imprimir Factura" style="padding: 3px 7px; font-size: 11px;">
+                  \u{1F9FE} Factura
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm btn-hist-shipping" data-id="${s.id}" title="Imprimir R\xF3tulo" style="padding: 3px 7px; font-size: 11px;">
+                  \u{1F3F7}\uFE0F R\xF3tulo
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm btn-hist-detail" data-id="${s.id}" title="Ver Detalle" style="padding: 3px 7px; font-size: 11px;">
+                  \u{1F441}\uFE0F
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+        }).join("");
+      };
+      const bindHistoryEvents = () => {
+        const searchInp = root.querySelector("#hist-search-inp");
+        const methodSel = root.querySelector("#hist-filter-method");
+        const tbody = root.querySelector("#hist-sales-tbody");
+        const hiddenFile = root.querySelector("#hist-hidden-attach-file");
+        let targetSaleForAttach = null;
+        const applyFilters = () => {
+          const q = (searchInp.value || "").toLowerCase().trim();
+          const m = methodSel.value;
+          filteredSales = sales.filter((s) => {
+            const matchQ = !q || s.consecutivo && s.consecutivo.toLowerCase().includes(q) || s.clienteNombre && s.clienteNombre.toLowerCase().includes(q) || s.clienteNit && s.clienteNit.toLowerCase().includes(q);
+            const matchM = !m || s.metodoPago === m;
+            return matchQ && matchM;
+          });
+          tbody.innerHTML = renderRowsHtml(filteredSales);
+          bindRowActions();
+        };
+        searchInp.addEventListener("input", applyFilters);
+        methodSel.addEventListener("change", applyFilters);
+        const bindRowActions = () => {
+          tbody.querySelectorAll(".btn-view-voucher").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const sid = btn.getAttribute("data-id");
+              const sale = sales.find((s) => s.id === sid);
+              if (sale)
+                this.openVoucherPreviewModal(sale);
+            });
+          });
+          tbody.querySelectorAll(".btn-attach-voucher-hist").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const sid = btn.getAttribute("data-id");
+              targetSaleForAttach = sales.find((s) => s.id === sid);
+              if (!targetSaleForAttach)
+                return;
+              Modal.show({
+                title: `\u{1F4F8} Adjuntar Comprobante - Factura ${targetSaleForAttach.consecutivo}`,
+                size: "sm",
+                content: `
+                <p class="text-xs text-muted mb-3">Elige c\xF3mo deseas adjuntar el comprobante para esta factura:</p>
+                <div class="d-flex flex-col gap-2">
+                  <button type="button" class="btn btn-secondary btn-sm p-3 text-left font-bold" id="btn-hist-subir-archivo">
+                    \u{1F4C1} Subir Imagen / Captura de Pantalla
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm p-3 text-left font-bold" id="btn-hist-tomar-foto">
+                    \u{1F4F7} Activar C\xE1mara y Tomar Foto
+                  </button>
+                </div>
+              `,
+                footerButtons: [{ label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() }]
+              });
+              setTimeout(() => {
+                const bSubir = document.getElementById("btn-hist-subir-archivo");
+                const bFoto = document.getElementById("btn-hist-tomar-foto");
+                if (bSubir) {
+                  bSubir.addEventListener("click", () => {
+                    Modal.close();
+                    hiddenFile.click();
+                  });
+                }
+                if (bFoto) {
+                  bFoto.addEventListener("click", () => {
+                    Modal.close();
+                    this.openCameraCaptureModal(async (b64) => {
+                      targetSaleForAttach.comprobantePagoUrl = b64;
+                      targetSaleForAttach.comprobanteFecha = (/* @__PURE__ */ new Date()).toISOString();
+                      await DB2.update(STORES.SALES, targetSaleForAttach);
+                      Toast.success(`\xA1Comprobante guardado en la factura ${targetSaleForAttach.consecutivo}!`);
+                      renderHistoryContent();
+                    });
+                  });
+                }
+              }, 50);
+            });
+          });
+          tbody.querySelectorAll(".btn-hist-invoice").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const sid = btn.getAttribute("data-id");
+              const s = sales.find((sale) => sale.id === sid);
+              if (s) {
+                const html = PrintTemplates.saleInvoice(s, s.items || []);
+                ExportService.printDocument(html, `Factura_${s.consecutivo}`);
+              }
+            });
+          });
+          tbody.querySelectorAll(".btn-hist-shipping").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const sid = btn.getAttribute("data-id");
+              const s = sales.find((sale) => sale.id === sid);
+              const ship = shippingOrders.find((o) => o.ventaId === sid || o.documentoNumero === s?.consecutivo);
+              if (ship) {
+                const html = PrintTemplates.shippingBoxLabel(ship);
+                ExportService.printDocument(html, `Rotulo_${ship.numeroGuia}`);
+              } else {
+                const instantShip = {
+                  transportadora: "Coordinadora Mercantil",
+                  numeroGuia: `GUIA-${s?.consecutivo.replace(/\D/g, "") || "77092184531"}`,
+                  clienteNombre: s?.clienteNombre || "Cliente General",
+                  nitCc: s?.clienteNit || "222222222222",
+                  telefono: "3124567890",
+                  ciudad: "Medell\xEDn",
+                  departamento: "Antioquia",
+                  direccion: "Direcci\xF3n Comercial",
+                  cajasTotal: 1,
+                  contenidoDescripcion: "Productos Rayo Pro"
+                };
+                const html = PrintTemplates.shippingBoxLabel(instantShip);
+                ExportService.printDocument(html, `Rotulo_${instantShip.numeroGuia}`);
+              }
+            });
+          });
+          tbody.querySelectorAll(".btn-hist-detail").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const sid = btn.getAttribute("data-id");
+              const s = sales.find((sale) => sale.id === sid);
+              if (s) {
+                Modal.show({
+                  title: `Detalle de Factura ${s.consecutivo}`,
+                  size: "md",
+                  content: `
+                  <div class="mb-3 p-2 card" style="background: var(--bg-surface-solid); border-radius: 8px;">
+                    <div class="d-flex justify-between text-xs">
+                      <span>Cliente: <strong>${s.clienteNombre}</strong></span>
+                      <span>Fecha: <strong>${new Date(s.fecha).toLocaleString("es-CO")}</strong></span>
+                    </div>
+                    <div class="d-flex justify-between text-xs mt-1">
+                      <span>M\xE9todo: <strong>${s.metodoPago}</strong></span>
+                      <span>Estado: <strong class="text-success">${s.estado}</strong></span>
+                    </div>
+                  </div>
+                  <table class="table table-sm text-xs mb-3">
+                    <thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-right">Unitario</th><th class="text-right">Subtotal</th></tr></thead>
+                    <tbody>
+                      ${(s.items || []).map((i) => `
+                        <tr>
+                          <td><strong>${i.nombre}</strong> <span class="text-muted">(${i.sku})</span></td>
+                          <td class="text-center font-bold">${i.cantidad}</td>
+                          <td class="text-right">${Formatters.currency(i.precioUnitario)}</td>
+                          <td class="text-right font-bold">${Formatters.currency(i.total)}</td>
+                        </tr>
+                      `).join("")}
+                    </tbody>
+                  </table>
+                  <div class="d-flex justify-between font-bold" style="font-size: 14px; border-top: 1px solid var(--border-color); padding-top: 6px;">
+                    <span>TOTAL FACTURADO:</span>
+                    <span style="color: var(--brand-primary);">${Formatters.currency(s.total)}</span>
+                  </div>
+                `,
+                  footerButtons: [{ label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }]
+                });
+              }
+            });
+          });
+        };
+        if (hiddenFile) {
+          hiddenFile.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file && targetSaleForAttach) {
+              this.compressImage(file, async (b64) => {
+                targetSaleForAttach.comprobantePagoUrl = b64;
+                targetSaleForAttach.comprobanteFecha = (/* @__PURE__ */ new Date()).toISOString();
+                await DB2.update(STORES.SALES, targetSaleForAttach);
+                Toast.success(`\xA1Comprobante guardado en la factura ${targetSaleForAttach.consecutivo}!`);
+                renderHistoryContent();
+              });
+            }
+          });
+        }
+        bindRowActions();
+      };
+      renderHistoryContent();
+    },
+    /**
+     * MODAL: VISOR DE COMPROBANTE DE PAGO EN ALTA RESOLUCIÓN
+     */
+    openVoucherPreviewModal(sale) {
+      Modal.show({
+        title: `\u{1F4F8} Comprobante de Pago - Factura ${sale.consecutivo}`,
+        size: "md",
+        content: `
+        <div style="text-align: center;">
+          <div class="mb-2 p-2 card d-flex justify-between items-center text-xs" style="background: var(--bg-surface-solid); border-radius: 8px;">
+            <span>M\xE9todo: <strong>${sale.metodoPago}</strong></span>
+            <span>Total: <strong style="color: var(--brand-primary); font-size: 13px;">${Formatters.currency(sale.total)}</strong></span>
+          </div>
+          <div style="max-height: 480px; overflow-y: auto; background: #1e293b; padding: 10px; border-radius: 8px;">
+            <img src="${sale.comprobantePagoUrl}" style="max-width: 100%; max-height: 460px; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.3);">
+          </div>
+        </div>
+      `,
+        footerButtons: [
+          {
+            label: "\u{1F5A8}\uFE0F Imprimir / Descargar",
+            class: "btn-primary",
+            onClick: () => {
+              const printWin = window.open("", "_blank");
+              printWin.document.write(`
+              <html>
+                <head><title>Comprobante ${sale.consecutivo}</title></head>
+                <body style="text-align:center; font-family:sans-serif; padding:20px;">
+                  <h2>Comprobante de Pago - Factura ${sale.consecutivo}</h2>
+                  <p>Cliente: ${sale.clienteNombre || "Mostrador"} | M\xE9todo: ${sale.metodoPago} | Total: ${Formatters.currency(sale.total)}</p>
+                  <img src="${sale.comprobantePagoUrl}" style="max-width:90%; height:auto;">
+                  <script>window.onload = () => { window.print(); window.close(); }<\/script>
+                </body>
+              </html>
+            `);
+              printWin.document.close();
+            }
+          },
+          { label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }
+        ]
+      });
+    },
+    /**
+     * MODAL: CAPTURA DE FOTO CON CÁMARA INTERACTIVA (WEBRTC + FALLBACK)
+     */
+    openCameraCaptureModal(onCaptured) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        Toast.info("C\xE1mara web no soportada directamente. Abriendo c\xE1mara del dispositivo...");
+        const fallbackInp = document.createElement("input");
+        fallbackInp.type = "file";
+        fallbackInp.accept = "image/*";
+        fallbackInp.setAttribute("capture", "environment");
+        fallbackInp.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file)
+            this.compressImage(file, onCaptured);
+        };
+        fallbackInp.click();
+        return;
+      }
+      let stream = null;
+      let currentFacingMode = "environment";
+      const modalDialog = Modal.show({
+        title: "\u{1F4F7} Tomar Foto del Comprobante",
+        size: "md",
+        content: `
+        <div style="text-align: center;">
+          <p class="text-xs text-muted mb-2">Apunta la c\xE1mara al recibo, transferencia o comprobante y presiona "Capturar Foto".</p>
+          <div style="position: relative; width: 100%; max-height: 380px; background: #000; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <video id="pos-cam-video" autoplay playsinline style="width: 100%; max-height: 380px; object-fit: contain;"></video>
+            <canvas id="pos-cam-canvas" style="display: none;"></canvas>
+          </div>
+          <div class="d-flex justify-between items-center mt-3">
+            <button type="button" class="btn btn-secondary btn-sm" id="pos-cam-switch">\u{1F504} Cambiar C\xE1mara</button>
+            <button type="button" class="btn btn-primary btn-sm font-bold" id="pos-cam-snap" style="padding: 6px 18px; font-size: 13px;">
+              \u{1F4F8} Capturar Foto
+            </button>
+          </div>
+        </div>
+      `,
+        footerButtons: [
+          {
+            label: "Cancelar",
+            class: "btn-secondary",
+            onClick: () => {
+              if (stream)
+                stream.getTracks().forEach((t) => t.stop());
+              Modal.close();
+            }
+          }
+        ],
+        onClose: () => {
+          if (stream)
+            stream.getTracks().forEach((t) => t.stop());
+        }
+      });
+      const videoEl = modalDialog.querySelector("#pos-cam-video");
+      const canvasEl = modalDialog.querySelector("#pos-cam-canvas");
+      const snapBtn = modalDialog.querySelector("#pos-cam-snap");
+      const switchBtn = modalDialog.querySelector("#pos-cam-switch");
+      const startCamera = async (facing) => {
+        try {
+          if (stream)
+            stream.getTracks().forEach((t) => t.stop());
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+          });
+          videoEl.srcObject = stream;
+        } catch (err) {
+          console.warn("Error al iniciar c\xE1mara directa:", err);
+          Toast.warning("No se pudo acceder a la c\xE1mara directa. Abriendo selector de fotos...");
+          Modal.close();
+          const fallbackInp = document.createElement("input");
+          fallbackInp.type = "file";
+          fallbackInp.accept = "image/*";
+          fallbackInp.setAttribute("capture", "environment");
+          fallbackInp.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file)
+              this.compressImage(file, onCaptured);
+          };
+          fallbackInp.click();
+        }
+      };
+      startCamera(currentFacingMode);
+      switchBtn.addEventListener("click", () => {
+        currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+        startCamera(currentFacingMode);
+      });
+      snapBtn.addEventListener("click", () => {
+        if (!videoEl.videoWidth) {
+          Toast.warning("Esperando se\xF1al de la c\xE1mara...");
+          return;
+        }
+        canvasEl.width = videoEl.videoWidth;
+        canvasEl.height = videoEl.videoHeight;
+        const ctx = canvasEl.getContext("2d");
+        ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+        const b64 = canvasEl.toDataURL("image/jpeg", 0.82);
+        if (stream)
+          stream.getTracks().forEach((t) => t.stop());
+        Modal.close();
+        onCaptured(b64);
+      });
+    },
+    /**
+     * Comprime y escala cualquier foto a un JPEG liviano (~100-200KB) para cuidar la memoria IndexedDB
+     */
+    compressImage(file, callback) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1200;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round(h * maxDim / w);
+              w = maxDim;
+            } else {
+              w = Math.round(w * maxDim / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressedB64 = canvas.toDataURL("image/jpeg", 0.82);
+          callback(compressedB64);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
     }
   };
 
