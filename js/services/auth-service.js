@@ -40,7 +40,8 @@ export const ROLE_ALLOWED_MODULES = {
     'products', 'inventory', 'production',
     'purchases', 'cash', 'expenses', 'cxc', 'cxp',
     'reports', 'users', 'audit', 'settings',
-    'backup', 'importer', 'integrations', 'documents'
+    'backup', 'importer', 'integrations', 'documents',
+    'formulas-vault', 'pricing-calculator'
   ],
 
   // GERENCIA: Enfoque estratégico, comercial, financiero y operativo completo.
@@ -49,7 +50,8 @@ export const ROLE_ALLOWED_MODULES = {
     'dashboard', 'sales-pos', 'clients', 'shipping',
     'products', 'inventory', 'production',
     'purchases', 'cash', 'expenses', 'cxc', 'cxp',
-    'reports', 'settings', 'backup', 'importer', 'integrations', 'documents'
+    'reports', 'settings', 'backup', 'importer', 'integrations', 'documents',
+    'formulas-vault', 'pricing-calculator'
   ],
 
   // ASESOR COMERCIAL / VENTAS: POS, Clientes 360, Pedidos y Despachos, Catálogo y Documentos
