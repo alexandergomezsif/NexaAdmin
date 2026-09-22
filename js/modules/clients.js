@@ -64,12 +64,13 @@ export const ClientsModule = {
     const tenant = TenantServiceInstance.getActiveTenant();
     const tenantId = tenant ? tenant.id : 'tenant_rayopro';
 
-    const [clients, priceLists, sales, cxcList, shipments] = await Promise.all([
+    const [clients, priceLists, sales, cxcList, shipments, products] = await Promise.all([
       DB.getAll(STORES.CUSTOMERS, tenantId),
       DB.getAll(STORES.PRICE_LISTS, tenantId),
       DB.getAll(STORES.SALES, tenantId),
       DB.getAll(STORES.RECEIVABLES_CXC, tenantId),
-      DB.getAll(STORES.ORDERS_SHIPPING, tenantId)
+      DB.getAll(STORES.ORDERS_SHIPPING, tenantId),
+      DB.getAll(STORES.PRODUCTS, tenantId)
     ]);
 
     container.innerHTML = `
@@ -190,7 +191,7 @@ export const ClientsModule = {
     const newClientBtn = container.querySelector('#btn-new-client');
     if (newClientBtn) {
       newClientBtn.addEventListener('click', () => {
-        this.openClientModal(null, tenantId, priceLists, () => this.render(container));
+        this.openClientModal(null, tenantId, priceLists, products, () => this.render(container));
       });
     }
 
@@ -199,7 +200,7 @@ export const ClientsModule = {
       if (editBtn) {
         const id = editBtn.getAttribute('data-id');
         const client = clients.find(c => c.id === id);
-        this.openClientModal(client, tenantId, priceLists, () => this.render(container));
+        this.openClientModal(client, tenantId, priceLists, products, () => this.render(container));
         return;
       }
 
@@ -218,7 +219,7 @@ export const ClientsModule = {
   /**
    * Modal de Creación / Edición de Cliente
    */
-  openClientModal(client = null, tenantId, priceLists, onSaved) {
+  openClientModal(client = null, tenantId, priceLists, products = [], onSaved) {
     const isEdit = !!client;
 
     const content = `
@@ -382,6 +383,14 @@ export const ClientsModule = {
             const nitCc = formData.get('nitCc').replace(/\D/g, '');
             const calculatedDv = DianDV.calculate(nitCc);
 
+            // Recopilar precios especiales por producto
+            const preciosEspeciales = {};
+            dialog.querySelectorAll('.special-price-input').forEach(inp => {
+              const pid = inp.getAttribute('data-product-id');
+              const val = Number(inp.value);
+              if (pid && val > 0) preciosEspeciales[pid] = val;
+            });
+
             const payload = {
               tenantId,
               codigo: formData.get('codigo'),
@@ -402,6 +411,9 @@ export const ClientsModule = {
               cupoCredito: Number(formData.get('cupoCredito') || 0),
               diasCredito: Number(formData.get('diasCredito') || 0),
               observaciones: formData.get('observaciones'),
+              preciosEspeciales: Object.keys(preciosEspeciales).length > 0
+                ? preciosEspeciales
+                : (client ? (client.preciosEspeciales || {}) : {}),
               estado: 'ACTIVO'
             };
 
