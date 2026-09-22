@@ -340,11 +340,115 @@ export const PurchasesModule = {
       </div>
     `;
 
-    Modal.show({
+    const suppDialog = Modal.show({
       title: 'Gestión de Proveedores',
       content,
       size: 'lg',
       footerButtons: [{ label: 'Cerrar', class: 'btn-secondary', onClick: () => Modal.close() }]
+    });
+
+    // Botón "Nuevo Proveedor" dentro del modal
+    const btnAddInner = suppDialog.querySelector('#btn-add-supplier-inner');
+    if (btnAddInner) {
+      btnAddInner.addEventListener('click', () => {
+        this.openAddSupplierForm(tenantId, async () => {
+          // Recargar proveedores y volver al directorio
+          const updatedSuppliers = await DB.getAll(STORES.SUPPLIERS, tenantId);
+          Modal.close();
+          this.openSuppliersModal(tenantId, updatedSuppliers, onUpdated);
+          if (onUpdated) onUpdated();
+        });
+      });
+    }
+  },
+
+  openAddSupplierForm(tenantId, onSaved) {
+    const content = `
+      <form id="new-supplier-form">
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Razón Social / Nombre *</label>
+            <input type="text" class="form-control" name="razonSocial" required placeholder="Ej: Distribuidora Química S.A.S">
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIT / Cédula</label>
+            <input type="text" class="form-control" name="nitCc" placeholder="Ej: 900123456">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Persona de Contacto</label>
+            <input type="text" class="form-control" name="contacto" placeholder="Ej: María González">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono / WhatsApp</label>
+            <input type="text" class="form-control" name="telefono" placeholder="3001234567">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" name="email" placeholder="proveedor@empresa.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ciudad</label>
+            <input type="text" class="form-control" name="ciudad" value="Medellín">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Categoría de Insumos</label>
+            <select class="form-select" name="categoria">
+              <option value="Insumos Químicos">Insumos Químicos</option>
+              <option value="Empaque y Envases">Empaque y Envases</option>
+              <option value="Materias Primas">Materias Primas</option>
+              <option value="Servicios">Servicios</option>
+              <option value="Logística">Logística</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Días de Crédito</label>
+            <input type="number" class="form-control" name="diasCredito" value="30" min="0">
+          </div>
+        </div>
+      </form>
+    `;
+
+    const dialog = Modal.show({
+      title: '➕ Nuevo Proveedor',
+      content,
+      size: 'md',
+      footerButtons: [
+        { label: 'Cancelar', class: 'btn-secondary', onClick: () => Modal.close() },
+        {
+          label: 'Guardar Proveedor',
+          class: 'btn-primary',
+          onClick: async () => {
+            const form = dialog.querySelector('#new-supplier-form');
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+            const fd = new FormData(form);
+            const payload = {
+              tenantId,
+              razonSocial: fd.get('razonSocial'),
+              nitCc: fd.get('nitCc') || '0',
+              dv: '0',
+              contacto: fd.get('contacto'),
+              telefono: fd.get('telefono'),
+              email: fd.get('email'),
+              ciudad: fd.get('ciudad'),
+              categoria: fd.get('categoria'),
+              diasCredito: Number(fd.get('diasCredito')) || 30,
+              estado: 'ACTIVO',
+              creadoEn: new Date().toISOString()
+            };
+            await DB.add(STORES.SUPPLIERS, payload);
+            Toast.success(`Proveedor "${payload.razonSocial}" registrado.`);
+            Modal.close();
+            if (onSaved) onSaved();
+          }
+        }
+      ]
     });
   }
 };

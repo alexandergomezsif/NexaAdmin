@@ -3417,12 +3417,13 @@ Generado por Nexa ERP.`;
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
       const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [clients, priceLists, sales, cxcList, shipments] = await Promise.all([
+      const [clients, priceLists, sales, cxcList, shipments, products] = await Promise.all([
         DB2.getAll(STORES.CUSTOMERS, tenantId),
         DB2.getAll(STORES.PRICE_LISTS, tenantId),
         DB2.getAll(STORES.SALES, tenantId),
         DB2.getAll(STORES.RECEIVABLES_CXC, tenantId),
-        DB2.getAll(STORES.ORDERS_SHIPPING, tenantId)
+        DB2.getAll(STORES.ORDERS_SHIPPING, tenantId),
+        DB2.getAll(STORES.PRODUCTS, tenantId)
       ]);
       container.innerHTML = `
       <div class="view-header">
@@ -3537,7 +3538,7 @@ Generado por Nexa ERP.`;
       const newClientBtn = container.querySelector("#btn-new-client");
       if (newClientBtn) {
         newClientBtn.addEventListener("click", () => {
-          this.openClientModal(null, tenantId, priceLists, () => this.render(container));
+          this.openClientModal(null, tenantId, priceLists, products, () => this.render(container));
         });
       }
       container.addEventListener("click", (e) => {
@@ -3545,7 +3546,7 @@ Generado por Nexa ERP.`;
         if (editBtn) {
           const id = editBtn.getAttribute("data-id");
           const client = clients.find((c) => c.id === id);
-          this.openClientModal(client, tenantId, priceLists, () => this.render(container));
+          this.openClientModal(client, tenantId, priceLists, products, () => this.render(container));
           return;
         }
         const viewBtn = e.target.closest(".btn-view-client");
@@ -3562,7 +3563,7 @@ Generado por Nexa ERP.`;
     /**
      * Modal de Creación / Edición de Cliente
      */
-    openClientModal(client = null, tenantId, priceLists, onSaved) {
+    openClientModal(client = null, tenantId, priceLists, products = [], onSaved) {
       const isEdit = !!client;
       const content = `
       <form id="client-form">
@@ -3722,6 +3723,13 @@ Generado por Nexa ERP.`;
               const formData = new FormData(form);
               const nitCc = formData.get("nitCc").replace(/\D/g, "");
               const calculatedDv = DianDV.calculate(nitCc);
+              const preciosEspeciales = {};
+              dialog.querySelectorAll(".special-price-input").forEach((inp) => {
+                const pid = inp.getAttribute("data-product-id");
+                const val = Number(inp.value);
+                if (pid && val > 0)
+                  preciosEspeciales[pid] = val;
+              });
               const payload = {
                 tenantId,
                 codigo: formData.get("codigo"),
@@ -3742,6 +3750,7 @@ Generado por Nexa ERP.`;
                 cupoCredito: Number(formData.get("cupoCredito") || 0),
                 diasCredito: Number(formData.get("diasCredito") || 0),
                 observaciones: formData.get("observaciones"),
+                preciosEspeciales: Object.keys(preciosEspeciales).length > 0 ? preciosEspeciales : client ? client.preciosEspeciales || {} : {},
                 estado: "ACTIVO"
               };
               if (isEdit) {
@@ -5966,11 +5975,115 @@ Generado por Nexa ERP.`;
         </table>
       </div>
     `;
-      Modal.show({
+      const suppDialog = Modal.show({
         title: "Gesti\xF3n de Proveedores",
         content,
         size: "lg",
         footerButtons: [{ label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }]
+      });
+      const btnAddInner = suppDialog.querySelector("#btn-add-supplier-inner");
+      if (btnAddInner) {
+        btnAddInner.addEventListener("click", () => {
+          this.openAddSupplierForm(tenantId, async () => {
+            const updatedSuppliers = await DB2.getAll(STORES.SUPPLIERS, tenantId);
+            Modal.close();
+            this.openSuppliersModal(tenantId, updatedSuppliers, onUpdated);
+            if (onUpdated)
+              onUpdated();
+          });
+        });
+      }
+    },
+    openAddSupplierForm(tenantId, onSaved) {
+      const content = `
+      <form id="new-supplier-form">
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Raz\xF3n Social / Nombre *</label>
+            <input type="text" class="form-control" name="razonSocial" required placeholder="Ej: Distribuidora Qu\xEDmica S.A.S">
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIT / C\xE9dula</label>
+            <input type="text" class="form-control" name="nitCc" placeholder="Ej: 900123456">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Persona de Contacto</label>
+            <input type="text" class="form-control" name="contacto" placeholder="Ej: Mar\xEDa Gonz\xE1lez">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tel\xE9fono / WhatsApp</label>
+            <input type="text" class="form-control" name="telefono" placeholder="3001234567">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" name="email" placeholder="proveedor@empresa.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ciudad</label>
+            <input type="text" class="form-control" name="ciudad" value="Medell\xEDn">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Categor\xEDa de Insumos</label>
+            <select class="form-select" name="categoria">
+              <option value="Insumos Qu\xEDmicos">Insumos Qu\xEDmicos</option>
+              <option value="Empaque y Envases">Empaque y Envases</option>
+              <option value="Materias Primas">Materias Primas</option>
+              <option value="Servicios">Servicios</option>
+              <option value="Log\xEDstica">Log\xEDstica</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">D\xEDas de Cr\xE9dito</label>
+            <input type="number" class="form-control" name="diasCredito" value="30" min="0">
+          </div>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: "\u2795 Nuevo Proveedor",
+        content,
+        size: "md",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: "Guardar Proveedor",
+            class: "btn-primary",
+            onClick: async () => {
+              const form = dialog.querySelector("#new-supplier-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              const fd = new FormData(form);
+              const payload = {
+                tenantId,
+                razonSocial: fd.get("razonSocial"),
+                nitCc: fd.get("nitCc") || "0",
+                dv: "0",
+                contacto: fd.get("contacto"),
+                telefono: fd.get("telefono"),
+                email: fd.get("email"),
+                ciudad: fd.get("ciudad"),
+                categoria: fd.get("categoria"),
+                diasCredito: Number(fd.get("diasCredito")) || 30,
+                estado: "ACTIVO",
+                creadoEn: (/* @__PURE__ */ new Date()).toISOString()
+              };
+              await DB2.add(STORES.SUPPLIERS, payload);
+              Toast.success(`Proveedor "${payload.razonSocial}" registrado.`);
+              Modal.close();
+              if (onSaved)
+                onSaved();
+            }
+          }
+        ]
       });
     }
   };
@@ -6089,7 +6202,7 @@ Generado por Nexa ERP.`;
                   </div>
                 </div>
                 <div class="form-group mb-0">
-                  <label class="form-label text-xs font-bold">LISTA DE PRECIOS:</label>
+                  <label class="form-label text-xs font-bold">LISTA PRECIOS (MOSTRADOR):</label>
                   <select class="form-select" id="pos-select-pricelist">
                     ${priceLists.map((pl) => `
                       <option value="${pl.id}" ${pl.id === this.selectedPriceListId ? "selected" : ""}>${pl.nombre}</option>
@@ -6288,6 +6401,7 @@ Generado por Nexa ERP.`;
           container.querySelector("#pos-lbl-change").textContent = "$ 0";
           return;
         }
+        const isFreelanceMode = !!this.selectedFreelancer;
         tbody.innerHTML = this.cart.map((item, idx) => `
         <tr>
           <td>
@@ -6297,7 +6411,9 @@ Generado por Nexa ERP.`;
           <td class="text-center">
             <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 55px; padding: 2px 4px; text-align: center;">
           </td>
-          <td class="text-right">${Formatters.currency(item.precioUnitario)}</td>
+          <td class="text-right">
+            ${isFreelanceMode ? `<input type="number" min="0" step="any" class="form-control pos-item-price" data-idx="${idx}" value="${item.precioUnitario}" style="width: 90px; padding: 2px 6px; text-align: right; font-weight: 700; border-color: #86efac;" title="Precio acordado con cliente">` : Formatters.currency(item.precioUnitario)}
+          </td>
           <td class="text-right"><strong>${Formatters.currency(item.cantidad * item.precioUnitario)}</strong></td>
           <td class="text-right">
             <button class="btn btn-danger btn-sm pos-btn-remove" data-idx="${idx}" style="padding: 2px 6px;">&times;</button>
@@ -6333,7 +6449,8 @@ Generado por Nexa ERP.`;
           return;
         }
         const existing = this.cart.find((i) => i.productoId === prod.id);
-        const unitPrice = prod.precios && prod.precios[this.selectedPriceListId] || (prod.costo || prod.costoPromedio || 0) * 1.5;
+        const precioEsp = this.selectedClient && this.selectedClient.preciosEspeciales && this.selectedClient.preciosEspeciales[prod.id];
+        const unitPrice = precioEsp ? precioEsp : prod.precios && prod.precios[this.selectedPriceListId] || (prod.costo || prod.costoPromedio || 0) * 1.5;
         if (existing) {
           if (existing.cantidad + 1 > prod.stock) {
             Toast.warning(`No hay m\xE1s existencias f\xEDsicas de ${prod.nombre} (Stock actual: ${prod.stock}).`);
@@ -6393,12 +6510,20 @@ Generado por Nexa ERP.`;
         if (cli && cli.listaPreciosId) {
           this.selectedPriceListId = cli.listaPreciosId;
           container.querySelector("#pos-select-pricelist").value = cli.listaPreciosId;
-          this.cart.forEach((item) => {
-            const p = sellableProducts.find((prod) => prod.id === item.productoId);
-            if (p && p.precios && p.precios[this.selectedPriceListId]) {
-              item.precioUnitario = p.precios[this.selectedPriceListId];
-            }
-          });
+        }
+        this.cart.forEach((item) => {
+          const p = sellableProducts.find((prod) => prod.id === item.productoId);
+          const precioEsp = cli && cli.preciosEspeciales && cli.preciosEspeciales[item.productoId];
+          if (precioEsp) {
+            item.precioUnitario = precioEsp;
+          } else if (p && p.precios && p.precios[this.selectedPriceListId]) {
+            item.precioUnitario = p.precios[this.selectedPriceListId];
+          }
+        });
+        const hasPreciosEsp = cli && cli.preciosEspeciales && Object.keys(cli.preciosEspeciales).length > 0;
+        const pricelistSel = container.querySelector("#pos-select-pricelist");
+        if (pricelistSel && hasPreciosEsp) {
+          Toast.info("Cliente con precios acordados \u2014 precios personalizados aplicados autom\xE1ticamente.");
         }
         updateClientTaxBadge();
         updateCartView();
@@ -6406,7 +6531,7 @@ Generado por Nexa ERP.`;
       const btnPosAddClient = container.querySelector("#btn-pos-add-client");
       if (btnPosAddClient) {
         btnPosAddClient.addEventListener("click", () => {
-          ClientsModule.openClientModal(null, tenantId, priceLists, async (newClient) => {
+          ClientsModule.openClientModal(null, tenantId, priceLists, sellableProducts, async (newClient) => {
             const updatedClients = await DB2.getAll(STORES.CUSTOMERS, tenantId);
             const clientSelect = container.querySelector("#pos-select-client");
             if (clientSelect) {
@@ -6432,6 +6557,34 @@ Generado por Nexa ERP.`;
           if (this.cart[idx]) {
             this.cart[idx].cantidad = newQty;
             updateCartView();
+          }
+        }
+        if (e.target.classList.contains("pos-item-price")) {
+          const idx = Number(e.target.getAttribute("data-idx"));
+          const newPrice = Math.max(0, Number(e.target.value));
+          if (this.cart[idx]) {
+            this.cart[idx].precioUnitario = newPrice;
+            const row = e.target.closest("tr");
+            if (row) {
+              const subtotalCell = row.querySelector("td:nth-child(4) strong");
+              if (subtotalCell)
+                subtotalCell.textContent = Formatters.currency(this.cart[idx].cantidad * newPrice);
+            }
+            const cobraIva2 = !this.selectedClient || this.selectedClient.aplicaIva !== false;
+            const tieneFE2 = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
+            const { TaxService: TS } = { TaxService };
+            const totals2 = TaxService.calculateTotals(this.cart, 0, { aplicaIva: cobraIva2, facturaElectronica: tieneFE2 });
+            const subtotalEl = container.querySelector("#pos-lbl-subtotal");
+            const ivaEl = container.querySelector("#pos-lbl-iva");
+            const totalEl = container.querySelector("#pos-lbl-total");
+            if (subtotalEl)
+              subtotalEl.textContent = Formatters.currency(totals2.baseGravable);
+            if (ivaEl)
+              ivaEl.textContent = Formatters.currency(totals2.totalIva);
+            if (totalEl)
+              totalEl.textContent = Formatters.currency(totals2.total);
+            if (typeof calcularComision === "function")
+              calcularComision();
           }
         }
       });

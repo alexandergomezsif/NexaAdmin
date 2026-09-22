@@ -84,7 +84,7 @@ export const SalesPosModule = {
                   </div>
                 </div>
                 <div class="form-group mb-0">
-                  <label class="form-label text-xs font-bold">LISTA DE PRECIOS:</label>
+                  <label class="form-label text-xs font-bold">LISTA PRECIOS (MOSTRADOR):</label>
                   <select class="form-select" id="pos-select-pricelist">
                     ${priceLists.map(pl => `
                       <option value="${pl.id}" ${pl.id === this.selectedPriceListId ? 'selected' : ''}>${pl.nombre}</option>
@@ -288,6 +288,7 @@ export const SalesPosModule = {
         return;
       }
 
+      const isFreelanceMode = !!this.selectedFreelancer;
       tbody.innerHTML = this.cart.map((item, idx) => `
         <tr>
           <td>
@@ -297,7 +298,12 @@ export const SalesPosModule = {
           <td class="text-center">
             <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 55px; padding: 2px 4px; text-align: center;">
           </td>
-          <td class="text-right">${Formatters.currency(item.precioUnitario)}</td>
+          <td class="text-right">
+            ${isFreelanceMode
+              ? `<input type="number" min="0" step="any" class="form-control pos-item-price" data-idx="${idx}" value="${item.precioUnitario}" style="width: 90px; padding: 2px 6px; text-align: right; font-weight: 700; border-color: #86efac;" title="Precio acordado con cliente">`
+              : Formatters.currency(item.precioUnitario)
+            }
+          </td>
           <td class="text-right"><strong>${Formatters.currency(item.cantidad * item.precioUnitario)}</strong></td>
           <td class="text-right">
             <button class="btn btn-danger btn-sm pos-btn-remove" data-idx="${idx}" style="padding: 2px 6px;">&times;</button>
@@ -339,7 +345,11 @@ export const SalesPosModule = {
       }
 
       const existing = this.cart.find(i => i.productoId === prod.id);
-      const unitPrice = (prod.precios && prod.precios[this.selectedPriceListId]) || (prod.costo || prod.costoPromedio || 0) * 1.5;
+      // Precio especial del cliente tiene prioridad; luego lista seleccionada
+      const precioEsp = this.selectedClient && this.selectedClient.preciosEspeciales && this.selectedClient.preciosEspeciales[prod.id];
+      const unitPrice = precioEsp
+        ? precioEsp
+        : ((prod.precios && prod.precios[this.selectedPriceListId]) || (prod.costo || prod.costoPromedio || 0) * 1.5);
 
       if (existing) {
         if (existing.cantidad + 1 > prod.stock) {
@@ -411,12 +421,22 @@ export const SalesPosModule = {
       if (cli && cli.listaPreciosId) {
         this.selectedPriceListId = cli.listaPreciosId;
         container.querySelector('#pos-select-pricelist').value = cli.listaPreciosId;
-        this.cart.forEach(item => {
-          const p = sellableProducts.find(prod => prod.id === item.productoId);
-          if (p && p.precios && p.precios[this.selectedPriceListId]) {
-            item.precioUnitario = p.precios[this.selectedPriceListId];
-          }
-        });
+      }
+      this.cart.forEach(item => {
+        const p = sellableProducts.find(prod => prod.id === item.productoId);
+        // Precio especial del cliente tiene prioridad total
+        const precioEsp = cli && cli.preciosEspeciales && cli.preciosEspeciales[item.productoId];
+        if (precioEsp) {
+          item.precioUnitario = precioEsp;
+        } else if (p && p.precios && p.precios[this.selectedPriceListId]) {
+          item.precioUnitario = p.precios[this.selectedPriceListId];
+        }
+      });
+      // Mostrar badge si el cliente tiene precios especiales
+      const hasPreciosEsp = cli && cli.preciosEspeciales && Object.keys(cli.preciosEspeciales).length > 0;
+      const pricelistSel = container.querySelector('#pos-select-pricelist');
+      if (pricelistSel && hasPreciosEsp) {
+        Toast.info('Cliente con precios acordados — precios personalizados aplicados automáticamente.');
       }
       updateClientTaxBadge();
       updateCartView();
@@ -426,7 +446,7 @@ export const SalesPosModule = {
     const btnPosAddClient = container.querySelector('#btn-pos-add-client');
     if (btnPosAddClient) {
       btnPosAddClient.addEventListener('click', () => {
-        ClientsModule.openClientModal(null, tenantId, priceLists, async (newClient) => {
+        ClientsModule.openClientModal(null, tenantId, priceLists, sellableProducts, async (newClient) => {
           const updatedClients = await DB.getAll(STORES.CUSTOMERS, tenantId);
           const clientSelect = container.querySelector('#pos-select-client');
           if (clientSelect) {
@@ -454,6 +474,33 @@ export const SalesPosModule = {
         if (this.cart[idx]) {
           this.cart[idx].cantidad = newQty;
           updateCartView();
+        }
+      }
+      // Edición de precio en modo freelance
+      if (e.target.classList.contains('pos-item-price')) {
+        const idx = Number(e.target.getAttribute('data-idx'));
+        const newPrice = Math.max(0, Number(e.target.value));
+        if (this.cart[idx]) {
+          this.cart[idx].precioUnitario = newPrice;
+          // Recalcular subtotal en la misma fila sin redibujar todo
+          const row = e.target.closest('tr');
+          if (row) {
+            const subtotalCell = row.querySelector('td:nth-child(4) strong');
+            if (subtotalCell) subtotalCell.textContent = Formatters.currency(this.cart[idx].cantidad * newPrice);
+          }
+          // Actualizar totales y comisión
+          const cobraIva2 = !this.selectedClient || this.selectedClient.aplicaIva !== false;
+          const tieneFE2 = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
+          const { TaxService: TS } = { TaxService };
+          const totals2 = TaxService.calculateTotals(this.cart, 0, { aplicaIva: cobraIva2, facturaElectronica: tieneFE2 });
+          const subtotalEl = container.querySelector('#pos-lbl-subtotal');
+          const ivaEl = container.querySelector('#pos-lbl-iva');
+          const totalEl = container.querySelector('#pos-lbl-total');
+          if (subtotalEl) subtotalEl.textContent = Formatters.currency(totals2.baseGravable);
+          if (ivaEl) ivaEl.textContent = Formatters.currency(totals2.totalIva);
+          if (totalEl) totalEl.textContent = Formatters.currency(totals2.total);
+          // Recalcular comisión
+          if (typeof calcularComision === 'function') calcularComision();
         }
       }
     });
