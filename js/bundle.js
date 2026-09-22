@@ -6034,15 +6034,20 @@ Generado por Nexa ERP.`;
     selectedClient: null,
     selectedPriceListId: "plist_1",
     currentReceiptB64: null,
+    selectedFreelancer: null,
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
       const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [products, clients, priceLists, currentShift] = await Promise.all([
+      const [products, clients, priceLists, currentShift, allSuppliers] = await Promise.all([
         DB2.getAll(STORES.PRODUCTS, tenantId),
         DB2.getAll(STORES.CUSTOMERS, tenantId),
         DB2.getAll(STORES.PRICE_LISTS, tenantId),
-        CashService.getCurrentShift(tenantId)
+        CashService.getCurrentShift(tenantId),
+        DB2.getAll(STORES.SUPPLIERS, tenantId)
       ]);
+      const freelancers = allSuppliers.filter((s) => s.tipo === "FREELANCER" && s.estado === "ACTIVO");
+      const priceList1 = priceLists.find((pl) => pl.id === "plist_1");
+      const priceList3 = priceLists.find((pl) => pl.id === "plist_3");
       const sellableProducts = products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO" || !p.tipoItem);
       if (!this.selectedClient && clients.length > 0) {
         this.selectedClient = clients.find((c) => c.nitCc === "222222222222") || clients[0];
@@ -6230,6 +6235,29 @@ Generado por Nexa ERP.`;
               </div>
             </div>
 
+            <!-- VENDEDOR FREELANCE (opcional) -->
+            <div id="pos-freelancer-row" style="margin-bottom: 8px; background: rgba(0,113,227,0.04); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div class="d-flex justify-between items-center mb-1">
+                <label class="text-xs font-bold" style="color: var(--text-main); cursor: pointer;" for="pos-chk-freelance">
+                  \u{1F91D} Venta por Vendedor Freelance
+                </label>
+                <input type="checkbox" id="pos-chk-freelance" style="width: 16px; height: 16px; cursor: pointer;">
+              </div>
+              <div id="pos-freelancer-select-wrap" style="display: none; margin-top: 6px;">
+                <select class="form-select" id="pos-select-freelancer" style="font-size: 11.5px; padding: 4px 8px; font-weight: 700; margin-bottom: 6px;">
+                  <option value="">-- Seleccionar vendedor --</option>
+                  ${freelancers.map((fl) => `<option value="${fl.id}" data-nombre="${fl.nombre}">${fl.nombre}${fl.zona ? " (" + fl.zona + ")" : ""}</option>`).join("")}
+                </select>
+                <div id="pos-comision-panel" style="display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 6px 10px;">
+                  <div class="d-flex justify-between items-center text-xs">
+                    <span style="color: #15803d; font-weight: 600;">\u{1F4B0} Comisi\xF3n del vendedor:</span>
+                    <strong id="pos-lbl-comision" style="font-size: 14px; color: #15803d;">$ 0</strong>
+                  </div>
+                  <div class="text-xs text-muted" id="pos-comision-detalle" style="margin-top: 2px;">Seleccione productos para ver comisi\xF3n</div>
+                </div>
+              </div>
+            </div>
+
             <!-- TIPO DE DOCUMENTO COMERCIAL -->
             <div class="form-group mb-2">
               <select class="form-select" id="pos-doc-type" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700;">
@@ -6249,6 +6277,7 @@ Generado por Nexa ERP.`;
       </div>
     `;
       this.currentReceiptB64 = null;
+      this.selectedFreelancer = null;
       const updateCartView = () => {
         const tbody = container.querySelector("#pos-cart-tbody");
         if (this.cart.length === 0) {
@@ -6415,6 +6444,68 @@ Generado por Nexa ERP.`;
         }
       });
       container.querySelector("#pos-inp-received").addEventListener("input", updateCartView);
+      const chkFreelance = container.querySelector("#pos-chk-freelance");
+      const freelancerSelectWrap = container.querySelector("#pos-freelancer-select-wrap");
+      const freelancerSelect = container.querySelector("#pos-select-freelancer");
+      const comisionPanel = container.querySelector("#pos-comision-panel");
+      const lblComision = container.querySelector("#pos-lbl-comision");
+      const comisionDetalle = container.querySelector("#pos-comision-detalle");
+      const calcularComision = () => {
+        if (!this.selectedFreelancer) {
+          comisionPanel.style.display = "none";
+          return;
+        }
+        let totalComision = 0;
+        let detalles = [];
+        this.cart.forEach((item) => {
+          const prod = (products || []).find((p) => p.id === item.productoId);
+          const precioP3 = prod && prod.precios && prod.precios["plist_3"] ? prod.precios["plist_3"] : prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0;
+          const comItem = Math.max(0, (item.precioUnitario - precioP3) * item.cantidad);
+          totalComision += comItem;
+          if (comItem > 0)
+            detalles.push(`${item.nombre}: ${Formatters.currency(comItem)}`);
+        });
+        comisionPanel.style.display = "block";
+        lblComision.textContent = Formatters.currency(totalComision);
+        comisionDetalle.textContent = detalles.length > 0 ? detalles.join(" \xB7 ") : totalComision === 0 && this.cart.length > 0 ? "\u26A0\uFE0F Precio = Precio base (comisi\xF3n $0)" : "Agrega productos al carrito";
+      };
+      if (chkFreelance) {
+        chkFreelance.addEventListener("change", () => {
+          freelancerSelectWrap.style.display = chkFreelance.checked ? "block" : "none";
+          if (!chkFreelance.checked) {
+            this.selectedFreelancer = null;
+            this.selectedPriceListId = this.selectedClient ? this.selectedClient.listaPreciosId || "plist_1" : "plist_1";
+            comisionPanel.style.display = "none";
+            freelancerSelect.value = "";
+          }
+        });
+        freelancerSelect.addEventListener("change", () => {
+          const id = freelancerSelect.value;
+          this.selectedFreelancer = freelancers.find((fl) => fl.id === id) || null;
+          if (this.selectedFreelancer) {
+            this.selectedPriceListId = "plist_3";
+            container.querySelector("#pos-select-pricelist").value = "plist_3";
+            this.cart.forEach((item) => {
+              const p = (products || []).find((prod) => prod.id === item.productoId);
+              if (p && p.precios && p.precios["plist_3"]) {
+                item.precioUnitario = p.precios["plist_3"];
+              }
+            });
+            updateCartView();
+            calcularComision();
+            Toast.info(`Vendedor "${this.selectedFreelancer.nombre}" seleccionado. Precios ajustados a Precio 3.`);
+          } else {
+            comisionPanel.style.display = "none";
+          }
+        });
+      }
+      const _originalUpdateCartView = updateCartView;
+      const updateCartViewWithComision = () => {
+        _originalUpdateCartView();
+        calcularComision();
+      };
+      container.querySelector("#pos-inp-received").removeEventListener("input", updateCartView);
+      container.querySelector("#pos-inp-received").addEventListener("input", updateCartViewWithComision);
       container.querySelector("#btn-clear-cart").addEventListener("click", () => {
         this.cart = [];
         this.currentReceiptB64 = null;
@@ -6523,8 +6614,10 @@ Generado por Nexa ERP.`;
               clienteId: this.selectedClient ? this.selectedClient.id : "cli_mostrador",
               clienteNombre: this.selectedClient ? this.selectedClient.nombre : "Cliente Mostrador",
               clienteNit: this.selectedClient ? this.selectedClient.nitCc : "222222222222",
-              vendedorId: "usr_ventas",
-              vendedorNombre: "Valentina Restrepo",
+              vendedorId: this.selectedFreelancer ? this.selectedFreelancer.id : "usr_ventas",
+              vendedorNombre: this.selectedFreelancer ? this.selectedFreelancer.nombre : "Valentina Restrepo",
+              esVentaFreelance: !!this.selectedFreelancer,
+              freelancerId: this.selectedFreelancer ? this.selectedFreelancer.id : null,
               listaPreciosId: this.selectedPriceListId,
               fecha: (/* @__PURE__ */ new Date()).toISOString(),
               estado: isCredit ? "CREDITO_PENDIENTE" : "PAGADA",
@@ -6545,10 +6638,54 @@ Generado por Nexa ERP.`;
                 total: i.cantidad * i.precioUnitario
               })),
               comprobantePagoUrl: this.currentReceiptB64 || null,
-              comprobanteFecha: this.currentReceiptB64 ? (/* @__PURE__ */ new Date()).toISOString() : null
+              comprobanteFecha: this.currentReceiptB64 ? (/* @__PURE__ */ new Date()).toISOString() : null,
+              comisionFreelance: (() => {
+                if (!this.selectedFreelancer)
+                  return 0;
+                return this.cart.reduce((acc, item) => {
+                  const prod = (products || []).find((p) => p.id === item.productoId);
+                  const precioP3 = prod && prod.precios && prod.precios["plist_3"] ? prod.precios["plist_3"] : prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0;
+                  return acc + Math.max(0, (item.precioUnitario - precioP3) * item.cantidad);
+                }, 0);
+              })(),
+              precioBaseFreelance: (() => {
+                if (!this.selectedFreelancer)
+                  return 0;
+                return this.cart.reduce((acc, item) => {
+                  const prod = (products || []).find((p) => p.id === item.productoId);
+                  const precioP3 = prod && prod.precios && prod.precios["plist_3"] ? prod.precios["plist_3"] : prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0;
+                  return acc + precioP3 * item.cantidad;
+                }, 0);
+              })()
             };
             const savedSale = await DB2.add(STORES.SALES, sale);
             sale.id = savedSale.id;
+            if (this.selectedFreelancer && sale.comisionFreelance > 0) {
+              const hoy = /* @__PURE__ */ new Date();
+              const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+              const comisionDoc = "COM-" + hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + consecutivo;
+              const cxpComision = {
+                tenantId,
+                documento: comisionDoc,
+                proveedorNombre: this.selectedFreelancer.nombre,
+                proveedorId: this.selectedFreelancer.id,
+                tipoDocumento: "COMISION_FREELANCE",
+                ventaId: sale.id,
+                ventaConsecutivo: consecutivo,
+                fechaEmision: hoy.toISOString().split("T")[0],
+                fechaVencimiento: finMes.toISOString().split("T")[0],
+                valorTotal: sale.comisionFreelance,
+                saldo: sale.comisionFreelance,
+                abonos: 0,
+                estado: "AL_DIA"
+              };
+              const savedCxp = await DB2.add(STORES.PAYABLES_CXP, cxpComision);
+              sale.comisionCxpId = savedCxp.id;
+              await DB2.update(STORES.SALES, sale);
+              const freelancerToUpdate = this.selectedFreelancer;
+              freelancerToUpdate.comisionesTotalesGanadas = (freelancerToUpdate.comisionesTotalesGanadas || 0) + sale.comisionFreelance;
+              await DB2.update(STORES.SUPPLIERS, freelancerToUpdate);
+            }
             for (const item of this.cart) {
               await KardexService.registerMovement({
                 tenantId,
@@ -8644,7 +8781,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       const tenant = TenantServiceInstance.getActiveTenant();
       const tenantId = tenant ? tenant.id : "tenant_rayopro";
       const payables = await DB2.getAll(STORES.PAYABLES_CXP, tenantId);
-      const totalPasivo = payables.reduce((acc, p) => acc + Number(p.saldo || 0), 0);
+      const totalPasivo = payables.filter((p) => p.tipoDocumento !== "COMISION_FREELANCE").reduce((acc, p) => acc + Number(p.saldo || 0), 0);
+      const totalComisiones = payables.filter((p) => p.tipoDocumento === "COMISION_FREELANCE").reduce((acc, p) => acc + Number(p.saldo || 0), 0);
       container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
@@ -8653,12 +8791,23 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         </div>
       </div>
 
-      <div class="kpi-grid mb-4">
+      <div class="kpi-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
         <div class="kpi-card">
-          <div class="kpi-label">Pasivo Total con Proveedores</div>
+          <div class="kpi-label">Pasivo Total Proveedores</div>
           <div class="kpi-value text-danger">${Formatters.currency(totalPasivo)}</div>
-          <div class="kpi-footer">${payables.filter((p) => p.saldo > 0).length} facturas pendientes de pago</div>
+          <div class="kpi-footer">${payables.filter((p) => p.saldo > 0 && p.tipoDocumento !== "COMISION_FREELANCE").length} facturas pendientes</div>
         </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Comisiones Freelance Pendientes</div>
+          <div class="kpi-value" style="color: #7c3aed;">${Formatters.currency(totalComisiones)}</div>
+          <div class="kpi-footer">${payables.filter((p) => p.saldo > 0 && p.tipoDocumento === "COMISION_FREELANCE").length} comisiones por liquidar</div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mb-3" style="flex-wrap: wrap;">
+        <button class="btn btn-secondary btn-sm btn-cxp-filter" data-filter="all" style="font-weight: 700;">Todas</button>
+        <button class="btn btn-secondary btn-sm btn-cxp-filter" data-filter="proveedores">Facturas Proveedor</button>
+        <button class="btn btn-secondary btn-sm btn-cxp-filter" data-filter="comisiones" style="background: rgba(124,58,237,0.1); color: #7c3aed; border-color: #7c3aed;">\u{1F91D} Comisiones Freelance</button>
       </div>
 
       <div id="cxp-table-container"></div>
@@ -8669,8 +8818,15 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         columns: [
           {
             key: "documento",
-            title: "Factura Proveedor",
-            render: (val) => `<strong style="color: var(--brand-primary);">${val}</strong>`
+            title: "Referencia",
+            render: (val, row) => {
+              const isComision = row.tipoDocumento === "COMISION_FREELANCE";
+              return `<div>
+              <strong style="color: ${isComision ? "#7c3aed" : "var(--brand-primary)"};">${val}</strong>
+              ${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">\u{1F91D} Comisi\xF3n</span>' : ""}
+              ${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + "</div>" : ""}
+            </div>`;
+            }
           },
           {
             key: "proveedorNombre",
@@ -8706,6 +8862,41 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         actions: (row) => `
         <button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">\u{1F4B3} Pagar a Proveedor</button>
       `
+      });
+      let filtroActivo = "all";
+      const renderTable = (filtro) => {
+        filtroActivo = filtro;
+        let data;
+        if (filtro === "comisiones")
+          data = payables.filter((p) => p.saldo > 0 && p.tipoDocumento === "COMISION_FREELANCE");
+        else if (filtro === "proveedores")
+          data = payables.filter((p) => p.saldo > 0 && p.tipoDocumento !== "COMISION_FREELANCE");
+        else
+          data = payables.filter((p) => p.saldo > 0);
+        container.querySelector("#cxp-table-container").innerHTML = "";
+        new DataTable({
+          containerId: "cxp-table-container",
+          data,
+          columns: [
+            { key: "documento", title: "Referencia", render: (val, row) => {
+              const isComision = row.tipoDocumento === "COMISION_FREELANCE";
+              return `<div><strong style="color: ${isComision ? "#7c3aed" : "var(--brand-primary)"};">${val}</strong>${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">\u{1F91D} Comisi\xF3n</span>' : ""}${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + "</div>" : ""}</div>`;
+            } },
+            { key: "proveedorNombre", title: "Proveedor / Vendedor", render: (val) => `<strong>${val}</strong>` },
+            { key: "fechaEmision", title: "Emisi\xF3n", render: (val) => Formatters.date(val) },
+            { key: "fechaVencimiento", title: "Vencimiento", render: (val) => Formatters.date(val) },
+            { key: "valorTotal", title: "Valor Total", render: (val) => Formatters.currency(val) },
+            { key: "saldo", title: "Saldo Pendiente", render: (val) => `<strong class="text-danger">${Formatters.currency(val)}</strong>` },
+            { key: "estado", title: "Estado", render: (val) => `<span class="badge ${val === "AL_DIA" ? "badge-success" : "badge-danger"}">${val}</span>` }
+          ],
+          actions: (row) => `<button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">\u{1F4B3} Pagar</button>`
+        });
+        container.querySelectorAll(".btn-cxp-filter").forEach((b) => {
+          b.style.fontWeight = b.getAttribute("data-filter") === filtro ? "700" : "400";
+        });
+      };
+      container.querySelectorAll(".btn-cxp-filter").forEach((btn) => {
+        btn.addEventListener("click", () => renderTable(btn.getAttribute("data-filter")));
       });
       container.addEventListener("click", (e) => {
         const payBtn = e.target.closest(".btn-cxp-pay");
@@ -12303,6 +12494,460 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     }
   };
 
+  // js/modules/freelancers.js
+  init_db_service();
+  init_formatters();
+  init_toast();
+  var FreelancersModule = {
+    async render(container) {
+      const tenant = TenantServiceInstance.getActiveTenant();
+      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      const [allSuppliers, allSales, allCxp] = await Promise.all([
+        DB2.getAll(STORES.SUPPLIERS, tenantId),
+        DB2.getAll(STORES.SALES, tenantId),
+        DB2.getAll(STORES.PAYABLES_CXP, tenantId)
+      ]);
+      const freelancers = allSuppliers.filter((s) => s.tipo === "FREELANCER");
+      const freelanceSales = allSales.filter((s) => s.esVentaFreelance);
+      const now = /* @__PURE__ */ new Date();
+      const mesActual = now.getMonth();
+      const anioActual = now.getFullYear();
+      const salesMes = freelanceSales.filter((s) => {
+        const d = new Date(s.fecha);
+        return d.getMonth() === mesActual && d.getFullYear() === anioActual;
+      });
+      const comisionesPendientes = allCxp.filter((c) => c.tipoDocumento === "COMISION_FREELANCE" && c.saldo > 0).reduce((acc, c) => acc + Number(c.saldo || 0), 0);
+      const totalFacturadoMes = salesMes.reduce((acc, s) => acc + Number(s.total || 0), 0);
+      const vendedorMes = (() => {
+        const counts = {};
+        salesMes.forEach((s) => {
+          if (s.freelancerId) {
+            counts[s.freelancerId] = counts[s.freelancerId] || { nombre: s.vendedorNombre, total: 0 };
+            counts[s.freelancerId].total += s.total || 0;
+          }
+        });
+        const sorted = Object.values(counts).sort((a, b) => b.total - a.total);
+        return sorted[0] ? sorted[0].nombre : "\u2014";
+      })();
+      container.innerHTML = `
+      <div class="view-header">
+        <div class="view-title-wrap">
+          <h1>\u{1F91D} Red de Vendedores Freelance</h1>
+          <p>Gesti\xF3n de vendedores independientes, comisiones autom\xE1ticas y liquidaciones</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btn-nuevo-freelancer">+ Registrar Vendedor</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="kpi-card">
+          <div class="kpi-label">Vendedores Activos</div>
+          <div class="kpi-value" style="color: var(--brand-primary);">${freelancers.filter((f) => f.estado === "ACTIVO").length}</div>
+          <div class="kpi-footer">de ${freelancers.length} registrados</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Comisiones Pendientes</div>
+          <div class="kpi-value text-danger">${Formatters.currency(comisionesPendientes)}</div>
+          <div class="kpi-footer">por liquidar este per\xEDodo</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Ventas via Freelance (mes)</div>
+          <div class="kpi-value text-success">${Formatters.currency(totalFacturadoMes)}</div>
+          <div class="kpi-footer">${salesMes.length} transacciones</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Top Vendedor del Mes</div>
+          <div class="kpi-value" style="font-size: 18px; color: var(--text-main);">\u{1F3C6}</div>
+          <div class="kpi-footer" style="font-weight: 700; color: var(--brand-primary);">${vendedorMes}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Directorio de Vendedores Freelance</div>
+        </div>
+        <div class="card-body p-0">
+          ${freelancers.length === 0 ? `
+            <div class="text-center text-muted" style="padding: 40px;">
+              <div style="font-size: 40px; margin-bottom: 12px;">\u{1F91D}</div>
+              <p style="font-weight: 600; margin-bottom: 8px;">No hay vendedores registrados</p>
+              <p class="text-xs">Haz clic en "Registrar Vendedor" para comenzar tu red de ventas freelance.</p>
+            </div>
+          ` : `
+            <div style="overflow-x: auto;">
+              <table class="table" style="margin: 0;">
+                <thead>
+                  <tr>
+                    <th>Vendedor</th>
+                    <th>Zona</th>
+                    <th>Ventas este mes</th>
+                    <th>Comisi\xF3n ganada</th>
+                    <th>Pendiente de pago</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${freelancers.map((f) => {
+        const fSales = freelanceSales.filter((s) => s.freelancerId === f.id);
+        const fSalesMes = fSales.filter((s) => {
+          const d = new Date(s.fecha);
+          return d.getMonth() === mesActual && d.getFullYear() === anioActual;
+        });
+        const ganada = fSales.reduce((acc, s) => acc + Number(s.comisionFreelance || 0), 0);
+        const pendiente = allCxp.filter((c) => c.tipoDocumento === "COMISION_FREELANCE" && c.proveedorId === f.id && c.saldo > 0).reduce((acc, c) => acc + Number(c.saldo || 0), 0);
+        return `
+                      <tr>
+                        <td>
+                          <div class="font-bold">${f.nombre}</div>
+                          <div class="text-xs text-muted">${f.nitCc ? "CC: " + f.nitCc : ""} ${f.telefono ? "\xB7 " + f.telefono : ""}</div>
+                        </td>
+                        <td><span class="badge badge-info" style="font-size: 10px;">${f.zona || "\u2014"}</span></td>
+                        <td>
+                          <strong>${fSalesMes.length}</strong> ventas
+                          <div class="text-xs text-muted">${Formatters.currency(fSalesMes.reduce((a, s) => a + s.total, 0))}</div>
+                        </td>
+                        <td class="font-bold text-success">${Formatters.currency(ganada)}</td>
+                        <td>
+                          ${pendiente > 0 ? `<strong class="text-danger">${Formatters.currency(pendiente)}</strong>` : `<span class="badge badge-success">Al d\xEDa</span>`}
+                        </td>
+                        <td>
+                          <span class="badge ${f.estado === "ACTIVO" ? "badge-success" : "badge-danger"}">
+                            ${f.estado || "ACTIVO"}
+                          </span>
+                        </td>
+                        <td>
+                          <div class="d-flex gap-2">
+                            <button class="btn btn-secondary btn-sm btn-ver-freelancer" data-id="${f.id}">Ver</button>
+                            ${pendiente > 0 ? `<button class="btn btn-primary btn-sm btn-liquidar-freelancer" data-id="${f.id}" data-nombre="${f.nombre}" data-pendiente="${pendiente}">\u{1F4B8} Liquidar</button>` : ""}
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+      }).join("")}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+      container.querySelector("#btn-nuevo-freelancer").addEventListener("click", () => {
+        this.openFreelancerWizard(null, tenantId, () => this.render(container));
+      });
+      container.querySelectorAll(".btn-ver-freelancer").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const f = freelancers.find((x) => x.id === id);
+          if (f)
+            this.openFreelancerDetail(f, freelanceSales, allCxp, tenantId, () => this.render(container));
+        });
+      });
+      container.querySelectorAll(".btn-liquidar-freelancer").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const nombre = btn.getAttribute("data-nombre");
+          const pendiente = Number(btn.getAttribute("data-pendiente"));
+          const cxpItems = allCxp.filter((c) => c.tipoDocumento === "COMISION_FREELANCE" && c.proveedorId === id && c.saldo > 0);
+          this.openLiquidarModal(id, nombre, pendiente, cxpItems, () => this.render(container));
+        });
+      });
+    },
+    openFreelancerWizard(freelancer, tenantId, onSaved) {
+      const isEdit = !!freelancer;
+      const f = freelancer || {};
+      const content = `
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="card" style="margin: 0; background: var(--bg-surface-solid); border: 1px solid var(--border-color);">
+          <div class="card-body" style="padding: 16px;">
+            <div class="font-bold text-xs text-muted mb-3" style="text-transform: uppercase; letter-spacing: 0.5px;">Datos Personales</div>
+            <div class="form-row" style="gap: 12px;">
+              <div class="form-group mb-3" style="flex: 1;">
+                <label class="form-label">Nombre Completo *</label>
+                <input type="text" class="form-control" id="fl-nombre" value="${f.nombre || ""}" placeholder="Ej: Carlos Mendoza" required>
+              </div>
+              <div class="form-group mb-3" style="flex: 1;">
+                <label class="form-label">C\xE9dula / NIT</label>
+                <input type="text" class="form-control" id="fl-cedula" value="${f.nitCc || ""}" placeholder="Ej: 1234567890">
+              </div>
+            </div>
+            <div class="form-row" style="gap: 12px;">
+              <div class="form-group mb-3" style="flex: 1;">
+                <label class="form-label">Tel\xE9fono / WhatsApp</label>
+                <input type="text" class="form-control" id="fl-telefono" value="${f.telefono || ""}" placeholder="3001234567">
+              </div>
+              <div class="form-group mb-3" style="flex: 1;">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="fl-email" value="${f.email || ""}" placeholder="correo@gmail.com">
+              </div>
+            </div>
+            <div class="form-row" style="gap: 12px;">
+              <div class="form-group mb-0" style="flex: 1;">
+                <label class="form-label">Zona de Ventas</label>
+                <input type="text" class="form-control" id="fl-zona" value="${f.zona || ""}" placeholder="Ej: Medell\xEDn Norte, Eje Cafetero...">
+              </div>
+              <div class="form-group mb-0" style="flex: 1;">
+                <label class="form-label">Estado</label>
+                <select class="form-select" id="fl-estado">
+                  <option value="ACTIVO" ${!f.estado || f.estado === "ACTIVO" ? "selected" : ""}>Activo</option>
+                  <option value="INACTIVO" ${f.estado === "INACTIVO" ? "selected" : ""}>Inactivo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin: 0; background: var(--bg-surface-solid); border: 1px solid var(--border-color);">
+          <div class="card-body" style="padding: 16px;">
+            <div class="font-bold text-xs text-muted mb-3" style="text-transform: uppercase; letter-spacing: 0.5px;">Datos Bancarios (para pago de comisiones)</div>
+            <div class="form-row" style="gap: 12px;">
+              <div class="form-group mb-3" style="flex: 1;">
+                <label class="form-label">Banco</label>
+                <select class="form-select" id="fl-banco">
+                  <option value="">Seleccione banco...</option>
+                  <option value="Bancolombia" ${(f.datosBancarios || {}).banco === "Bancolombia" ? "selected" : ""}>Bancolombia</option>
+                  <option value="Davivienda" ${(f.datosBancarios || {}).banco === "Davivienda" ? "selected" : ""}>Davivienda</option>
+                  <option value="Banco de Bogot\xE1" ${(f.datosBancarios || {}).banco === "Banco de Bogot\xE1" ? "selected" : ""}>Banco de Bogot\xE1</option>
+                  <option value="BBVA" ${(f.datosBancarios || {}).banco === "BBVA" ? "selected" : ""}>BBVA</option>
+                  <option value="Nequi" ${(f.datosBancarios || {}).banco === "Nequi" ? "selected" : ""}>Nequi</option>
+                  <option value="Daviplata" ${(f.datosBancarios || {}).banco === "Daviplata" ? "selected" : ""}>Daviplata</option>
+                  <option value="Otro" ${(f.datosBancarios || {}).banco === "Otro" ? "selected" : ""}>Otro</option>
+                </select>
+              </div>
+              <div class="form-group mb-3" style="flex: 1;">
+                <label class="form-label">Tipo de Cuenta</label>
+                <select class="form-select" id="fl-tipo-cuenta">
+                  <option value="Ahorros" ${(f.datosBancarios || {}).tipoCuenta === "Ahorros" ? "selected" : ""}>Ahorros</option>
+                  <option value="Corriente" ${(f.datosBancarios || {}).tipoCuenta === "Corriente" ? "selected" : ""}>Corriente</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label">N\xFAmero de Cuenta</label>
+              <input type="text" class="form-control" id="fl-num-cuenta" value="${(f.datosBancarios || {}).numeroCuenta || ""}" placeholder="Ej: 12345678901">
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin: 0; background: rgba(0,113,227,0.04); border: 1px dashed var(--brand-primary);">
+          <div class="card-body" style="padding: 12px 16px;">
+            <div class="text-xs" style="color: var(--brand-primary);">
+              \u{1F4A1} <strong>\xBFC\xF3mo funciona la comisi\xF3n?</strong> El precio base del vendedor es <strong>Precio 3</strong>.
+              Puede vender entre Precio 3 y Precio 1. Su comisi\xF3n = precio vendido \u2212 Precio 3 por unidad.
+              Se registra autom\xE1ticamente en Cuentas por Pagar al finalizar cada venta.
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+      const dialog = Modal.show({
+        title: isEdit ? "Editar Vendedor Freelance" : "Registrar Nuevo Vendedor Freelance",
+        content,
+        size: "lg",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: isEdit ? "Guardar Cambios" : "Registrar Vendedor",
+            class: "btn-primary",
+            onClick: async () => {
+              const nombre = dialog.querySelector("#fl-nombre").value.trim();
+              if (!nombre) {
+                Toast.warning("El nombre es obligatorio.");
+                return;
+              }
+              const payload = {
+                ...f.id ? { id: f.id } : {},
+                tenantId,
+                nombre,
+                nitCc: dialog.querySelector("#fl-cedula").value.trim(),
+                telefono: dialog.querySelector("#fl-telefono").value.trim(),
+                email: dialog.querySelector("#fl-email").value.trim(),
+                zona: dialog.querySelector("#fl-zona").value.trim(),
+                estado: dialog.querySelector("#fl-estado").value,
+                tipo: "FREELANCER",
+                precioBaseId: "plist_3",
+                datosBancarios: {
+                  banco: dialog.querySelector("#fl-banco").value,
+                  tipoCuenta: dialog.querySelector("#fl-tipo-cuenta").value,
+                  numeroCuenta: dialog.querySelector("#fl-num-cuenta").value.trim()
+                },
+                comisionesTotalesGanadas: f.comisionesTotalesGanadas || 0,
+                comisionesTotalesPagadas: f.comisionesTotalesPagadas || 0,
+                creadoEn: f.creadoEn || (/* @__PURE__ */ new Date()).toISOString()
+              };
+              if (isEdit) {
+                await DB2.update(STORES.SUPPLIERS, payload);
+                Toast.success(`Vendedor "${nombre}" actualizado.`);
+              } else {
+                await DB2.add(STORES.SUPPLIERS, payload);
+                Toast.success(`Vendedor "${nombre}" registrado en la red freelance.`);
+              }
+              Modal.close();
+              if (onSaved)
+                onSaved();
+            }
+          }
+        ]
+      });
+    },
+    openFreelancerDetail(f, allSales, allCxp, tenantId, onSaved) {
+      const fSales = allSales.filter((s) => s.freelancerId === f.id);
+      const fCxp = allCxp.filter((c) => c.tipoDocumento === "COMISION_FREELANCE" && c.proveedorId === f.id);
+      const totalGanado = fSales.reduce((acc, s) => acc + Number(s.comisionFreelance || 0), 0);
+      const totalPendiente = fCxp.filter((c) => c.saldo > 0).reduce((acc, c) => acc + Number(c.saldo || 0), 0);
+      const content = `
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 0;">
+          <div class="kpi-card" style="padding: 12px;">
+            <div class="kpi-label">Total Ventas</div>
+            <div class="kpi-value" style="font-size: 22px; color: var(--brand-primary);">${fSales.length}</div>
+          </div>
+          <div class="kpi-card" style="padding: 12px;">
+            <div class="kpi-label">Comisi\xF3n Ganada</div>
+            <div class="kpi-value text-success" style="font-size: 18px;">${Formatters.currency(totalGanado)}</div>
+          </div>
+          <div class="kpi-card" style="padding: 12px;">
+            <div class="kpi-label">Por Cobrar</div>
+            <div class="kpi-value text-danger" style="font-size: 18px;">${Formatters.currency(totalPendiente)}</div>
+          </div>
+        </div>
+
+        <div style="background: var(--bg-surface-solid); border-radius: 8px; border: 1px solid var(--border-color); padding: 12px;">
+          <div class="font-bold text-xs text-muted mb-2" style="text-transform: uppercase;">Datos de Contacto</div>
+          <div class="text-xs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <div>\u{1F4F1} ${f.telefono || "\u2014"}</div>
+            <div>\u{1F4E7} ${f.email || "\u2014"}</div>
+            <div>\u{1FAAA} CC: ${f.nitCc || "\u2014"}</div>
+            <div>\u{1F4CD} Zona: ${f.zona || "\u2014"}</div>
+            <div>\u{1F3E6} ${(f.datosBancarios || {}).banco || "\u2014"} ${(f.datosBancarios || {}).tipoCuenta || ""}</div>
+            <div>Cta: ${(f.datosBancarios || {}).numeroCuenta || "\u2014"}</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="font-bold text-xs text-muted mb-2" style="text-transform: uppercase;">\xDAltimas 5 Ventas</div>
+          ${fSales.length === 0 ? '<div class="text-xs text-muted text-center" style="padding: 12px;">Sin ventas registradas a\xFAn.</div>' : `<table class="table table-sm text-xs" style="margin:0;">
+              <thead><tr><th>Factura</th><th>Cliente</th><th>Total</th><th>Comisi\xF3n</th><th>Fecha</th></tr></thead>
+              <tbody>
+                ${fSales.slice(-5).reverse().map((s) => `
+                  <tr>
+                    <td><strong style="color: var(--brand-primary);">${s.consecutivo}</strong></td>
+                    <td>${s.clienteNombre}</td>
+                    <td>${Formatters.currency(s.total)}</td>
+                    <td class="font-bold text-success">${Formatters.currency(s.comisionFreelance || 0)}</td>
+                    <td>${Formatters.date(s.fecha)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>`}
+        </div>
+      </div>
+    `;
+      Modal.show({
+        title: `\u{1F91D} Ficha de ${f.nombre}`,
+        content,
+        size: "lg",
+        footerButtons: [
+          { label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() },
+          { label: "\u270F\uFE0F Editar Datos", class: "btn-secondary", onClick: () => {
+            Modal.close();
+            this.openFreelancerWizard(f, tenantId, onSaved);
+          } },
+          ...totalPendiente > 0 ? [{
+            label: `\u{1F4B8} Liquidar ${Formatters.currency(totalPendiente)}`,
+            class: "btn-primary",
+            onClick: () => {
+              const cxpItems = allCxp.filter((c) => c.tipoDocumento === "COMISION_FREELANCE" && c.proveedorId === f.id && c.saldo > 0);
+              Modal.close();
+              this.openLiquidarModal(f.id, f.nombre, totalPendiente, cxpItems, onSaved);
+            }
+          }] : []
+        ]
+      });
+    },
+    async openLiquidarModal(freelancerId, nombre, totalPendiente, cxpItems, onSaved) {
+      const content = `
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 12px;">
+          <div class="text-xs text-muted">Liquidaci\xF3n de comisiones a:</div>
+          <div style="font-size: 16px; font-weight: 700; margin: 4px 0;">${nombre}</div>
+          <div style="font-size: 20px; font-weight: 800; color: var(--danger);">Total a pagar: ${Formatters.currency(totalPendiente)}</div>
+        </div>
+
+        <div class="text-xs text-muted font-bold" style="text-transform: uppercase;">Desglose de comisiones pendientes:</div>
+        <div style="max-height: 160px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+          <table class="table table-sm text-xs" style="margin:0;">
+            <thead><tr><th>Referencia</th><th>Venta</th><th>Comisi\xF3n</th></tr></thead>
+            <tbody>
+              ${cxpItems.map((c) => `
+                <tr>
+                  <td><strong>${c.documento}</strong></td>
+                  <td>${c.ventaConsecutivo || "\u2014"}</td>
+                  <td class="font-bold text-danger">${Formatters.currency(c.saldo)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+
+        <form id="liquidar-form">
+          <div class="form-group mb-3">
+            <label class="form-label">Medio de Pago</label>
+            <select class="form-select" name="medio">
+              <option value="Bancolombia Cuenta Corriente">Bancolombia Cuenta Corriente</option>
+              <option value="Davivienda Ahorros">Davivienda Ahorros</option>
+              <option value="Transferencia Nequi">Transferencia Nequi</option>
+              <option value="Efectivo Caja">Efectivo Caja</option>
+            </select>
+          </div>
+          <div class="form-group mb-0">
+            <label class="form-label">N\xFAmero de Comprobante</label>
+            <input type="text" class="form-control" name="comprobante" placeholder="Ej: TRANSF-982347" required>
+          </div>
+        </form>
+      </div>
+    `;
+      const dialog = Modal.show({
+        title: `\u{1F4B8} Liquidar Comisiones \u2014 ${nombre}`,
+        content,
+        size: "md",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: `Confirmar Pago de ${Formatters.currency(totalPendiente)}`,
+            class: "btn-primary",
+            onClick: async () => {
+              const form = dialog.querySelector("#liquidar-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              for (const cxpItem of cxpItems) {
+                cxpItem.abonos = (cxpItem.abonos || 0) + cxpItem.saldo;
+                cxpItem.saldo = 0;
+                cxpItem.estado = "PAGADA";
+                await DB2.update(STORES.PAYABLES_CXP, cxpItem);
+              }
+              const tenant = TenantServiceInstance.getActiveTenant();
+              const tenantId = tenant ? tenant.id : "tenant_rayopro";
+              const allSuppliers = await DB2.getAll(STORES.SUPPLIERS, tenantId);
+              const freelancer = allSuppliers.find((s) => s.id === freelancerId);
+              if (freelancer) {
+                freelancer.comisionesTotalesPagadas = (freelancer.comisionesTotalesPagadas || 0) + totalPendiente;
+                await DB2.update(STORES.SUPPLIERS, freelancer);
+              }
+              Toast.success(`Liquidaci\xF3n de ${Formatters.currency(totalPendiente)} a ${nombre} registrada.`);
+              Modal.close();
+              if (onSaved)
+                onSaved();
+            }
+          }
+        ]
+      });
+    }
+  };
+
   // js/app.js
   window.addEventListener("error", (e) => {
     console.error("Nexa Global Error:", e.error || e.message);
@@ -12350,7 +12995,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     integrations: IntegrationsModule,
     documents: DocumentsModule,
     "formulas-vault": FormulasVaultModule,
-    "pricing-calculator": PricingCalculatorModule
+    "pricing-calculator": PricingCalculatorModule,
+    "freelancers": FreelancersModule
   };
   var NexaApp = class {
     constructor() {

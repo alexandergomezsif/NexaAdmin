@@ -54,6 +54,7 @@ import { IntegrationsModule } from './modules/integrations.js';
 import { DocumentsModule } from './modules/documents.js';
 import { FormulasVaultModule } from './modules/formulas-vault.js';
 import { PricingCalculatorModule } from './modules/pricing-calculator.js';
+import { FreelancersModule } from './modules/freelancers.js';
 
 const MODULES = {
   dashboard: DashboardModule,
@@ -77,7 +78,8 @@ const MODULES = {
   integrations: IntegrationsModule,
   documents: DocumentsModule,
   'formulas-vault': FormulasVaultModule,
-  'pricing-calculator': PricingCalculatorModule
+  'pricing-calculator': PricingCalculatorModule,
+  'freelancers': FreelancersModule
 };
 
 class NexaApp {
