@@ -16,7 +16,8 @@ export const CxpModule = {
     const tenantId = tenant ? tenant.id : 'tenant_rayopro';
 
     const payables = await DB.getAll(STORES.PAYABLES_CXP, tenantId);
-    const totalPasivo = payables.reduce((acc, p) => acc + Number(p.saldo || 0), 0);
+    const totalPasivo = payables.filter(p => p.tipoDocumento !== 'COMISION_FREELANCE').reduce((acc, p) => acc + Number(p.saldo || 0), 0);
+    const totalComisiones = payables.filter(p => p.tipoDocumento === 'COMISION_FREELANCE').reduce((acc, p) => acc + Number(p.saldo || 0), 0);
 
     container.innerHTML = `
       <div class="view-header">
@@ -26,12 +27,23 @@ export const CxpModule = {
         </div>
       </div>
 
-      <div class="kpi-grid mb-4">
+      <div class="kpi-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
         <div class="kpi-card">
-          <div class="kpi-label">Pasivo Total con Proveedores</div>
+          <div class="kpi-label">Pasivo Total Proveedores</div>
           <div class="kpi-value text-danger">${Formatters.currency(totalPasivo)}</div>
-          <div class="kpi-footer">${payables.filter(p => p.saldo > 0).length} facturas pendientes de pago</div>
+          <div class="kpi-footer">${payables.filter(p => p.saldo > 0 && p.tipoDocumento !== 'COMISION_FREELANCE').length} facturas pendientes</div>
         </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Comisiones Freelance Pendientes</div>
+          <div class="kpi-value" style="color: #7c3aed;">${Formatters.currency(totalComisiones)}</div>
+          <div class="kpi-footer">${payables.filter(p => p.saldo > 0 && p.tipoDocumento === 'COMISION_FREELANCE').length} comisiones por liquidar</div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mb-3" style="flex-wrap: wrap;">
+        <button class="btn btn-secondary btn-sm btn-cxp-filter" data-filter="all" style="font-weight: 700;">Todas</button>
+        <button class="btn btn-secondary btn-sm btn-cxp-filter" data-filter="proveedores">Facturas Proveedor</button>
+        <button class="btn btn-secondary btn-sm btn-cxp-filter" data-filter="comisiones" style="background: rgba(124,58,237,0.1); color: #7c3aed; border-color: #7c3aed;">🤝 Comisiones Freelance</button>
       </div>
 
       <div id="cxp-table-container"></div>
@@ -43,8 +55,15 @@ export const CxpModule = {
       columns: [
         {
           key: 'documento',
-          title: 'Factura Proveedor',
-          render: val => `<strong style="color: var(--brand-primary);">${val}</strong>`
+          title: 'Referencia',
+          render: (val, row) => {
+            const isComision = row.tipoDocumento === 'COMISION_FREELANCE';
+            return `<div>
+              <strong style="color: ${isComision ? '#7c3aed' : 'var(--brand-primary)'};">${val}</strong>
+              ${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">🤝 Comisión</span>' : ''}
+              ${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + '</div>' : ''}
+            </div>`;
+          }
         },
         {
           key: 'proveedorNombre',
@@ -80,6 +99,41 @@ export const CxpModule = {
       actions: (row) => `
         <button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">💳 Pagar a Proveedor</button>
       `
+    });
+
+    // Filtros de tipo
+    let filtroActivo = 'all';
+    const renderTable = (filtro) => {
+      filtroActivo = filtro;
+      let data;
+      if (filtro === 'comisiones') data = payables.filter(p => p.saldo > 0 && p.tipoDocumento === 'COMISION_FREELANCE');
+      else if (filtro === 'proveedores') data = payables.filter(p => p.saldo > 0 && p.tipoDocumento !== 'COMISION_FREELANCE');
+      else data = payables.filter(p => p.saldo > 0);
+      container.querySelector('#cxp-table-container').innerHTML = '';
+      new DataTable({
+        containerId: 'cxp-table-container',
+        data,
+        columns: [
+          { key: 'documento', title: 'Referencia', render: (val, row) => {
+            const isComision = row.tipoDocumento === 'COMISION_FREELANCE';
+            return `<div><strong style="color: ${isComision ? '#7c3aed' : 'var(--brand-primary)'};">${val}</strong>${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">🤝 Comisión</span>' : ''}${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + '</div>' : ''}</div>`;
+          }},
+          { key: 'proveedorNombre', title: 'Proveedor / Vendedor', render: val => `<strong>${val}</strong>` },
+          { key: 'fechaEmision', title: 'Emisión', render: val => Formatters.date(val) },
+          { key: 'fechaVencimiento', title: 'Vencimiento', render: val => Formatters.date(val) },
+          { key: 'valorTotal', title: 'Valor Total', render: val => Formatters.currency(val) },
+          { key: 'saldo', title: 'Saldo Pendiente', render: val => `<strong class="text-danger">${Formatters.currency(val)}</strong>` },
+          { key: 'estado', title: 'Estado', render: val => `<span class="badge ${val === 'AL_DIA' ? 'badge-success' : 'badge-danger'}">${val}</span>` }
+        ],
+        actions: (row) => `<button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">💳 Pagar</button>`
+      });
+      container.querySelectorAll('.btn-cxp-filter').forEach(b => {
+        b.style.fontWeight = b.getAttribute('data-filter') === filtro ? '700' : '400';
+      });
+    };
+
+    container.querySelectorAll('.btn-cxp-filter').forEach(btn => {
+      btn.addEventListener('click', () => renderTable(btn.getAttribute('data-filter')));
     });
 
     container.addEventListener('click', (e) => {

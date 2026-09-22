@@ -22,17 +22,22 @@ export const SalesPosModule = {
   selectedClient: null,
   selectedPriceListId: 'plist_1',
   currentReceiptB64: null,
+  selectedFreelancer: null,
 
   async render(container) {
     const tenant = TenantServiceInstance.getActiveTenant();
     const tenantId = tenant ? tenant.id : 'tenant_rayopro';
 
-    const [products, clients, priceLists, currentShift] = await Promise.all([
+    const [products, clients, priceLists, currentShift, allSuppliers] = await Promise.all([
       DB.getAll(STORES.PRODUCTS, tenantId),
       DB.getAll(STORES.CUSTOMERS, tenantId),
       DB.getAll(STORES.PRICE_LISTS, tenantId),
-      CashService.getCurrentShift(tenantId)
+      CashService.getCurrentShift(tenantId),
+      DB.getAll(STORES.SUPPLIERS, tenantId)
     ]);
+    const freelancers = allSuppliers.filter(s => s.tipo === 'FREELANCER' && s.estado === 'ACTIVO');
+    const priceList1 = priceLists.find(pl => pl.id === 'plist_1');
+    const priceList3 = priceLists.find(pl => pl.id === 'plist_3');
 
     // Filtrar solo productos vendibles (no insumos químicos puros)
     const sellableProducts = products.filter(p => p.tipoItem === 'PRODUCTO_TERMINADO' || !p.tipoItem);
@@ -225,6 +230,29 @@ export const SalesPosModule = {
               </div>
             </div>
 
+            <!-- VENDEDOR FREELANCE (opcional) -->
+            <div id="pos-freelancer-row" style="margin-bottom: 8px; background: rgba(0,113,227,0.04); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div class="d-flex justify-between items-center mb-1">
+                <label class="text-xs font-bold" style="color: var(--text-main); cursor: pointer;" for="pos-chk-freelance">
+                  🤝 Venta por Vendedor Freelance
+                </label>
+                <input type="checkbox" id="pos-chk-freelance" style="width: 16px; height: 16px; cursor: pointer;">
+              </div>
+              <div id="pos-freelancer-select-wrap" style="display: none; margin-top: 6px;">
+                <select class="form-select" id="pos-select-freelancer" style="font-size: 11.5px; padding: 4px 8px; font-weight: 700; margin-bottom: 6px;">
+                  <option value="">-- Seleccionar vendedor --</option>
+                  ${freelancers.map(fl => `<option value="${fl.id}" data-nombre="${fl.nombre}">${fl.nombre}${fl.zona ? ' (' + fl.zona + ')' : ''}</option>`).join('')}
+                </select>
+                <div id="pos-comision-panel" style="display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 6px 10px;">
+                  <div class="d-flex justify-between items-center text-xs">
+                    <span style="color: #15803d; font-weight: 600;">💰 Comisión del vendedor:</span>
+                    <strong id="pos-lbl-comision" style="font-size: 14px; color: #15803d;">$ 0</strong>
+                  </div>
+                  <div class="text-xs text-muted" id="pos-comision-detalle" style="margin-top: 2px;">Seleccione productos para ver comisión</div>
+                </div>
+              </div>
+            </div>
+
             <!-- TIPO DE DOCUMENTO COMERCIAL -->
             <div class="form-group mb-2">
               <select class="form-select" id="pos-doc-type" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700;">
@@ -244,8 +272,9 @@ export const SalesPosModule = {
       </div>
     `;
 
-    // Resetear comprobante al cargar vista
+    // Resetear comprobante y freelancer al cargar vista
     this.currentReceiptB64 = null;
+    this.selectedFreelancer = null;
 
     // Métodos internos del carrito
     const updateCartView = () => {
@@ -441,6 +470,86 @@ export const SalesPosModule = {
     // Input pago recibido
     container.querySelector('#pos-inp-received').addEventListener('input', updateCartView);
 
+    // =========================================================================
+    // FREELANCER: Toggle + selector + cálculo de comisión en tiempo real
+    // =========================================================================
+    const chkFreelance = container.querySelector('#pos-chk-freelance');
+    const freelancerSelectWrap = container.querySelector('#pos-freelancer-select-wrap');
+    const freelancerSelect = container.querySelector('#pos-select-freelancer');
+    const comisionPanel = container.querySelector('#pos-comision-panel');
+    const lblComision = container.querySelector('#pos-lbl-comision');
+    const comisionDetalle = container.querySelector('#pos-comision-detalle');
+
+    const calcularComision = () => {
+      if (!this.selectedFreelancer) {
+        comisionPanel.style.display = 'none';
+        return;
+      }
+      // Comisión = suma de (precioVendido - precioP3) * cantidad por ítem
+      let totalComision = 0;
+      let detalles = [];
+      this.cart.forEach(item => {
+        const prod = (products || []).find(p => p.id === item.productoId);
+        const precioP3 = prod && prod.precios && prod.precios['plist_3']
+          ? prod.precios['plist_3']
+          : (prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0);
+        const comItem = Math.max(0, (item.precioUnitario - precioP3) * item.cantidad);
+        totalComision += comItem;
+        if (comItem > 0) detalles.push(`${item.nombre}: ${Formatters.currency(comItem)}`);
+      });
+      comisionPanel.style.display = 'block';
+      lblComision.textContent = Formatters.currency(totalComision);
+      comisionDetalle.textContent = detalles.length > 0
+        ? detalles.join(' · ')
+        : (totalComision === 0 && this.cart.length > 0
+            ? '⚠️ Precio = Precio base (comisión $0)'
+            : 'Agrega productos al carrito');
+    };
+
+    if (chkFreelance) {
+      chkFreelance.addEventListener('change', () => {
+        freelancerSelectWrap.style.display = chkFreelance.checked ? 'block' : 'none';
+        if (!chkFreelance.checked) {
+          this.selectedFreelancer = null;
+          this.selectedPriceListId = this.selectedClient ? (this.selectedClient.listaPreciosId || 'plist_1') : 'plist_1';
+          comisionPanel.style.display = 'none';
+          freelancerSelect.value = '';
+        }
+      });
+
+      freelancerSelect.addEventListener('change', () => {
+        const id = freelancerSelect.value;
+        this.selectedFreelancer = freelancers.find(fl => fl.id === id) || null;
+        if (this.selectedFreelancer) {
+          // Cambiar lista de precios a Precio 3 como mínimo
+          this.selectedPriceListId = 'plist_3';
+          container.querySelector('#pos-select-pricelist').value = 'plist_3';
+          // Actualizar precios en carrito a P3
+          this.cart.forEach(item => {
+            const p = (products || []).find(prod => prod.id === item.productoId);
+            if (p && p.precios && p.precios['plist_3']) {
+              item.precioUnitario = p.precios['plist_3'];
+            }
+          });
+          updateCartView();
+          calcularComision();
+          Toast.info(`Vendedor "${this.selectedFreelancer.nombre}" seleccionado. Precios ajustados a Precio 3.`);
+        } else {
+          comisionPanel.style.display = 'none';
+        }
+      });
+    }
+
+    // Extender updateCartView para recalcular comisión
+    const _originalUpdateCartView = updateCartView;
+    const updateCartViewWithComision = () => {
+      _originalUpdateCartView();
+      calcularComision();
+    };
+    // Reasignar eventos que usan updateCartView para incluir comisión
+    container.querySelector('#pos-inp-received').removeEventListener('input', updateCartView);
+    container.querySelector('#pos-inp-received').addEventListener('input', updateCartViewWithComision);
+
     // Limpiar carrito
     container.querySelector('#btn-clear-cart').addEventListener('click', () => {
       this.cart = [];
@@ -579,8 +688,10 @@ export const SalesPosModule = {
             clienteId: this.selectedClient ? this.selectedClient.id : 'cli_mostrador',
             clienteNombre: this.selectedClient ? this.selectedClient.nombre : 'Cliente Mostrador',
             clienteNit: this.selectedClient ? this.selectedClient.nitCc : '222222222222',
-            vendedorId: 'usr_ventas',
-            vendedorNombre: 'Valentina Restrepo',
+            vendedorId: this.selectedFreelancer ? this.selectedFreelancer.id : 'usr_ventas',
+            vendedorNombre: this.selectedFreelancer ? this.selectedFreelancer.nombre : 'Valentina Restrepo',
+            esVentaFreelance: !!this.selectedFreelancer,
+            freelancerId: this.selectedFreelancer ? this.selectedFreelancer.id : null,
             listaPreciosId: this.selectedPriceListId,
             fecha: new Date().toISOString(),
             estado: isCredit ? 'CREDITO_PENDIENTE' : 'PAGADA',
@@ -601,11 +712,61 @@ export const SalesPosModule = {
               total: i.cantidad * i.precioUnitario
             })),
             comprobantePagoUrl: this.currentReceiptB64 || null,
-            comprobanteFecha: this.currentReceiptB64 ? new Date().toISOString() : null
+            comprobanteFecha: this.currentReceiptB64 ? new Date().toISOString() : null,
+            comisionFreelance: (() => {
+              if (!this.selectedFreelancer) return 0;
+              return this.cart.reduce((acc, item) => {
+                const prod = (products || []).find(p => p.id === item.productoId);
+                const precioP3 = prod && prod.precios && prod.precios['plist_3']
+                  ? prod.precios['plist_3']
+                  : (prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0);
+                return acc + Math.max(0, (item.precioUnitario - precioP3) * item.cantidad);
+              }, 0);
+            })(),
+            precioBaseFreelance: (() => {
+              if (!this.selectedFreelancer) return 0;
+              return this.cart.reduce((acc, item) => {
+                const prod = (products || []).find(p => p.id === item.productoId);
+                const precioP3 = prod && prod.precios && prod.precios['plist_3']
+                  ? prod.precios['plist_3']
+                  : (prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0);
+                return acc + precioP3 * item.cantidad;
+              }, 0);
+            })()
           };
 
           const savedSale = await DB.add(STORES.SALES, sale);
           sale.id = savedSale.id;
+
+          // 1b. Si es venta freelance, crear CxP de comisión automáticamente
+          if (this.selectedFreelancer && sale.comisionFreelance > 0) {
+            const hoy = new Date();
+            const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+            const comisionDoc = 'COM-' + hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0') + '-' + consecutivo;
+            const cxpComision = {
+              tenantId,
+              documento: comisionDoc,
+              proveedorNombre: this.selectedFreelancer.nombre,
+              proveedorId: this.selectedFreelancer.id,
+              tipoDocumento: 'COMISION_FREELANCE',
+              ventaId: sale.id,
+              ventaConsecutivo: consecutivo,
+              fechaEmision: hoy.toISOString().split('T')[0],
+              fechaVencimiento: finMes.toISOString().split('T')[0],
+              valorTotal: sale.comisionFreelance,
+              saldo: sale.comisionFreelance,
+              abonos: 0,
+              estado: 'AL_DIA'
+            };
+            const savedCxp = await DB.add(STORES.PAYABLES_CXP, cxpComision);
+            sale.comisionCxpId = savedCxp.id;
+            await DB.update(STORES.SALES, sale);
+
+            // Actualizar comisiones acumuladas del freelancer
+            const freelancerToUpdate = this.selectedFreelancer;
+            freelancerToUpdate.comisionesTotalesGanadas = (freelancerToUpdate.comisionesTotalesGanadas || 0) + sale.comisionFreelance;
+            await DB.update(STORES.SUPPLIERS, freelancerToUpdate);
+          }
 
           // 2. Rebajar Inventario en Kardex
           for (const item of this.cart) {
