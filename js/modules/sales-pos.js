@@ -327,12 +327,17 @@ export const SalesPosModule = {
       tbody.innerHTML = this.cart.map((item, idx) => {
         const prod = (products || []).find(p => p.id === item.productoId);
         const p1 = (prod && prod.precios && prod.precios['plist_1']) || (item.precioUnitario * 1.2);
-        const p4 = (prod && prod.precios && prod.precios['plist_4']) || (prod && prod.costo ? prod.costo * 1.15 : item.precioUnitario * 0.85);
+        const basePriceId = (this.selectedFreelancer && this.selectedFreelancer.precioBaseId) || 'plist_3';
+        const pBase = (prod && prod.precios && prod.precios[basePriceId]) || (prod && prod.precios && prod.precios['plist_3']) || (item.precioUnitario * 0.9);
+        const comisionItem = Math.max(0, (item.precioUnitario - pBase) * item.cantidad);
         return `
         <tr>
           <td style="vertical-align: middle;">
             <div class="font-bold" style="font-size: 11.5px; line-height: 1.2;">${item.nombre}</div>
-            <div class="text-xs text-muted" style="font-size: 10px;">SKU: ${item.sku} • P1: $${Math.round(p1).toLocaleString('es-CO')} | P4: $${Math.round(p4).toLocaleString('es-CO')}</div>
+            <div class="text-xs text-muted" style="font-size: 10px;">
+              SKU: ${item.sku} • Base P3: <strong>$${Math.round(pBase).toLocaleString('es-CO')}</strong> | Techo P1: <strong>$${Math.round(p1).toLocaleString('es-CO')}</strong>
+              ${comisionItem > 0 ? `<span class="badge badge-success" style="font-size: 9px; margin-left: 4px; background: #16a34a; font-weight: 800;">+$${Math.round(comisionItem).toLocaleString('es-CO')} com</span>` : ''}
+            </div>
           </td>
           <td class="text-center" style="vertical-align: middle;">
             <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 50px; padding: 2px 4px; text-align: center; font-size: 11.5px; font-weight: 700;">
@@ -376,6 +381,11 @@ export const SalesPosModule = {
       const received = Number(container.querySelector('#pos-inp-received').value || totals.total);
       const change = Math.max(0, received - totals.total);
       container.querySelector('#pos-lbl-change').textContent = Formatters.currency(change);
+
+      // Calcular comisión del vendedor freelance en vivo
+      if (typeof calcularComision === 'function') {
+        calcularComision();
+      }
     };
 
     const addProductToCart = (prodId) => {
@@ -388,11 +398,18 @@ export const SalesPosModule = {
       }
 
       const existing = this.cart.find(i => i.productoId === prod.id);
-      // Precio especial del cliente tiene prioridad; luego lista seleccionada
+      // Precio acordado con el cliente tiene máxima prioridad
       const precioEsp = this.selectedClient && this.selectedClient.preciosEspeciales && this.selectedClient.preciosEspeciales[prod.id];
-      const unitPrice = precioEsp
-        ? precioEsp
-        : ((prod.precios && prod.precios[this.selectedPriceListId]) || (prod.costo || prod.costoPromedio || 0) * 1.5);
+      let unitPrice = 0;
+      if (precioEsp) {
+        unitPrice = precioEsp;
+      } else if (this.selectedFreelancer) {
+        // Para vendedores freelance, el precio base predeterminado es Precio 3
+        const baseId = this.selectedFreelancer.precioBaseId || 'plist_3';
+        unitPrice = (prod.precios && prod.precios[baseId]) || (prod.precios && prod.precios['plist_3']) || ((prod.costo || prod.costoPromedio || 0) * 1.3);
+      } else {
+        unitPrice = (prod.precios && prod.precios[this.selectedPriceListId]) || ((prod.costo || prod.costoPromedio || 0) * 1.5);
+      }
 
       if (existing) {
         if (existing.cantidad + 1 > prod.stock) {
