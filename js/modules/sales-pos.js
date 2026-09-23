@@ -49,21 +49,38 @@ export const SalesPosModule = {
     this.selectedPriceListId = this.selectedClient ? this.selectedClient.listaPreciosId || 'plist_1' : 'plist_1';
 
     container.innerHTML = `
-      <div class="view-header" style="margin-bottom: 16px;">
-        <div class="view-title-wrap">
-          <div class="d-flex items-center gap-2">
-            <h1>Punto de Venta (POS) & Mostrador</h1>
-            ${currentShift ? `
-              <span class="badge badge-success">✓ Caja Abierta (Turno Activo)</span>
-            ` : `
-              <span class="badge badge-danger">⚠️ Caja Cerrada (Turno sin aperturar)</span>
-            `}
-          </div>
-          <p>Facturación rápida de mostrador, pedidos, cotizaciones y ventas a crédito comercial</p>
+      <!-- Sub-Barra de Pestañas Superiores del Dominio Comercial -->
+      <div class="sub-nav-tabs">
+        <a href="#sales-pos" class="sub-nav-tab active">
+          <span>🛒</span>
+          <span>Terminal de Venta POS</span>
+        </a>
+        <a href="#shipping" class="sub-nav-tab">
+          <span>🚚</span>
+          <span>Pedidos & Envíos</span>
+        </a>
+        <a href="javascript:void(0)" class="sub-nav-tab" id="tab-quick-history">
+          <span>📜</span>
+          <span>Historial de Facturas</span>
+        </a>
+      </div>
+
+      <!-- Barra de KPIs Ejecutivos del POS (Look Idéntico al Mockup) -->
+      <div class="pos-kpi-bar">
+        <div class="pos-kpi-card">
+          <div class="pos-kpi-title">Ventas del Turno (Facturación)</div>
+          <div class="pos-kpi-amount" style="color: var(--brand-primary);">${Formatters.currency(currentShift ? ((currentShift.totalVentasEfectivo||0) + (currentShift.totalVentasTransferencia||0) + (currentShift.totalVentasNequiDaviplata||0) + (currentShift.totalVentasTarjeta||0)) : 0)}</div>
+          <div class="text-xs text-muted">Turno de caja ${currentShift ? 'activo' : 'sin abrir'}</div>
         </div>
-        <div class="view-actions">
-          <button class="btn btn-secondary btn-sm font-bold" id="btn-view-sales-history">📜 Historial Ventas</button>
-          <button class="btn btn-secondary btn-sm" id="btn-clear-cart">🗑️ Limpiar Venta</button>
+        <div class="pos-kpi-card">
+          <div class="pos-kpi-title">Efectivo en Caja</div>
+          <div class="pos-kpi-amount text-success">${Formatters.currency(currentShift ? (currentShift.saldoEsperado || currentShift.montoApertura || 0) : 0)}</div>
+          <div class="text-xs text-muted">Disponible en caja física</div>
+        </div>
+        <div class="pos-kpi-card">
+          <div class="pos-kpi-title">Red Freelance Asignada</div>
+          <div class="pos-kpi-amount" style="color: #10b981;">${freelancers.length} Vendedores</div>
+          <div class="text-xs text-muted">Comisiones automáticas en CXP</div>
         </div>
       </div>
 
@@ -753,10 +770,12 @@ export const SalesPosModule = {
     // 2. BOTÓN HISTORIAL DE VENTAS
     // =========================================================================
     const btnHist = container.querySelector('#btn-view-sales-history');
+    const tabHist = container.querySelector('#tab-quick-history');
     if (btnHist) {
-      btnHist.addEventListener('click', () => {
-        this.openSalesHistoryModal(tenantId);
-      });
+      btnHist.addEventListener('click', () => this.openSalesHistoryModal(tenantId));
+    }
+    if (tabHist) {
+      tabHist.addEventListener('click', () => this.openSalesHistoryModal(tenantId));
     }
 
     // =========================================================================
