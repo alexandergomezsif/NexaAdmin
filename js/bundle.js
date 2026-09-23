@@ -6220,6 +6220,11 @@ Generado por Nexa ERP.`;
         this.selectedClient = clients.find((c) => c.nitCc === "222222222222") || clients[0];
       }
       this.selectedPriceListId = this.selectedClient ? this.selectedClient.listaPreciosId || "plist_1" : "plist_1";
+      if (this.selectedClient && this.selectedClient.vendedorFreelanceId) {
+        this.selectedFreelancer = freelancers.find((f) => f.id === this.selectedClient.vendedorFreelanceId) || null;
+      } else {
+        this.selectedFreelancer = null;
+      }
       container.innerHTML = `
       <!-- Sub-Barra de Pesta\xF1as Superiores del Dominio Comercial -->
       <div class="sub-nav-tabs">
@@ -6438,26 +6443,36 @@ Generado por Nexa ERP.`;
               </div>
             </div>
 
-            <!-- VENDEDOR FREELANCE (opcional) -->
-            <div id="pos-freelancer-row" style="margin-bottom: 8px; background: rgba(0,113,227,0.04); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-              <div class="d-flex justify-between items-center mb-1">
-                <label class="text-xs font-bold" style="color: var(--text-main); cursor: pointer;" for="pos-chk-freelance">
-                  \u{1F91D} Venta por Vendedor Freelance
-                </label>
-                <input type="checkbox" id="pos-chk-freelance" style="width: 16px; height: 16px; cursor: pointer;">
-              </div>
-              <div id="pos-freelancer-select-wrap" style="display: none; margin-top: 6px;">
-                <select class="form-select" id="pos-select-freelancer" style="font-size: 11.5px; padding: 4px 8px; font-weight: 700; margin-bottom: 6px;">
-                  <option value="">-- Seleccionar vendedor --</option>
-                  ${freelancers.map((fl) => `<option value="${fl.id}" data-nombre="${fl.nombre}">${fl.nombre}${fl.zona ? " (" + fl.zona + ")" : ""}</option>`).join("")}
-                </select>
-                <div id="pos-comision-panel" style="display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 6px 10px;">
-                  <div class="d-flex justify-between items-center text-xs">
-                    <span style="color: #15803d; font-weight: 600;">\u{1F4B0} Comisi\xF3n del vendedor:</span>
-                    <strong id="pos-lbl-comision" style="font-size: 14px; color: #15803d;">$ 0</strong>
+            <!-- SELECTOR DE VENDEDOR FREELANCE DIRECTO -->
+            <div class="form-group mb-2">
+              <label class="form-label text-xs font-bold" style="color: var(--text-main);">\u{1F91D} VENDEDOR ASIGNADO (FREELANCE):</label>
+              <select class="form-select" id="pos-select-freelancer" style="font-size: 11.5px; padding: 4px 8px; font-weight: 700; color: #4C7DFF; border-color: rgba(76, 125, 255, 0.4);">
+                <option value="">-- Venta Directa F\xE1brica (Sin Vendedor Freelance) --</option>
+                ${freelancers.map((fl) => `
+                  <option value="${fl.id}" ${this.selectedFreelancer && this.selectedFreelancer.id === fl.id ? "selected" : ""} data-nombre="${fl.nombre}" data-base="${fl.precioBaseId || "plist_3"}">
+                    \u{1F91D} ${fl.nombre} (${fl.zona || "Freelance"}) - Base: ${fl.precioBaseId === "plist_2" ? "P2" : fl.precioBaseId === "plist_4" ? "P4" : "P3 Mayorista"}
+                  </option>
+                `).join("")}
+              </select>
+            </div>
+
+            <!-- RECUADRO VERDE PERMANENTE DE COMISI\xD3N EN VIVO -->
+            <div id="pos-comision-panel" style="background: rgba(79, 197, 138, 0.12); border: 1.5px solid #4FC58A; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;">
+              <div class="d-flex justify-between items-center">
+                <div class="d-flex items-center gap-2">
+                  <span style="font-size: 18px;">\u{1F4B0}</span>
+                  <div>
+                    <div class="font-bold text-xs" style="color: #4FC58A; text-transform: uppercase; letter-spacing: 0.5px;">Comisi\xF3n Vendedor Freelance:</div>
+                    <div class="text-xs" id="pos-comision-vendedor-nombre" style="font-size: 11px; color: var(--text-main); font-weight: 600;">Venta Directa de F\xE1brica</div>
                   </div>
-                  <div class="text-xs text-muted" id="pos-comision-detalle" style="margin-top: 2px;">Seleccione productos para ver comisi\xF3n</div>
                 </div>
+                <div class="text-right">
+                  <strong id="pos-lbl-comision" style="font-size: 20px; font-weight: 800; color: #4FC58A;">$ 0 COP</strong>
+                  <div class="text-xs text-muted" style="font-size: 9.5px;">Margen P3 a P1</div>
+                </div>
+              </div>
+              <div id="pos-comision-detalle" style="font-size: 11px; color: #929BAA; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(79, 197, 138, 0.3);">
+                Agregue productos al carrito para calcular comisi\xF3n.
               </div>
             </div>
 
@@ -6480,7 +6495,6 @@ Generado por Nexa ERP.`;
       </div>
     `;
       this.currentReceiptB64 = null;
-      this.selectedFreelancer = null;
       const updateCartView = () => {
         const tbody = container.querySelector("#pos-cart-tbody");
         if (this.cart.length === 0) {
@@ -6489,6 +6503,8 @@ Generado por Nexa ERP.`;
           container.querySelector("#pos-lbl-iva").textContent = "$ 0";
           container.querySelector("#pos-lbl-total").textContent = "$ 0";
           container.querySelector("#pos-lbl-change").textContent = "$ 0";
+          if (typeof calcularComision === "function")
+            calcularComision();
           return;
         }
         tbody.innerHTML = this.cart.map((item, idx) => {
@@ -6585,6 +6601,8 @@ Generado por Nexa ERP.`;
           });
         }
         updateCartView();
+        if (typeof calcularComision === "function")
+          calcularComision();
       };
       container.querySelectorAll(".pos-product-card").forEach((card) => {
         card.addEventListener("click", () => {
@@ -6636,10 +6654,6 @@ Generado por Nexa ERP.`;
           }
           if (commBadge)
             commBadge.style.display = "block";
-          if (chk)
-            chk.checked = true;
-          if (selWrap)
-            selWrap.style.display = "block";
           if (sel)
             sel.value = fl.id;
         } else {
@@ -6652,10 +6666,6 @@ Generado por Nexa ERP.`;
           }
           if (commBadge)
             commBadge.style.display = "none";
-          if (chk)
-            chk.checked = false;
-          if (selWrap)
-            selWrap.style.display = "none";
           if (sel)
             sel.value = "";
         }
@@ -6816,20 +6826,23 @@ Generado por Nexa ERP.`;
           const id = freelancerSelect.value;
           this.selectedFreelancer = freelancers.find((fl) => fl.id === id) || null;
           if (this.selectedFreelancer) {
-            this.selectedPriceListId = "plist_3";
-            container.querySelector("#pos-select-pricelist").value = "plist_3";
+            const baseId = this.selectedFreelancer.precioBaseId || "plist_3";
+            this.selectedPriceListId = baseId;
+            const plSel = container.querySelector("#pos-select-pricelist");
+            if (plSel)
+              plSel.value = baseId;
             this.cart.forEach((item) => {
               const p = (products || []).find((prod) => prod.id === item.productoId);
-              if (p && p.precios && p.precios["plist_3"]) {
+              if (p && p.precios && p.precios[baseId]) {
+                item.precioUnitario = p.precios[baseId];
+              } else if (p && p.precios && p.precios["plist_3"]) {
                 item.precioUnitario = p.precios["plist_3"];
               }
             });
-            updateCartView();
-            calcularComision();
-            Toast.info(`Vendedor "${this.selectedFreelancer.nombre}" seleccionado. Precios ajustados a Precio 3.`);
-          } else {
-            comisionPanel.style.display = "none";
+            Toast.info(`Vendedor "${this.selectedFreelancer.nombre}" asignado. Precios base ajustados a Precio 3.`);
           }
+          updateCartView();
+          calcularComision();
         });
       }
       const _originalUpdateCartView = updateCartView;
