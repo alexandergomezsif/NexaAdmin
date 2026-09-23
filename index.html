@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/utilities.css">
 </head>
-<body>
+<body class="dark-mode">
 
   <!-- Overlay para cierre de sidebar en dispositivos móviles -->
   <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -49,85 +49,27 @@
 
       <!-- Menú de Navegación por Módulos -->
             <!-- Menú de Navegación por Módulos (5 Macro-Secciones Limpias) -->
-      <nav class="sidebar-nav">
-        
-        <!-- 1. VENTAS & DESPACHOS -->
-        <div class="nav-section-title">Comercial</div>
-        <a class="nav-item active" href="#sales-pos" data-route="sales-pos" title="Punto de Venta Mostrador y Facturación">
-          <span class="nav-icon">🛒</span>
-          <span>Ventas & POS</span>
+            <!-- Menú de Navegación Minimalista (5 Macro-Secciones) -->
+      <nav class="sidebar-nav" style="padding: 16px 10px; display: flex; flex-direction: column; gap: 6px;">
+        <a class="nav-item active" href="#sales-pos" data-route="sales-pos" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+          <span class="nav-icon" style="font-size: 20px;">🛒</span>
+          <span style="font-size: 14px; font-weight: 700;">Ventas POS</span>
         </a>
-        <a class="nav-item" href="#shipping" data-route="shipping" title="Control de Despachos y Envíos">
-          <span class="nav-icon">🚚</span>
-          <span>Pedidos & Envíos</span>
+        <a class="nav-item" href="#inventory" data-route="inventory" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+          <span class="nav-icon" style="font-size: 20px;">📦</span>
+          <span style="font-size: 14px; font-weight: 700;">Inventario & Planta</span>
         </a>
-
-        <!-- 2. INVENTARIO & PLANTA -->
-        <div class="nav-section-title">Inventario & Producción</div>
-        <a class="nav-item" href="#products" data-route="products" title="Catálogo de Productos y Precios">
-          <span class="nav-icon">📦</span>
-          <span>Catálogo Productos</span>
+        <a class="nav-item" href="#clients" data-route="clients" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+          <span class="nav-icon" style="font-size: 20px;">👥</span>
+          <span style="font-size: 14px; font-weight: 700;">Clientes & Vendedores</span>
         </a>
-        <a class="nav-item" href="#inventory" data-route="inventory" title="Existencias Físicas y Movimientos Kardex">
-          <span class="nav-icon">📑</span>
-          <span>Inventario & Kardex</span>
+        <a class="nav-item" href="#cash" data-route="cash" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+          <span class="nav-icon" style="font-size: 20px;">💵</span>
+          <span style="font-size: 14px; font-weight: 700;">Finanzas & Cartera</span>
         </a>
-        <a class="nav-item" href="#production" data-route="production" title="Órdenes de Fabricación y Fórmulas">
-          <span class="nav-icon">⚙️</span>
-          <span>Producción & Fórmulas</span>
-        </a>
-        <a class="nav-item" href="#pricing-calculator" data-route="pricing-calculator" title="Calculadora de Costos y Precios">
-          <span class="nav-icon">💡</span>
-          <span>Costos & Precios IA</span>
-        </a>
-
-        <!-- 3. CLIENTES & VENDEDORES -->
-        <div class="nav-section-title">Terceros & Red Comercial</div>
-        <a class="nav-item" href="#clients" data-route="clients" title="Ficha 360° de Clientes y Vendedores Asignados">
-          <span class="nav-icon">👥</span>
-          <span>Clientes & Cartera</span>
-        </a>
-        <a class="nav-item" href="#freelancers" data-route="freelancers" title="Red de Vendedores Freelance y Comisiones">
-          <span class="nav-icon">🤝</span>
-          <span>Vendedores Freelance</span>
-        </a>
-
-        <!-- 4. FINANZAS & TESORERÍA -->
-        <div class="nav-section-title">Finanzas & Caja</div>
-        <a class="nav-item" href="#cash" data-route="cash" title="Control de Caja, Turnos y Arqueos">
-          <span class="nav-icon">💵</span>
-          <span>Caja & Arqueos</span>
-        </a>
-        <a class="nav-item" href="#purchases" data-route="purchases" title="Compras a Proveedores de Materias Primas">
-          <span class="nav-icon">🛍️</span>
-          <span>Compras & Insumos</span>
-        </a>
-        <a class="nav-item" href="#expenses" data-route="expenses" title="Gastos Operativos de Planta y Administración">
-          <span class="nav-icon">🏷️</span>
-          <span>Gastos Operativos</span>
-        </a>
-        <a class="nav-item" href="#cxc" data-route="cxc" title="Cuentas por Cobrar a Clientes">
-          <span class="nav-icon">📈</span>
-          <span>Cuentas por Cobrar</span>
-        </a>
-        <a class="nav-item" href="#cxp" data-route="cxp" title="Cuentas por Pagar Proveedores y Comisiones Freelance">
-          <span class="nav-icon">📉</span>
-          <span>Cuentas por Pagar</span>
-        </a>
-
-        <!-- 5. CONFIGURACIÓN & SISTEMA -->
-        <div class="nav-section-title">Sistema & Reportes</div>
-        <a class="nav-item" href="#dashboard" data-route="dashboard" title="Resumen Ejecutivo y Métricas">
-          <span class="nav-icon">📊</span>
-          <span>Dashboard Ejecutivo</span>
-        </a>
-        <a class="nav-item" href="#reports" data-route="reports" title="Reportes y Estadísticas">
-          <span class="nav-icon">📈</span>
-          <span>Reportes Gerenciales</span>
-        </a>
-        <a class="nav-item" href="#settings" data-route="settings" title="Parámetros, Usuarios, Respaldo y Empresa">
-          <span class="nav-icon">⚙️</span>
-          <span>Configuración & Ajustes</span>
+        <a class="nav-item" href="#settings" data-route="settings" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+          <span class="nav-icon" style="font-size: 20px;">⚙️</span>
+          <span style="font-size: 14px; font-weight: 700;">Configuración</span>
         </a>
       </nav>
 

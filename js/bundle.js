@@ -4035,6 +4035,15 @@ Generado por Nexa ERP.`;
         DB2.getAll(STORES.WAREHOUSES, tenantId)
       ]);
       container.innerHTML = `
+            <!-- Sub-Barra de Pesta\xF1as Superiores de Inventario & Planta -->
+      <div class="sub-nav-tabs">
+        <a href="#products" class="sub-nav-tab active"><span>\u{1F4E6}</span><span>Cat\xE1logo de Productos</span></a>
+        <a href="#inventory" class="sub-nav-tab"><span>\u{1F4D1}</span><span>Inventario & Kardex</span></a>
+        <a href="#production" class="sub-nav-tab"><span>\u2699\uFE0F</span><span>Producci\xF3n & BOM</span></a>
+        <a href="#formulas-vault" class="sub-nav-tab"><span>\u{1F512}</span><span>B\xF3veda de F\xF3rmulas</span></a>
+        <a href="#pricing-calculator" class="sub-nav-tab"><span>\u{1F4A1}</span><span>Costos & Precios IA</span></a>
+      </div>
+
       <div class="view-header">
         <div class="view-title-wrap">
           <h1>Cat\xE1logo de Productos & Insumos</h1>
@@ -4465,6 +4474,15 @@ Generado por Nexa ERP.`;
         KardexService.getMovements(tenantId)
       ]);
       container.innerHTML = `
+            <!-- Sub-Barra de Pesta\xF1as Superiores de Inventario & Planta -->
+      <div class="sub-nav-tabs">
+        <a href="#products" class="sub-nav-tab"><span>\u{1F4E6}</span><span>Cat\xE1logo de Productos</span></a>
+        <a href="#inventory" class="sub-nav-tab active"><span>\u{1F4D1}</span><span>Inventario & Kardex</span></a>
+        <a href="#production" class="sub-nav-tab"><span>\u2699\uFE0F</span><span>Producci\xF3n & BOM</span></a>
+        <a href="#formulas-vault" class="sub-nav-tab"><span>\u{1F512}</span><span>B\xF3veda de F\xF3rmulas</span></a>
+        <a href="#pricing-calculator" class="sub-nav-tab"><span>\u{1F4A1}</span><span>Costos & Precios IA</span></a>
+      </div>
+
       <div class="view-header">
         <div class="view-title-wrap">
           <h1>Inventario & Kardex Multibodega</h1>
@@ -6203,21 +6221,38 @@ Generado por Nexa ERP.`;
       }
       this.selectedPriceListId = this.selectedClient ? this.selectedClient.listaPreciosId || "plist_1" : "plist_1";
       container.innerHTML = `
-      <div class="view-header" style="margin-bottom: 16px;">
-        <div class="view-title-wrap">
-          <div class="d-flex items-center gap-2">
-            <h1>Punto de Venta (POS) & Mostrador</h1>
-            ${currentShift ? `
-              <span class="badge badge-success">\u2713 Caja Abierta (Turno Activo)</span>
-            ` : `
-              <span class="badge badge-danger">\u26A0\uFE0F Caja Cerrada (Turno sin aperturar)</span>
-            `}
-          </div>
-          <p>Facturaci\xF3n r\xE1pida de mostrador, pedidos, cotizaciones y ventas a cr\xE9dito comercial</p>
+      <!-- Sub-Barra de Pesta\xF1as Superiores del Dominio Comercial -->
+      <div class="sub-nav-tabs">
+        <a href="#sales-pos" class="sub-nav-tab active">
+          <span>\u{1F6D2}</span>
+          <span>Terminal de Venta POS</span>
+        </a>
+        <a href="#shipping" class="sub-nav-tab">
+          <span>\u{1F69A}</span>
+          <span>Pedidos & Env\xEDos</span>
+        </a>
+        <a href="javascript:void(0)" class="sub-nav-tab" id="tab-quick-history">
+          <span>\u{1F4DC}</span>
+          <span>Historial de Facturas</span>
+        </a>
+      </div>
+
+      <!-- Barra de KPIs Ejecutivos del POS (Look Id\xE9ntico al Mockup) -->
+      <div class="pos-kpi-bar">
+        <div class="pos-kpi-card">
+          <div class="pos-kpi-title">Ventas del Turno (Facturaci\xF3n)</div>
+          <div class="pos-kpi-amount" style="color: var(--brand-primary);">${Formatters.currency(currentShift ? (currentShift.totalVentasEfectivo || 0) + (currentShift.totalVentasTransferencia || 0) + (currentShift.totalVentasNequiDaviplata || 0) + (currentShift.totalVentasTarjeta || 0) : 0)}</div>
+          <div class="text-xs text-muted">Turno de caja ${currentShift ? "activo" : "sin abrir"}</div>
         </div>
-        <div class="view-actions">
-          <button class="btn btn-secondary btn-sm font-bold" id="btn-view-sales-history">\u{1F4DC} Historial Ventas</button>
-          <button class="btn btn-secondary btn-sm" id="btn-clear-cart">\u{1F5D1}\uFE0F Limpiar Venta</button>
+        <div class="pos-kpi-card">
+          <div class="pos-kpi-title">Efectivo en Caja</div>
+          <div class="pos-kpi-amount text-success">${Formatters.currency(currentShift ? currentShift.saldoEsperado || currentShift.montoApertura || 0 : 0)}</div>
+          <div class="text-xs text-muted">Disponible en caja f\xEDsica</div>
+        </div>
+        <div class="pos-kpi-card">
+          <div class="pos-kpi-title">Red Freelance Asignada</div>
+          <div class="pos-kpi-amount" style="color: #10b981;">${freelancers.length} Vendedores</div>
+          <div class="text-xs text-muted">Comisiones autom\xE1ticas en CXP</div>
         </div>
       </div>
 
@@ -6841,10 +6876,12 @@ Generado por Nexa ERP.`;
         }
       });
       const btnHist = container.querySelector("#btn-view-sales-history");
+      const tabHist = container.querySelector("#tab-quick-history");
       if (btnHist) {
-        btnHist.addEventListener("click", () => {
-          this.openSalesHistoryModal(tenantId);
-        });
+        btnHist.addEventListener("click", () => this.openSalesHistoryModal(tenantId));
+      }
+      if (tabHist) {
+        tabHist.addEventListener("click", () => this.openSalesHistoryModal(tenantId));
       }
       container.querySelector("#btn-process-sale").addEventListener("click", () => {
         if (this.cart.length === 0) {
@@ -8086,6 +8123,15 @@ Generado por Nexa ERP.`;
       ]);
       const shiftMovements = currentShift ? movements.filter((m) => m.turnoId === currentShift.id) : [];
       container.innerHTML = `
+            <!-- Sub-Barra de Pesta\xF1as: Finanzas & Cartera -->
+      <div class="sub-nav-tabs">
+        <a href="#cash" class="sub-nav-tab active"><span>\u{1F4B5}</span><span>Caja & Turnos</span></a>
+        <a href="#purchases" class="sub-nav-tab"><span>\u{1F6CD}\uFE0F</span><span>Compras & Proveedores</span></a>
+        <a href="#expenses" class="sub-nav-tab"><span>\u{1F3F7}\uFE0F</span><span>Gastos Operativos</span></a>
+        <a href="#cxc" class="sub-nav-tab"><span>\u{1F4C8}</span><span>Cuentas por Cobrar (CXC)</span></a>
+        <a href="#cxp" class="sub-nav-tab"><span>\u{1F4C9}</span><span>Cuentas por Pagar (CXP)</span></a>
+      </div>
+
       <div class="view-header">
         <div class="view-title-wrap">
           <h1>Control de Caja & Arqueos</h1>
@@ -9928,6 +9974,16 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       const warehouses = await DB2.getAll(STORES.WAREHOUSES, tenant.id);
       const isDev = AuthServiceInstance.isDeveloper();
       container.innerHTML = `
+            <!-- Sub-Barra de Pesta\xF1as: Configuraci\xF3n & Sistema -->
+      <div class="sub-nav-tabs">
+        <a href="#dashboard" class="sub-nav-tab"><span>\u{1F4CA}</span><span>Dashboard</span></a>
+        <a href="#settings" class="sub-nav-tab active"><span>\u2699\uFE0F</span><span>Par\xE1metros & Empresa</span></a>
+        <a href="#users" class="sub-nav-tab"><span>\u{1F6E1}\uFE0F</span><span>Usuarios & Roles</span></a>
+        <a href="#backup" class="sub-nav-tab"><span>\u{1F4BE}</span><span>Respaldo Base de Datos</span></a>
+        <a href="#importer" class="sub-nav-tab"><span>\u{1F4E5}</span><span>Importador Masivo</span></a>
+        <a href="#reports" class="sub-nav-tab"><span>\u{1F4C8}</span><span>Reportes</span></a>
+      </div>
+
       <div class="view-header">
         <div class="view-title-wrap">
           <h1>Configuraci\xF3n General & Multiempresa</h1>
