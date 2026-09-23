@@ -65,22 +65,22 @@ export const SalesPosModule = {
         </a>
       </div>
 
-      <!-- Barra de KPIs Ejecutivos del POS (Look Idéntico al Mockup) -->
+      <!-- Barra de KPIs Ejecutivos del POS (Look Idéntico a la Imagen) -->
       <div class="pos-kpi-bar">
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Ventas del Turno (Facturación)</div>
-          <div class="pos-kpi-amount" style="color: var(--brand-primary);">${Formatters.currency(currentShift ? ((currentShift.totalVentasEfectivo||0) + (currentShift.totalVentasTransferencia||0) + (currentShift.totalVentasNequiDaviplata||0) + (currentShift.totalVentasTarjeta||0)) : 0)}</div>
-          <div class="text-xs text-muted">Turno de caja ${currentShift ? 'activo' : 'sin abrir'}</div>
+          <div class="pos-kpi-title">Revenue (Facturación del Turno)</div>
+          <div class="pos-kpi-amount" style="color: #F5F7FA;">${Formatters.currency(currentShift ? ((currentShift.totalVentasEfectivo||0) + (currentShift.totalVentasTransferencia||0) + (currentShift.totalVentasNequiDaviplata||0) + (currentShift.totalVentasTarjeta||0)) : 0)}</div>
+          <div class="text-xs" style="color: #929BAA;">Turno ${currentShift ? '🟢 Activo en curso' : '🔴 Sin abrir'}</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Efectivo en Caja</div>
-          <div class="pos-kpi-amount text-success">${Formatters.currency(currentShift ? (currentShift.saldoEsperado || currentShift.montoApertura || 0) : 0)}</div>
-          <div class="text-xs text-muted">Disponible en caja física</div>
+          <div class="pos-kpi-title">Cash (Efectivo en Caja)</div>
+          <div class="pos-kpi-amount text-financial">${Formatters.currency(currentShift ? (currentShift.saldoEsperado || currentShift.montoApertura || 0) : 0)}</div>
+          <div class="text-xs" style="color: #929BAA;">Disponible físicamente</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Red Freelance Asignada</div>
-          <div class="pos-kpi-amount" style="color: #10b981;">${freelancers.length} Vendedores</div>
-          <div class="text-xs text-muted">Comisiones automáticas en CXP</div>
+          <div class="pos-kpi-title">Net Profit / Comisiones Freelance</div>
+          <div class="pos-kpi-amount text-financial">${Formatters.currency(freelancers.reduce((a, fl) => a + (fl.comisionesTotalesGanadas || 0), 0))}</div>
+          <div class="text-xs" style="color: #929BAA;">${freelancers.length} Vendedores activos con liquidación en CXP</div>
         </div>
       </div>
 
