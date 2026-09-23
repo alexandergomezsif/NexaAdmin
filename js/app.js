@@ -82,6 +82,60 @@ const MODULES = {
   'freelancers': FreelancersModule
 };
 
+export const MACRO_CATEGORIES = {
+  commercial: {
+    sidebarRoute: 'sales-pos',
+    routes: ['sales-pos', 'shipping'],
+    tabs: [
+      { route: 'sales-pos', label: 'Terminal POS', icon: '🛒' },
+      { route: 'shipping', label: 'Pedidos & Envíos', icon: '🚚' }
+    ]
+  },
+  inventory: {
+    sidebarRoute: 'inventory',
+    routes: ['inventory', 'products', 'production', 'formulas-vault', 'pricing-calculator'],
+    tabs: [
+      { route: 'products', label: 'Catálogo', icon: '📦' },
+      { route: 'inventory', label: 'Inventario & Kardex', icon: '📑' },
+      { route: 'production', label: 'Producción & BOM', icon: '⚙️' },
+      { route: 'formulas-vault', label: 'Bóveda Fórmulas', icon: '🔒' },
+      { route: 'pricing-calculator', label: 'Costos & Precios IA', icon: '💡' }
+    ]
+  },
+  finance: {
+    sidebarRoute: 'cash',
+    routes: ['cash', 'purchases', 'expenses', 'cxc', 'cxp'],
+    tabs: [
+      { route: 'cash', label: 'Caja & Turnos', icon: '💵' },
+      { route: 'purchases', label: 'Compras & Proveedores', icon: '🛍️' },
+      { route: 'expenses', label: 'Gastos Operativos', icon: '🏷️' },
+      { route: 'cxc', label: 'Cartera CXC', icon: '📈' },
+      { route: 'cxp', label: 'Cuentas por Pagar CXP', icon: '📉' }
+    ]
+  },
+  clients: {
+    sidebarRoute: 'clients',
+    routes: ['clients', 'freelancers'],
+    tabs: [
+      { route: 'clients', label: 'Directorio Clientes', icon: '👥' },
+      { route: 'freelancers', label: 'Red Freelance', icon: '🤝' }
+    ]
+  },
+  settings: {
+    sidebarRoute: 'settings',
+    routes: ['dashboard', 'settings', 'users', 'backup', 'importer', 'reports', 'audit', 'integrations', 'documents'],
+    tabs: [
+      { route: 'dashboard', label: 'Dashboard', icon: '📊' },
+      { route: 'settings', label: 'Parámetros & Empresa', icon: '⚙️' },
+      { route: 'users', label: 'Usuarios & Roles', icon: '🛡️' },
+      { route: 'backup', label: 'Respaldo BD', icon: '💾' },
+      { route: 'importer', label: 'Importador Masivo', icon: '📥' },
+      { route: 'reports', label: 'Reportes', icon: '📈' },
+      { route: 'audit', label: 'Auditoría', icon: '📋' }
+    ]
+  }
+};
+
 class NexaApp {
   constructor() {
     this.contentContainer = null;

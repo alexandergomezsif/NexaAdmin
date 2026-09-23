@@ -449,6 +449,7 @@
           "dashboard",
           "sales-pos",
           "clients",
+          "freelancers",
           "shipping",
           "products",
           "inventory",
@@ -475,6 +476,7 @@
           "dashboard",
           "sales-pos",
           "clients",
+          "freelancers",
           "shipping",
           "products",
           "inventory",
@@ -497,6 +499,7 @@
         [ROLES.VENDEDOR]: [
           "sales-pos",
           "clients",
+          "freelancers",
           "shipping",
           "products",
           "documents"
@@ -13347,6 +13350,59 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     "formulas-vault": FormulasVaultModule,
     "pricing-calculator": PricingCalculatorModule,
     "freelancers": FreelancersModule
+  };
+  var MACRO_CATEGORIES = {
+    commercial: {
+      sidebarRoute: "sales-pos",
+      routes: ["sales-pos", "shipping"],
+      tabs: [
+        { route: "sales-pos", label: "Terminal POS", icon: "\u{1F6D2}" },
+        { route: "shipping", label: "Pedidos & Env\xEDos", icon: "\u{1F69A}" }
+      ]
+    },
+    inventory: {
+      sidebarRoute: "inventory",
+      routes: ["inventory", "products", "production", "formulas-vault", "pricing-calculator"],
+      tabs: [
+        { route: "products", label: "Cat\xE1logo", icon: "\u{1F4E6}" },
+        { route: "inventory", label: "Inventario & Kardex", icon: "\u{1F4D1}" },
+        { route: "production", label: "Producci\xF3n & BOM", icon: "\u2699\uFE0F" },
+        { route: "formulas-vault", label: "B\xF3veda F\xF3rmulas", icon: "\u{1F512}" },
+        { route: "pricing-calculator", label: "Costos & Precios IA", icon: "\u{1F4A1}" }
+      ]
+    },
+    finance: {
+      sidebarRoute: "cash",
+      routes: ["cash", "purchases", "expenses", "cxc", "cxp"],
+      tabs: [
+        { route: "cash", label: "Caja & Turnos", icon: "\u{1F4B5}" },
+        { route: "purchases", label: "Compras & Proveedores", icon: "\u{1F6CD}\uFE0F" },
+        { route: "expenses", label: "Gastos Operativos", icon: "\u{1F3F7}\uFE0F" },
+        { route: "cxc", label: "Cartera CXC", icon: "\u{1F4C8}" },
+        { route: "cxp", label: "Cuentas por Pagar CXP", icon: "\u{1F4C9}" }
+      ]
+    },
+    clients: {
+      sidebarRoute: "clients",
+      routes: ["clients", "freelancers"],
+      tabs: [
+        { route: "clients", label: "Directorio Clientes", icon: "\u{1F465}" },
+        { route: "freelancers", label: "Red Freelance", icon: "\u{1F91D}" }
+      ]
+    },
+    settings: {
+      sidebarRoute: "settings",
+      routes: ["dashboard", "settings", "users", "backup", "importer", "reports", "audit", "integrations", "documents"],
+      tabs: [
+        { route: "dashboard", label: "Dashboard", icon: "\u{1F4CA}" },
+        { route: "settings", label: "Par\xE1metros & Empresa", icon: "\u2699\uFE0F" },
+        { route: "users", label: "Usuarios & Roles", icon: "\u{1F6E1}\uFE0F" },
+        { route: "backup", label: "Respaldo BD", icon: "\u{1F4BE}" },
+        { route: "importer", label: "Importador Masivo", icon: "\u{1F4E5}" },
+        { route: "reports", label: "Reportes", icon: "\u{1F4C8}" },
+        { route: "audit", label: "Auditor\xEDa", icon: "\u{1F4CB}" }
+      ]
+    }
   };
   var NexaApp = class {
     constructor() {
