@@ -6316,9 +6316,14 @@ Generado por Nexa ERP.`;
             <div style="width: 100%;">
               <div class="d-flex justify-between items-center mb-1">
                 <div class="card-title" style="font-size: 13px;">\u{1F6D2} Detalle de la Venta</div>
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-add-client" style="padding: 2px 8px; font-size: 11px;">
-                  + Nuevo Cliente
-                </button>
+                <div class="d-flex gap-1">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-cart" style="padding: 2px 8px; font-size: 11px;" title="Limpiar todo el carrito">
+                    \u{1F5D1}\uFE0F Limpiar
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-add-client" style="padding: 2px 8px; font-size: 11px;">
+                    + Nuevo Cliente
+                  </button>
+                </div>
               </div>
               <div class="form-group mb-1">
                 <select class="form-select" id="pos-select-client" style="font-size: 12px; font-weight: 700; padding: 4px 8px;">
@@ -6571,17 +6576,19 @@ Generado por Nexa ERP.`;
           addProductToCart(id);
         });
       });
-      container.querySelector("#pos-select-pricelist").addEventListener("change", (e) => {
-        this.selectedPriceListId = e.target.value;
-        this.cart.forEach((item) => {
-          const p = sellableProducts.find((prod) => prod.id === item.productoId);
-          if (p && p.precios && p.precios[this.selectedPriceListId]) {
-            item.precioUnitario = p.precios[this.selectedPriceListId];
-          }
+      const selPl = container.querySelector("#pos-select-pricelist");
+      if (selPl)
+        selPl.addEventListener("change", (e) => {
+          this.selectedPriceListId = e.target.value;
+          this.cart.forEach((item) => {
+            const p = sellableProducts.find((prod) => prod.id === item.productoId);
+            if (p && p.precios && p.precios[this.selectedPriceListId]) {
+              item.precioUnitario = p.precios[this.selectedPriceListId];
+            }
+          });
+          updateCartView();
+          this.render(container);
         });
-        updateCartView();
-        this.render(container);
-      });
       const syncAssignedSeller = () => {
         const banner = container.querySelector("#pos-assigned-seller-banner");
         const sellerLabel = container.querySelector("#pos-seller-label");
@@ -6655,32 +6662,34 @@ Generado por Nexa ERP.`;
       };
       updateClientTaxBadge();
       syncAssignedSeller();
-      container.querySelector("#pos-select-client").addEventListener("change", (e) => {
-        const cli = clients.find((c) => c.id === e.target.value);
-        this.selectedClient = cli;
-        if (cli && cli.listaPreciosId) {
-          this.selectedPriceListId = cli.listaPreciosId;
-          container.querySelector("#pos-select-pricelist").value = cli.listaPreciosId;
-        }
-        this.cart.forEach((item) => {
-          const p = sellableProducts.find((prod) => prod.id === item.productoId);
-          const precioEsp = cli && cli.preciosEspeciales && cli.preciosEspeciales[item.productoId];
-          if (precioEsp) {
-            item.precioUnitario = precioEsp;
-          } else if (p && p.precios && p.precios[this.selectedPriceListId]) {
-            item.precioUnitario = p.precios[this.selectedPriceListId];
+      const selCli = container.querySelector("#pos-select-client");
+      if (selCli)
+        selCli.addEventListener("change", (e) => {
+          const cli = clients.find((c) => c.id === e.target.value);
+          this.selectedClient = cli;
+          if (cli && cli.listaPreciosId) {
+            this.selectedPriceListId = cli.listaPreciosId;
+            container.querySelector("#pos-select-pricelist").value = cli.listaPreciosId;
           }
+          this.cart.forEach((item) => {
+            const p = sellableProducts.find((prod) => prod.id === item.productoId);
+            const precioEsp = cli && cli.preciosEspeciales && cli.preciosEspeciales[item.productoId];
+            if (precioEsp) {
+              item.precioUnitario = precioEsp;
+            } else if (p && p.precios && p.precios[this.selectedPriceListId]) {
+              item.precioUnitario = p.precios[this.selectedPriceListId];
+            }
+          });
+          const hasPreciosEsp = cli && cli.preciosEspeciales && Object.keys(cli.preciosEspeciales).length > 0;
+          const pricelistSel = container.querySelector("#pos-select-pricelist");
+          if (pricelistSel && hasPreciosEsp) {
+            Toast.info("Cliente con precios acordados \u2014 precios personalizados aplicados autom\xE1ticamente.");
+          }
+          syncAssignedSeller();
+          updateClientTaxBadge();
+          updateCartView();
+          calcularComision();
         });
-        const hasPreciosEsp = cli && cli.preciosEspeciales && Object.keys(cli.preciosEspeciales).length > 0;
-        const pricelistSel = container.querySelector("#pos-select-pricelist");
-        if (pricelistSel && hasPreciosEsp) {
-          Toast.info("Cliente con precios acordados \u2014 precios personalizados aplicados autom\xE1ticamente.");
-        }
-        syncAssignedSeller();
-        updateClientTaxBadge();
-        updateCartView();
-        calcularComision();
-      });
       const btnPosAddClient = container.querySelector("#btn-pos-add-client");
       if (btnPosAddClient) {
         btnPosAddClient.addEventListener("click", () => {
@@ -6749,7 +6758,9 @@ Generado por Nexa ERP.`;
           updateCartView();
         }
       });
-      container.querySelector("#pos-inp-received").addEventListener("input", updateCartView);
+      const inpRec = container.querySelector("#pos-inp-received");
+      if (inpRec)
+        inpRec.addEventListener("input", updateCartView);
       const chkFreelance = container.querySelector("#pos-chk-freelance");
       const freelancerSelectWrap = container.querySelector("#pos-freelancer-select-wrap");
       const freelancerSelect = container.querySelector("#pos-select-freelancer");
@@ -6810,13 +6821,19 @@ Generado por Nexa ERP.`;
         _originalUpdateCartView();
         calcularComision();
       };
-      container.querySelector("#pos-inp-received").removeEventListener("input", updateCartView);
-      container.querySelector("#pos-inp-received").addEventListener("input", updateCartViewWithComision);
-      container.querySelector("#btn-clear-cart").addEventListener("click", () => {
-        this.cart = [];
-        this.currentReceiptB64 = null;
-        updateCartView();
-      });
+      const inpReceived = container.querySelector("#pos-inp-received");
+      if (inpReceived) {
+        inpReceived.removeEventListener("input", updateCartView);
+        inpReceived.addEventListener("input", updateCartViewWithComision);
+      }
+      const btnClearCart = container.querySelector("#btn-clear-cart");
+      if (btnClearCart) {
+        btnClearCart.addEventListener("click", () => {
+          this.cart = [];
+          this.currentReceiptB64 = null;
+          updateCartView();
+        });
+      }
       const paymentSel = container.querySelector("#pos-payment-method");
       const attachmentRow = container.querySelector("#pos-attachment-row");
       const lblAttachment = container.querySelector("#pos-lbl-attachment-method");
@@ -6883,213 +6900,215 @@ Generado por Nexa ERP.`;
       if (tabHist) {
         tabHist.addEventListener("click", () => this.openSalesHistoryModal(tenantId));
       }
-      container.querySelector("#btn-process-sale").addEventListener("click", () => {
-        if (this.cart.length === 0) {
-          Toast.warning("El carrito de venta est\xE1 vac\xEDo.");
-          return;
-        }
-        const cobraIva = !this.selectedClient || this.selectedClient.aplicaIva !== false;
-        const tieneFE = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
-        const totals = TaxService.calculateTotals(this.cart, 0, {
-          aplicaIva: cobraIva,
-          facturaElectronica: tieneFE
-        });
-        const metodoPago = container.querySelector("#pos-payment-method").value;
-        const tipoDoc = container.querySelector("#pos-doc-type").value;
-        Modal.confirm({
-          title: "Confirmar Venta / Facturaci\xF3n",
-          message: `\xBFEst\xE1 seguro de facturar por un total de <strong>${Formatters.currency(totals.total)}</strong> mediante <strong>${metodoPago}</strong>?`,
-          confirmText: "S\xED, Facturar",
-          cancelText: "Revisar",
-          onConfirm: async () => {
-            const consecutivo = "RP-" + Math.floor(1e4 + Math.random() * 9e4);
-            const isCredit = metodoPago === "Cr\xE9dito" || tipoDoc === "VENTA_CREDITO";
-            if (isCredit && this.selectedClient) {
-              const nuevoSaldo = (this.selectedClient.saldoPendiente || 0) + totals.total;
-              if (this.selectedClient.cupoCredito > 0 && nuevoSaldo > this.selectedClient.cupoCredito) {
-                Toast.warning(`El cupo de cr\xE9dito ($ ${Formatters.currency(this.selectedClient.cupoCredito)}) ser\xEDa excedido. Saldo actual: ${Formatters.currency(this.selectedClient.saldoPendiente)}`);
-                return;
+      const btnProcess = container.querySelector("#btn-process-sale");
+      if (btnProcess)
+        btnProcess.addEventListener("click", () => {
+          if (this.cart.length === 0) {
+            Toast.warning("El carrito de venta est\xE1 vac\xEDo.");
+            return;
+          }
+          const cobraIva = !this.selectedClient || this.selectedClient.aplicaIva !== false;
+          const tieneFE = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
+          const totals = TaxService.calculateTotals(this.cart, 0, {
+            aplicaIva: cobraIva,
+            facturaElectronica: tieneFE
+          });
+          const metodoPago = container.querySelector("#pos-payment-method").value;
+          const tipoDoc = container.querySelector("#pos-doc-type").value;
+          Modal.confirm({
+            title: "Confirmar Venta / Facturaci\xF3n",
+            message: `\xBFEst\xE1 seguro de facturar por un total de <strong>${Formatters.currency(totals.total)}</strong> mediante <strong>${metodoPago}</strong>?`,
+            confirmText: "S\xED, Facturar",
+            cancelText: "Revisar",
+            onConfirm: async () => {
+              const consecutivo = "RP-" + Math.floor(1e4 + Math.random() * 9e4);
+              const isCredit = metodoPago === "Cr\xE9dito" || tipoDoc === "VENTA_CREDITO";
+              if (isCredit && this.selectedClient) {
+                const nuevoSaldo = (this.selectedClient.saldoPendiente || 0) + totals.total;
+                if (this.selectedClient.cupoCredito > 0 && nuevoSaldo > this.selectedClient.cupoCredito) {
+                  Toast.warning(`El cupo de cr\xE9dito ($ ${Formatters.currency(this.selectedClient.cupoCredito)}) ser\xEDa excedido. Saldo actual: ${Formatters.currency(this.selectedClient.saldoPendiente)}`);
+                  return;
+                }
               }
-            }
-            const received = Number(container.querySelector("#pos-inp-received").value || totals.total);
-            const change = Math.max(0, received - totals.total);
-            const sale = {
-              tenantId,
-              consecutivo,
-              tipoDoc,
-              facturaElectronica: tieneFE,
-              aplicaIva: cobraIva,
-              clienteId: this.selectedClient ? this.selectedClient.id : "cli_mostrador",
-              clienteNombre: this.selectedClient ? this.selectedClient.nombre : "Cliente Mostrador",
-              clienteNit: this.selectedClient ? this.selectedClient.nitCc : "222222222222",
-              vendedorId: this.selectedFreelancer ? this.selectedFreelancer.id : "usr_ventas",
-              vendedorNombre: this.selectedFreelancer ? this.selectedFreelancer.nombre : "Valentina Restrepo",
-              esVentaFreelance: !!this.selectedFreelancer,
-              freelancerId: this.selectedFreelancer ? this.selectedFreelancer.id : null,
-              listaPreciosId: this.selectedPriceListId,
-              fecha: (/* @__PURE__ */ new Date()).toISOString(),
-              estado: isCredit ? "CREDITO_PENDIENTE" : "PAGADA",
-              subtotal: totals.baseGravable,
-              descuentos: totals.totalDescuentos,
-              impuestos: totals.totalIva,
-              total: totals.total,
-              metodoPago,
-              pagoRecibido: isCredit ? 0 : received,
-              cambio: isCredit ? 0 : change,
-              saldoCredito: isCredit ? totals.total : 0,
-              items: this.cart.map((i) => ({
-                productoId: i.productoId,
-                sku: i.sku,
-                nombre: i.nombre,
-                precioUnitario: i.precioUnitario,
-                cantidad: i.cantidad,
-                total: i.cantidad * i.precioUnitario
-              })),
-              comprobantePagoUrl: this.currentReceiptB64 || null,
-              comprobanteFecha: this.currentReceiptB64 ? (/* @__PURE__ */ new Date()).toISOString() : null,
-              comisionFreelance: (() => {
-                if (!this.selectedFreelancer)
-                  return 0;
-                return this.cart.reduce((acc, item) => {
-                  const prod = (products || []).find((p) => p.id === item.productoId);
-                  const precioP3 = prod && prod.precios && prod.precios["plist_3"] ? prod.precios["plist_3"] : prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0;
-                  return acc + Math.max(0, (item.precioUnitario - precioP3) * item.cantidad);
-                }, 0);
-              })(),
-              precioBaseFreelance: (() => {
-                if (!this.selectedFreelancer)
-                  return 0;
-                return this.cart.reduce((acc, item) => {
-                  const prod = (products || []).find((p) => p.id === item.productoId);
-                  const precioP3 = prod && prod.precios && prod.precios["plist_3"] ? prod.precios["plist_3"] : prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0;
-                  return acc + precioP3 * item.cantidad;
-                }, 0);
-              })()
-            };
-            const savedSale = await DB2.add(STORES.SALES, sale);
-            sale.id = savedSale.id;
-            if (this.selectedFreelancer && sale.comisionFreelance > 0) {
-              const hoy = /* @__PURE__ */ new Date();
-              const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-              const comisionDoc = "COM-" + hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + consecutivo;
-              const cxpComision = {
+              const received = Number(container.querySelector("#pos-inp-received").value || totals.total);
+              const change = Math.max(0, received - totals.total);
+              const sale = {
                 tenantId,
-                documento: comisionDoc,
-                proveedorNombre: this.selectedFreelancer.nombre,
-                proveedorId: this.selectedFreelancer.id,
-                tipoDocumento: "COMISION_FREELANCE",
-                ventaId: sale.id,
-                ventaConsecutivo: consecutivo,
-                fechaEmision: hoy.toISOString().split("T")[0],
-                fechaVencimiento: finMes.toISOString().split("T")[0],
-                valorTotal: sale.comisionFreelance,
-                saldo: sale.comisionFreelance,
-                abonos: 0,
-                estado: "AL_DIA"
+                consecutivo,
+                tipoDoc,
+                facturaElectronica: tieneFE,
+                aplicaIva: cobraIva,
+                clienteId: this.selectedClient ? this.selectedClient.id : "cli_mostrador",
+                clienteNombre: this.selectedClient ? this.selectedClient.nombre : "Cliente Mostrador",
+                clienteNit: this.selectedClient ? this.selectedClient.nitCc : "222222222222",
+                vendedorId: this.selectedFreelancer ? this.selectedFreelancer.id : "usr_ventas",
+                vendedorNombre: this.selectedFreelancer ? this.selectedFreelancer.nombre : "Valentina Restrepo",
+                esVentaFreelance: !!this.selectedFreelancer,
+                freelancerId: this.selectedFreelancer ? this.selectedFreelancer.id : null,
+                listaPreciosId: this.selectedPriceListId,
+                fecha: (/* @__PURE__ */ new Date()).toISOString(),
+                estado: isCredit ? "CREDITO_PENDIENTE" : "PAGADA",
+                subtotal: totals.baseGravable,
+                descuentos: totals.totalDescuentos,
+                impuestos: totals.totalIva,
+                total: totals.total,
+                metodoPago,
+                pagoRecibido: isCredit ? 0 : received,
+                cambio: isCredit ? 0 : change,
+                saldoCredito: isCredit ? totals.total : 0,
+                items: this.cart.map((i) => ({
+                  productoId: i.productoId,
+                  sku: i.sku,
+                  nombre: i.nombre,
+                  precioUnitario: i.precioUnitario,
+                  cantidad: i.cantidad,
+                  total: i.cantidad * i.precioUnitario
+                })),
+                comprobantePagoUrl: this.currentReceiptB64 || null,
+                comprobanteFecha: this.currentReceiptB64 ? (/* @__PURE__ */ new Date()).toISOString() : null,
+                comisionFreelance: (() => {
+                  if (!this.selectedFreelancer)
+                    return 0;
+                  return this.cart.reduce((acc, item) => {
+                    const prod = (products || []).find((p) => p.id === item.productoId);
+                    const precioP3 = prod && prod.precios && prod.precios["plist_3"] ? prod.precios["plist_3"] : prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0;
+                    return acc + Math.max(0, (item.precioUnitario - precioP3) * item.cantidad);
+                  }, 0);
+                })(),
+                precioBaseFreelance: (() => {
+                  if (!this.selectedFreelancer)
+                    return 0;
+                  return this.cart.reduce((acc, item) => {
+                    const prod = (products || []).find((p) => p.id === item.productoId);
+                    const precioP3 = prod && prod.precios && prod.precios["plist_3"] ? prod.precios["plist_3"] : prod ? (prod.costo || prod.costoPromedio || 0) * 1.3 : 0;
+                    return acc + precioP3 * item.cantidad;
+                  }, 0);
+                })()
               };
-              const savedCxp = await DB2.add(STORES.PAYABLES_CXP, cxpComision);
-              sale.comisionCxpId = savedCxp.id;
-              await DB2.update(STORES.SALES, sale);
-              const freelancerToUpdate = this.selectedFreelancer;
-              freelancerToUpdate.comisionesTotalesGanadas = (freelancerToUpdate.comisionesTotalesGanadas || 0) + sale.comisionFreelance;
-              await DB2.update(STORES.SUPPLIERS, freelancerToUpdate);
-            }
-            for (const item of this.cart) {
-              await KardexService.registerMovement({
-                tenantId,
-                productoId: item.productoId,
-                bodegaId: "wh_1",
-                documentoTipo: "VENTA",
-                documentoNumero: consecutivo,
-                cantidad: item.cantidad,
-                costoUnitario: item.precioUnitario,
-                observacion: `Venta POS No. ${consecutivo} a ${sale.clienteNombre}`
-              });
-            }
-            if (!isCredit && currentShift) {
-              if (metodoPago === "Efectivo") {
-                currentShift.totalVentasEfectivo = (currentShift.totalVentasEfectivo || 0) + totals.total;
-                currentShift.saldoEsperado += totals.total;
-              } else if (metodoPago === "Transferencia") {
-                currentShift.totalVentasTransferencia = (currentShift.totalVentasTransferencia || 0) + totals.total;
-              } else if (metodoPago === "Nequi" || metodoPago === "Daviplata") {
-                currentShift.totalVentasNequiDaviplata = (currentShift.totalVentasNequiDaviplata || 0) + totals.total;
-              } else if (metodoPago === "Tarjeta") {
-                currentShift.totalVentasTarjeta = (currentShift.totalVentasTarjeta || 0) + totals.total;
+              const savedSale = await DB2.add(STORES.SALES, sale);
+              sale.id = savedSale.id;
+              if (this.selectedFreelancer && sale.comisionFreelance > 0) {
+                const hoy = /* @__PURE__ */ new Date();
+                const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+                const comisionDoc = "COM-" + hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-" + consecutivo;
+                const cxpComision = {
+                  tenantId,
+                  documento: comisionDoc,
+                  proveedorNombre: this.selectedFreelancer.nombre,
+                  proveedorId: this.selectedFreelancer.id,
+                  tipoDocumento: "COMISION_FREELANCE",
+                  ventaId: sale.id,
+                  ventaConsecutivo: consecutivo,
+                  fechaEmision: hoy.toISOString().split("T")[0],
+                  fechaVencimiento: finMes.toISOString().split("T")[0],
+                  valorTotal: sale.comisionFreelance,
+                  saldo: sale.comisionFreelance,
+                  abonos: 0,
+                  estado: "AL_DIA"
+                };
+                const savedCxp = await DB2.add(STORES.PAYABLES_CXP, cxpComision);
+                sale.comisionCxpId = savedCxp.id;
+                await DB2.update(STORES.SALES, sale);
+                const freelancerToUpdate = this.selectedFreelancer;
+                freelancerToUpdate.comisionesTotalesGanadas = (freelancerToUpdate.comisionesTotalesGanadas || 0) + sale.comisionFreelance;
+                await DB2.update(STORES.SUPPLIERS, freelancerToUpdate);
               }
-              await DB2.update(STORES.CASH_SHIFTS, currentShift);
-            }
-            if (isCredit && this.selectedClient) {
-              this.selectedClient.saldoPendiente = (this.selectedClient.saldoPendiente || 0) + totals.total;
-              this.selectedClient.totalComprado = (this.selectedClient.totalComprado || 0) + totals.total;
-              this.selectedClient.numeroCompras = (this.selectedClient.numeroCompras || 0) + 1;
-              await DB2.update(STORES.CUSTOMERS, this.selectedClient);
-              await DB2.add(STORES.RECEIVABLES_CXC, {
+              for (const item of this.cart) {
+                await KardexService.registerMovement({
+                  tenantId,
+                  productoId: item.productoId,
+                  bodegaId: "wh_1",
+                  documentoTipo: "VENTA",
+                  documentoNumero: consecutivo,
+                  cantidad: item.cantidad,
+                  costoUnitario: item.precioUnitario,
+                  observacion: `Venta POS No. ${consecutivo} a ${sale.clienteNombre}`
+                });
+              }
+              if (!isCredit && currentShift) {
+                if (metodoPago === "Efectivo") {
+                  currentShift.totalVentasEfectivo = (currentShift.totalVentasEfectivo || 0) + totals.total;
+                  currentShift.saldoEsperado += totals.total;
+                } else if (metodoPago === "Transferencia") {
+                  currentShift.totalVentasTransferencia = (currentShift.totalVentasTransferencia || 0) + totals.total;
+                } else if (metodoPago === "Nequi" || metodoPago === "Daviplata") {
+                  currentShift.totalVentasNequiDaviplata = (currentShift.totalVentasNequiDaviplata || 0) + totals.total;
+                } else if (metodoPago === "Tarjeta") {
+                  currentShift.totalVentasTarjeta = (currentShift.totalVentasTarjeta || 0) + totals.total;
+                }
+                await DB2.update(STORES.CASH_SHIFTS, currentShift);
+              }
+              if (isCredit && this.selectedClient) {
+                this.selectedClient.saldoPendiente = (this.selectedClient.saldoPendiente || 0) + totals.total;
+                this.selectedClient.totalComprado = (this.selectedClient.totalComprado || 0) + totals.total;
+                this.selectedClient.numeroCompras = (this.selectedClient.numeroCompras || 0) + 1;
+                await DB2.update(STORES.CUSTOMERS, this.selectedClient);
+                await DB2.add(STORES.RECEIVABLES_CXC, {
+                  tenantId,
+                  ventaId: sale.id,
+                  documento: consecutivo,
+                  clienteId: this.selectedClient.id,
+                  clienteNombre: this.selectedClient.nombre,
+                  fechaEmision: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+                  fechaVencimiento: new Date(Date.now() + (this.selectedClient.diasCredito || 30) * 864e5).toISOString().split("T")[0],
+                  valorTotal: totals.total,
+                  abonos: 0,
+                  saldo: totals.total,
+                  diasMora: 0,
+                  estado: "AL_DIA"
+                });
+              }
+              await AuditService.log({
+                modulo: "Ventas POS",
+                accion: "CREAR",
+                registroId: consecutivo,
+                campoModificado: "Factura Emitida",
+                valorAnterior: "-",
+                valorNuevo: `${Formatters.currency(totals.total)} (${metodoPago})`
+              });
+              Toast.success(`\xA1Venta ${consecutivo} registrada con \xE9xito!`);
+              const cartSnapshot = JSON.parse(JSON.stringify(this.cart));
+              const clientSnapshot = this.selectedClient ? { ...this.selectedClient } : null;
+              const totalUnidades = cartSnapshot.reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
+              const cajasTotal = Math.max(1, Math.ceil(totalUnidades / 12));
+              const transportadoraDefecto = "Coordinadora Mercantil";
+              const shippingRecord = {
                 tenantId,
                 ventaId: sale.id,
-                documento: consecutivo,
-                clienteId: this.selectedClient.id,
-                clienteNombre: this.selectedClient.nombre,
-                fechaEmision: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-                fechaVencimiento: new Date(Date.now() + (this.selectedClient.diasCredito || 30) * 864e5).toISOString().split("T")[0],
-                valorTotal: totals.total,
-                abonos: 0,
-                saldo: totals.total,
-                diasMora: 0,
-                estado: "AL_DIA"
-              });
-            }
-            await AuditService.log({
-              modulo: "Ventas POS",
-              accion: "CREAR",
-              registroId: consecutivo,
-              campoModificado: "Factura Emitida",
-              valorAnterior: "-",
-              valorNuevo: `${Formatters.currency(totals.total)} (${metodoPago})`
-            });
-            Toast.success(`\xA1Venta ${consecutivo} registrada con \xE9xito!`);
-            const cartSnapshot = JSON.parse(JSON.stringify(this.cart));
-            const clientSnapshot = this.selectedClient ? { ...this.selectedClient } : null;
-            const totalUnidades = cartSnapshot.reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
-            const cajasTotal = Math.max(1, Math.ceil(totalUnidades / 12));
-            const transportadoraDefecto = "Coordinadora Mercantil";
-            const shippingRecord = {
-              tenantId,
-              ventaId: sale.id,
-              documentoNumero: consecutivo,
-              clienteId: clientSnapshot ? clientSnapshot.id : "CLI_GEN",
-              clienteNombre: sale.clienteNombre,
-              nitCc: sale.clienteNit || (clientSnapshot ? clientSnapshot.nitCc : ""),
-              telefono: clientSnapshot ? clientSnapshot.telefono || clientSnapshot.whatsapp || "3124567890" : "3124567890",
-              whatsapp: clientSnapshot ? clientSnapshot.whatsapp || clientSnapshot.telefono || "" : "",
-              email: clientSnapshot ? clientSnapshot.email || "" : "",
-              ciudad: clientSnapshot ? clientSnapshot.ciudad || "Medell\xEDn" : "Medell\xEDn",
-              departamento: clientSnapshot ? clientSnapshot.departamento || "Antioquia" : "Antioquia",
-              barrio: clientSnapshot ? clientSnapshot.barrio || "" : "",
-              direccion: clientSnapshot ? clientSnapshot.direccion || "Direcci\xF3n comercial" : "Direcci\xF3n comercial",
-              transportadora: transportadoraDefecto,
-              numeroGuia: `GUIA-${consecutivo.replace(/\D/g, "") || String(Math.floor(1e5 + Math.random() * 9e5))}`,
-              costoEnvio: 0,
-              fechaDespacho: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-              fechaEntregaEstimada: new Date(Date.now() + 2 * 864e5).toISOString().split("T")[0],
-              estadoCiclo: "LISTO_DESPACHO",
-              responsable: "Mateo Osorio (Bodega & Despachos)",
-              cajasTotal,
-              contenidoDescripcion: "Productos de mantenimiento y embellecimiento automotriz Rayo Pro",
-              observaciones: "Manejar con precauci\xF3n. No volcar."
-            };
-            try {
-              await DB2.add(STORES.ORDERS_SHIPPING, shippingRecord);
-            } catch (err) {
-              console.warn("Registro de orden de despacho:", err);
-            }
-            const invoiceHtml = PrintTemplates.saleInvoice(sale, sale.items);
-            const labelHtml = PrintTemplates.shippingBoxLabel(shippingRecord);
-            const isNonCash = sale.metodoPago !== "Efectivo";
-            const modalDialog = Modal.show({
-              title: `\u2705 Venta ${consecutivo} Registrada con \xC9xito`,
-              size: "lg",
-              content: `
+                documentoNumero: consecutivo,
+                clienteId: clientSnapshot ? clientSnapshot.id : "CLI_GEN",
+                clienteNombre: sale.clienteNombre,
+                nitCc: sale.clienteNit || (clientSnapshot ? clientSnapshot.nitCc : ""),
+                telefono: clientSnapshot ? clientSnapshot.telefono || clientSnapshot.whatsapp || "3124567890" : "3124567890",
+                whatsapp: clientSnapshot ? clientSnapshot.whatsapp || clientSnapshot.telefono || "" : "",
+                email: clientSnapshot ? clientSnapshot.email || "" : "",
+                ciudad: clientSnapshot ? clientSnapshot.ciudad || "Medell\xEDn" : "Medell\xEDn",
+                departamento: clientSnapshot ? clientSnapshot.departamento || "Antioquia" : "Antioquia",
+                barrio: clientSnapshot ? clientSnapshot.barrio || "" : "",
+                direccion: clientSnapshot ? clientSnapshot.direccion || "Direcci\xF3n comercial" : "Direcci\xF3n comercial",
+                transportadora: transportadoraDefecto,
+                numeroGuia: `GUIA-${consecutivo.replace(/\D/g, "") || String(Math.floor(1e5 + Math.random() * 9e5))}`,
+                costoEnvio: 0,
+                fechaDespacho: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+                fechaEntregaEstimada: new Date(Date.now() + 2 * 864e5).toISOString().split("T")[0],
+                estadoCiclo: "LISTO_DESPACHO",
+                responsable: "Mateo Osorio (Bodega & Despachos)",
+                cajasTotal,
+                contenidoDescripcion: "Productos de mantenimiento y embellecimiento automotriz Rayo Pro",
+                observaciones: "Manejar con precauci\xF3n. No volcar."
+              };
+              try {
+                await DB2.add(STORES.ORDERS_SHIPPING, shippingRecord);
+              } catch (err) {
+                console.warn("Registro de orden de despacho:", err);
+              }
+              const invoiceHtml = PrintTemplates.saleInvoice(sale, sale.items);
+              const labelHtml = PrintTemplates.shippingBoxLabel(shippingRecord);
+              const isNonCash = sale.metodoPago !== "Efectivo";
+              const modalDialog = Modal.show({
+                title: `\u2705 Venta ${consecutivo} Registrada con \xC9xito`,
+                size: "lg",
+                content: `
               <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: rgba(0, 113, 227, 0.05); padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(0, 113, 227, 0.15);">
                 <div>
                   <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">TOTAL COBRADO:</span>
@@ -7158,40 +7177,40 @@ Generado por Nexa ERP.`;
                 ${labelHtml}
               </div>
             `,
-              footerButtons: [
-                {
-                  label: "\u{1F3F7}\uFE0F Imprimir R\xF3tulo de Env\xEDo",
-                  class: "btn-secondary",
-                  onClick: () => {
-                    ExportService.printDocument(labelHtml, `Rotulo_Envio_${shippingRecord.numeroGuia}`);
+                footerButtons: [
+                  {
+                    label: "\u{1F3F7}\uFE0F Imprimir R\xF3tulo de Env\xEDo",
+                    class: "btn-secondary",
+                    onClick: () => {
+                      ExportService.printDocument(labelHtml, `Rotulo_Envio_${shippingRecord.numeroGuia}`);
+                    }
+                  },
+                  {
+                    label: "\u{1F5A8}\uFE0F Imprimir Factura",
+                    class: "btn-primary",
+                    onClick: () => {
+                      ExportService.printDocument(invoiceHtml, `Factura_${consecutivo}`);
+                    }
+                  },
+                  {
+                    label: "\u2728 Nueva Venta",
+                    class: "btn-secondary",
+                    onClick: () => Modal.close()
                   }
-                },
-                {
-                  label: "\u{1F5A8}\uFE0F Imprimir Factura",
-                  class: "btn-primary",
-                  onClick: () => {
-                    ExportService.printDocument(invoiceHtml, `Factura_${consecutivo}`);
-                  }
-                },
-                {
-                  label: "\u2728 Nueva Venta",
-                  class: "btn-secondary",
-                  onClick: () => Modal.close()
-                }
-              ]
-            });
-            if (modalDialog && isNonCash) {
-              const hiddenPostFile = modalDialog.querySelector("#post-sale-hidden-file");
-              const handleVoucherSaved = async (b64) => {
-                sale.comprobantePagoUrl = b64;
-                sale.comprobanteFecha = (/* @__PURE__ */ new Date()).toISOString();
-                await DB2.update(STORES.SALES, sale);
-                Toast.success("\xA1Comprobante de pago guardado exitosamente!");
-                const wrap = modalDialog.querySelector("#post-sale-voucher-wrap");
-                if (wrap) {
-                  wrap.style.background = "rgba(16, 185, 129, 0.06)";
-                  wrap.style.borderColor = "#10b981";
-                  wrap.innerHTML = `
+                ]
+              });
+              if (modalDialog && isNonCash) {
+                const hiddenPostFile = modalDialog.querySelector("#post-sale-hidden-file");
+                const handleVoucherSaved = async (b64) => {
+                  sale.comprobantePagoUrl = b64;
+                  sale.comprobanteFecha = (/* @__PURE__ */ new Date()).toISOString();
+                  await DB2.update(STORES.SALES, sale);
+                  Toast.success("\xA1Comprobante de pago guardado exitosamente!");
+                  const wrap = modalDialog.querySelector("#post-sale-voucher-wrap");
+                  if (wrap) {
+                    wrap.style.background = "rgba(16, 185, 129, 0.06)";
+                    wrap.style.borderColor = "#10b981";
+                    wrap.innerHTML = `
                   <div class="d-flex justify-between items-center flex-wrap gap-2">
                     <div class="d-flex items-center gap-2">
                       <img src="${b64}" id="post-sale-voucher-img" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc; cursor: pointer;">
@@ -7205,68 +7224,68 @@ Generado por Nexa ERP.`;
                     </div>
                   </div>
                 `;
-                  wrap.querySelector("#btn-post-view-voucher").addEventListener("click", () => {
-                    this.openVoucherPreviewModal(sale);
-                  });
-                  wrap.querySelector("#post-sale-voucher-img").addEventListener("click", () => {
-                    this.openVoucherPreviewModal(sale);
+                    wrap.querySelector("#btn-post-view-voucher").addEventListener("click", () => {
+                      this.openVoucherPreviewModal(sale);
+                    });
+                    wrap.querySelector("#post-sale-voucher-img").addEventListener("click", () => {
+                      this.openVoucherPreviewModal(sale);
+                    });
+                  }
+                };
+                const btnPostUpload = modalDialog.querySelector("#btn-post-upload-file");
+                if (btnPostUpload && hiddenPostFile) {
+                  btnPostUpload.addEventListener("click", () => hiddenPostFile.click());
+                  hiddenPostFile.addEventListener("change", (e) => {
+                    const f = e.target.files[0];
+                    if (f)
+                      this.compressImage(f, handleVoucherSaved);
                   });
                 }
-              };
-              const btnPostUpload = modalDialog.querySelector("#btn-post-upload-file");
-              if (btnPostUpload && hiddenPostFile) {
-                btnPostUpload.addEventListener("click", () => hiddenPostFile.click());
-                hiddenPostFile.addEventListener("change", (e) => {
-                  const f = e.target.files[0];
-                  if (f)
-                    this.compressImage(f, handleVoucherSaved);
-                });
+                const btnPostCam = modalDialog.querySelector("#btn-post-open-cam");
+                if (btnPostCam) {
+                  btnPostCam.addEventListener("click", () => {
+                    this.openCameraCaptureModal((b64) => handleVoucherSaved(b64));
+                  });
+                }
+                const btnViewV = modalDialog.querySelector("#btn-post-view-voucher");
+                if (btnViewV) {
+                  btnViewV.addEventListener("click", () => this.openVoucherPreviewModal(sale));
+                }
+                const imgV = modalDialog.querySelector("#post-sale-voucher-img");
+                if (imgV) {
+                  imgV.addEventListener("click", () => this.openVoucherPreviewModal(sale));
+                }
+                const btnChangeV = modalDialog.querySelector("#btn-post-change-voucher");
+                if (btnChangeV && hiddenPostFile) {
+                  btnChangeV.addEventListener("click", () => hiddenPostFile.click());
+                }
               }
-              const btnPostCam = modalDialog.querySelector("#btn-post-open-cam");
-              if (btnPostCam) {
-                btnPostCam.addEventListener("click", () => {
-                  this.openCameraCaptureModal((b64) => handleVoucherSaved(b64));
-                });
+              if (modalDialog) {
+                const tabInvBtn = modalDialog.querySelector("#btn-tab-preview-invoice");
+                const tabShipBtn = modalDialog.querySelector("#btn-tab-preview-shipping");
+                const viewInv = modalDialog.querySelector("#view-preview-invoice");
+                const viewShip = modalDialog.querySelector("#view-preview-shipping");
+                if (tabInvBtn && tabShipBtn && viewInv && viewShip) {
+                  tabInvBtn.addEventListener("click", () => {
+                    tabInvBtn.className = "btn btn-sm btn-primary";
+                    tabShipBtn.className = "btn btn-sm btn-secondary";
+                    viewInv.style.display = "block";
+                    viewShip.style.display = "none";
+                  });
+                  tabShipBtn.addEventListener("click", () => {
+                    tabShipBtn.className = "btn btn-sm btn-primary";
+                    tabInvBtn.className = "btn btn-sm btn-secondary";
+                    viewInv.style.display = "none";
+                    viewShip.style.display = "block";
+                  });
+                }
               }
-              const btnViewV = modalDialog.querySelector("#btn-post-view-voucher");
-              if (btnViewV) {
-                btnViewV.addEventListener("click", () => this.openVoucherPreviewModal(sale));
-              }
-              const imgV = modalDialog.querySelector("#post-sale-voucher-img");
-              if (imgV) {
-                imgV.addEventListener("click", () => this.openVoucherPreviewModal(sale));
-              }
-              const btnChangeV = modalDialog.querySelector("#btn-post-change-voucher");
-              if (btnChangeV && hiddenPostFile) {
-                btnChangeV.addEventListener("click", () => hiddenPostFile.click());
-              }
+              this.cart = [];
+              this.currentReceiptB64 = null;
+              this.render(container);
             }
-            if (modalDialog) {
-              const tabInvBtn = modalDialog.querySelector("#btn-tab-preview-invoice");
-              const tabShipBtn = modalDialog.querySelector("#btn-tab-preview-shipping");
-              const viewInv = modalDialog.querySelector("#view-preview-invoice");
-              const viewShip = modalDialog.querySelector("#view-preview-shipping");
-              if (tabInvBtn && tabShipBtn && viewInv && viewShip) {
-                tabInvBtn.addEventListener("click", () => {
-                  tabInvBtn.className = "btn btn-sm btn-primary";
-                  tabShipBtn.className = "btn btn-sm btn-secondary";
-                  viewInv.style.display = "block";
-                  viewShip.style.display = "none";
-                });
-                tabShipBtn.addEventListener("click", () => {
-                  tabShipBtn.className = "btn btn-sm btn-primary";
-                  tabInvBtn.className = "btn btn-sm btn-secondary";
-                  viewInv.style.display = "none";
-                  viewShip.style.display = "block";
-                });
-              }
-            }
-            this.cart = [];
-            this.currentReceiptB64 = null;
-            this.render(container);
-          }
+          });
         });
-      });
       const handlePosKeys = (e) => {
         if (e.key === "F4") {
           e.preventDefault();

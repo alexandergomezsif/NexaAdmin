@@ -144,9 +144,14 @@ export const SalesPosModule = {
             <div style="width: 100%;">
               <div class="d-flex justify-between items-center mb-1">
                 <div class="card-title" style="font-size: 13px;">🛒 Detalle de la Venta</div>
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-add-client" style="padding: 2px 8px; font-size: 11px;">
-                  + Nuevo Cliente
-                </button>
+                <div class="d-flex gap-1">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-cart" style="padding: 2px 8px; font-size: 11px;" title="Limpiar todo el carrito">
+                    🗑️ Limpiar
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-add-client" style="padding: 2px 8px; font-size: 11px;">
+                    + Nuevo Cliente
+                  </button>
+                </div>
               </div>
               <div class="form-group mb-1">
                 <select class="form-select" id="pos-select-client" style="font-size: 12px; font-weight: 700; padding: 4px 8px;">
@@ -419,7 +424,7 @@ export const SalesPosModule = {
     });
 
     // Cambio de lista de precios en POS
-    container.querySelector('#pos-select-pricelist').addEventListener('change', (e) => {
+    const selPl = container.querySelector('#pos-select-pricelist'); if (selPl) selPl.addEventListener('change', (e) => {
       this.selectedPriceListId = e.target.value;
       this.cart.forEach(item => {
         const p = sellableProducts.find(prod => prod.id === item.productoId);
@@ -503,7 +508,7 @@ export const SalesPosModule = {
     syncAssignedSeller();
 
     // Cambio de cliente
-    container.querySelector('#pos-select-client').addEventListener('change', (e) => {
+    const selCli = container.querySelector('#pos-select-client'); if (selCli) selCli.addEventListener('change', (e) => {
       const cli = clients.find(c => c.id === e.target.value);
       this.selectedClient = cli;
       if (cli && cli.listaPreciosId) {
@@ -605,7 +610,7 @@ export const SalesPosModule = {
     });
 
     // Input pago recibido
-    container.querySelector('#pos-inp-received').addEventListener('input', updateCartView);
+    const inpRec = container.querySelector('#pos-inp-received'); if (inpRec) inpRec.addEventListener('input', updateCartView);
 
     // =========================================================================
     // FREELANCER: Toggle + selector + cálculo de comisión en tiempo real
@@ -684,15 +689,21 @@ export const SalesPosModule = {
       calcularComision();
     };
     // Reasignar eventos que usan updateCartView para incluir comisión
-    container.querySelector('#pos-inp-received').removeEventListener('input', updateCartView);
-    container.querySelector('#pos-inp-received').addEventListener('input', updateCartViewWithComision);
+    const inpReceived = container.querySelector('#pos-inp-received');
+    if (inpReceived) {
+      inpReceived.removeEventListener('input', updateCartView);
+      inpReceived.addEventListener('input', updateCartViewWithComision);
+    }
 
     // Limpiar carrito
-    container.querySelector('#btn-clear-cart').addEventListener('click', () => {
-      this.cart = [];
-      this.currentReceiptB64 = null;
-      updateCartView();
-    });
+    const btnClearCart = container.querySelector('#btn-clear-cart');
+    if (btnClearCart) {
+      btnClearCart.addEventListener('click', () => {
+        this.cart = [];
+        this.currentReceiptB64 = null;
+        updateCartView();
+      });
+    }
 
     // =========================================================================
     // 1. MANEJO REACTIVO DE MÉTODO DE PAGO Y ADJUNTAR COMPROBANTE / CÁMARA
@@ -781,7 +792,7 @@ export const SalesPosModule = {
     // =========================================================================
     // 3. PROCESAR VENTA Y POST-VENTA
     // =========================================================================
-    container.querySelector('#btn-process-sale').addEventListener('click', () => {
+    const btnProcess = container.querySelector('#btn-process-sale'); if (btnProcess) btnProcess.addEventListener('click', () => {
       if (this.cart.length === 0) {
         Toast.warning('El carrito de venta está vacío.');
         return;
