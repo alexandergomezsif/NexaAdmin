@@ -19,17 +19,7 @@ export const SettingsModule = {
     const isDev = AuthServiceInstance.isDeveloper();
 
     container.innerHTML = `
-            <!-- Sub-Barra de Pestañas: Configuración & Sistema -->
-      <div class="sub-nav-tabs">
-        <a href="#dashboard" class="sub-nav-tab"><span>📊</span><span>Dashboard</span></a>
-        <a href="#settings" class="sub-nav-tab active"><span>⚙️</span><span>Parámetros & Empresa</span></a>
-        <a href="#users" class="sub-nav-tab"><span>🛡️</span><span>Usuarios & Roles</span></a>
-        <a href="#backup" class="sub-nav-tab"><span>💾</span><span>Respaldo Base de Datos</span></a>
-        <a href="#importer" class="sub-nav-tab"><span>📥</span><span>Importador Masivo</span></a>
-        <a href="#reports" class="sub-nav-tab"><span>📈</span><span>Reportes</span></a>
-      </div>
-
-      <div class="view-header">
+            <div class="view-header">
         <div class="view-title-wrap">
           <h1>Configuración General & Multiempresa</h1>
           <p>Identidad visual, datos tributarios DIAN, paleta de colores corporativos y parámetros del sistema</p>
