@@ -54,6 +54,7 @@ export const FreelancersModule = {
           <p>Gestión de vendedores independientes, comisiones automáticas y liquidaciones</p>
         </div>
         <div class="view-actions">
+          <a href="#clients" class="btn btn-secondary btn-sm" style="text-decoration: none;">👥 Directorio Clientes</a>
           <button class="btn btn-primary" id="btn-nuevo-freelancer">+ Registrar Vendedor</button>
         </div>
       </div>

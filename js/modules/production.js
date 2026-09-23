@@ -40,11 +40,17 @@ export const ProductionModule = {
         </div>
       </div>
 
-      <!-- TABS: ÓRDENES REALIZADAS VS FÓRMULAS ACTIVAS -->
+      <!-- TABS: ÓRDENES REALIZADAS VS FÓRMULAS ACTIVAS + BÓVEDA + COSTOS -->
       <div class="card mb-3" style="padding: 6px 14px;">
-        <div class="d-flex gap-2">
-          <button class="btn btn-secondary btn-sm tab-prod-btn active" data-tab="orders">📋 Órdenes de Producción (${orders.length})</button>
-          <button class="btn btn-secondary btn-sm tab-prod-btn" data-tab="recipes">🧪 Fórmulas Maestras BOM (${recipes.length})</button>
+        <div class="d-flex justify-between items-center" style="flex-wrap: wrap; gap: 8px;">
+          <div class="d-flex gap-2">
+            <button class="btn btn-secondary btn-sm tab-prod-btn active" data-tab="orders">📋 Órdenes de Producción (${orders.length})</button>
+            <button class="btn btn-secondary btn-sm tab-prod-btn" data-tab="recipes">🧪 Fórmulas Maestras BOM (${recipes.length})</button>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="#formulas-vault" class="btn btn-secondary btn-sm" style="border-color: #6366f1; color: #6366f1; text-decoration: none;">🔒 Bóveda de Fórmulas</a>
+            <a href="#pricing-calculator" class="btn btn-secondary btn-sm" style="border-color: var(--brand-primary); color: var(--brand-primary); text-decoration: none;">💡 Costos & Precios IA</a>
+          </div>
         </div>
       </div>
 

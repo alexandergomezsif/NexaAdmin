@@ -3417,14 +3417,16 @@ Generado por Nexa ERP.`;
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
       const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [clients, priceLists, sales, cxcList, shipments, products] = await Promise.all([
+      const [clients, priceLists, sales, cxcList, shipments, products, allSuppliers] = await Promise.all([
         DB2.getAll(STORES.CUSTOMERS, tenantId),
         DB2.getAll(STORES.PRICE_LISTS, tenantId),
         DB2.getAll(STORES.SALES, tenantId),
         DB2.getAll(STORES.RECEIVABLES_CXC, tenantId),
         DB2.getAll(STORES.ORDERS_SHIPPING, tenantId),
-        DB2.getAll(STORES.PRODUCTS, tenantId)
+        DB2.getAll(STORES.PRODUCTS, tenantId),
+        DB2.getAll(STORES.SUPPLIERS, tenantId)
       ]);
+      const freelancers = allSuppliers.filter((s) => s.tipo === "FREELANCER" && s.estado === "ACTIVO");
       container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
@@ -3432,6 +3434,7 @@ Generado por Nexa ERP.`;
           <p>Control de terceros, cartera, asignaci\xF3n de listas de precios y cupos comerciales</p>
         </div>
         <div class="view-actions">
+          <a href="#freelancers" class="btn btn-secondary btn-sm" style="text-decoration: none; border-color: var(--brand-primary); color: var(--brand-primary);">\u{1F91D} Red Vendedores Freelance</a>
           <button class="btn btn-secondary btn-sm" id="btn-export-clients">\u{1F4CA} Exportar</button>
           <button class="btn btn-primary btn-sm" id="btn-new-client">\u2795 Nuevo Cliente</button>
         </div>
@@ -3482,6 +3485,16 @@ Generado por Nexa ERP.`;
               ${row.whatsapp ? `<div>\u{1F4AC} <a href="https://wa.me/${row.whatsapp.replace(/\D/g, "")}" target="_blank" style="color: var(--brand-primary);">${row.whatsapp}</a></div>` : ""}
             </div>
           `
+          },
+          {
+            key: "vendedorFreelanceId",
+            title: "Vendedor Freelance",
+            render: (val) => {
+              if (!val)
+                return '<span class="text-muted" style="font-size: 11px;">Directo (Rayo Pro)</span>';
+              const f = (freelancers || []).find((x) => x.id === val);
+              return f ? `<span class="badge badge-info" style="font-size: 11px;">\u{1F91D} ${f.nombre}</span>` : '<span class="text-muted">\u2014</span>';
+            }
           },
           {
             key: "listaPreciosId",
@@ -3538,7 +3551,7 @@ Generado por Nexa ERP.`;
       const newClientBtn = container.querySelector("#btn-new-client");
       if (newClientBtn) {
         newClientBtn.addEventListener("click", () => {
-          this.openClientModal(null, tenantId, priceLists, products, () => this.render(container));
+          this.openClientModal(null, tenantId, priceLists, products, freelancers, () => this.render(container));
         });
       }
       container.addEventListener("click", (e) => {
@@ -3546,7 +3559,7 @@ Generado por Nexa ERP.`;
         if (editBtn) {
           const id = editBtn.getAttribute("data-id");
           const client = clients.find((c) => c.id === id);
-          this.openClientModal(client, tenantId, priceLists, products, () => this.render(container));
+          this.openClientModal(client, tenantId, priceLists, products, freelancers, () => this.render(container));
           return;
         }
         const viewBtn = e.target.closest(".btn-view-client");
@@ -3563,7 +3576,7 @@ Generado por Nexa ERP.`;
     /**
      * Modal de Creación / Edición de Cliente
      */
-    openClientModal(client = null, tenantId, priceLists, products = [], onSaved) {
+    openClientModal(client = null, tenantId, priceLists, products = [], freelancers = [], onSaved) {
       const isEdit = !!client;
       const content = `
       <form id="client-form">
@@ -3597,6 +3610,22 @@ Generado por Nexa ERP.`;
             <label class="form-label">DV (C\xE1lculo DIAN)</label>
             <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : "-"}" style="background: #f1f5f9; font-weight: bold;">
           </div>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(0, 113, 227, 0.04); border: 1px solid rgba(0, 113, 227, 0.2);">
+          <div class="d-flex justify-between items-center mb-2">
+            <label class="form-label font-bold" style="color: var(--brand-primary); margin: 0;">\u{1F91D} Vendedor Freelance Asignado</label>
+            <span class="badge badge-info" style="font-size: 10px;">Comisiones Autom\xE1ticas</span>
+          </div>
+          <select class="form-select" name="vendedorFreelanceId" id="modal-client-freelancer" style="font-weight: 700;">
+            <option value="">-- Sin vendedor freelance (Venta Directa de F\xE1brica) --</option>
+            ${(freelancers || []).map((fl) => `
+              <option value="${fl.id}" ${client && client.vendedorFreelanceId === fl.id ? "selected" : ""}>
+                \u{1F91D} ${fl.nombre} ${fl.zona ? "(" + fl.zona + ")" : ""}
+              </option>
+            `).join("")}
+          </select>
+          <span class="text-xs text-muted mt-1">Al facturar en POS a este cliente, la venta y su comisi\xF3n en $$ se asignar\xE1n autom\xE1ticamente a este vendedor.</span>
         </div>
 
         <div class="form-row mb-1">
@@ -3737,6 +3766,7 @@ Generado por Nexa ERP.`;
                 nombre: formData.get("nombre"),
                 nitCc,
                 dv: calculatedDv !== null ? calculatedDv : 0,
+                vendedorFreelanceId: formData.get("vendedorFreelanceId") || null,
                 tipoCliente: formData.get("tipoCliente"),
                 listaPreciosId: formData.get("listaPreciosId"),
                 facturaElectronica: formData.get("facturaElectronica") === "SI",
@@ -5337,11 +5367,17 @@ Generado por Nexa ERP.`;
         </div>
       </div>
 
-      <!-- TABS: \xD3RDENES REALIZADAS VS F\xD3RMULAS ACTIVAS -->
+      <!-- TABS: \xD3RDENES REALIZADAS VS F\xD3RMULAS ACTIVAS + B\xD3VEDA + COSTOS -->
       <div class="card mb-3" style="padding: 6px 14px;">
-        <div class="d-flex gap-2">
-          <button class="btn btn-secondary btn-sm tab-prod-btn active" data-tab="orders">\u{1F4CB} \xD3rdenes de Producci\xF3n (${orders.length})</button>
-          <button class="btn btn-secondary btn-sm tab-prod-btn" data-tab="recipes">\u{1F9EA} F\xF3rmulas Maestras BOM (${recipes.length})</button>
+        <div class="d-flex justify-between items-center" style="flex-wrap: wrap; gap: 8px;">
+          <div class="d-flex gap-2">
+            <button class="btn btn-secondary btn-sm tab-prod-btn active" data-tab="orders">\u{1F4CB} \xD3rdenes de Producci\xF3n (${orders.length})</button>
+            <button class="btn btn-secondary btn-sm tab-prod-btn" data-tab="recipes">\u{1F9EA} F\xF3rmulas Maestras BOM (${recipes.length})</button>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="#formulas-vault" class="btn btn-secondary btn-sm" style="border-color: #6366f1; color: #6366f1; text-decoration: none;">\u{1F512} B\xF3veda de F\xF3rmulas</a>
+            <a href="#pricing-calculator" class="btn btn-secondary btn-sm" style="border-color: var(--brand-primary); color: var(--brand-primary); text-decoration: none;">\u{1F4A1} Costos & Precios IA</a>
+          </div>
         </div>
       </div>
 
@@ -6258,6 +6294,20 @@ Generado por Nexa ERP.`;
                   `).join("")}
                 </select>
               </div>
+              <!-- Banner Din\xE1mico de Vendedor Asignado al Cliente -->
+              <div id="pos-assigned-seller-banner" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 113, 227, 0.06); padding: 6px 10px; border-radius: 6px; margin: 4px 0 6px 0; border: 1px solid rgba(0, 113, 227, 0.15);">
+                <div class="d-flex items-center gap-2">
+                  <span id="pos-seller-icon" style="font-size: 14px;">\u{1F464}</span>
+                  <div>
+                    <span class="text-xs font-bold" id="pos-seller-label" style="color: var(--text-main);">Venta Directa F\xE1brica</span>
+                    <span class="badge badge-neutral" id="pos-seller-badge" style="font-size: 9.5px; margin-left: 4px;">Rayo Pro</span>
+                  </div>
+                </div>
+                <div id="pos-seller-commission-badge" style="display: none;">
+                  <span class="badge badge-success" style="font-size: 10.5px; font-weight: 800; background: #16a34a;" id="pos-lbl-commission-quick">+$ 0 Comisi\xF3n</span>
+                </div>
+              </div>
+
               <div class="d-flex justify-between items-center text-xs text-muted" style="font-size: 10.5px;">
                 <span id="pos-fe-status">\u26A1 Facturaci\xF3n Electr\xF3nica: <strong>S\xED</strong></span>
                 <span id="pos-iva-status" class="badge badge-success">Con IVA (19%)</span>
@@ -6401,25 +6451,35 @@ Generado por Nexa ERP.`;
           container.querySelector("#pos-lbl-change").textContent = "$ 0";
           return;
         }
-        const isFreelanceMode = !!this.selectedFreelancer;
-        tbody.innerHTML = this.cart.map((item, idx) => `
+        tbody.innerHTML = this.cart.map((item, idx) => {
+          const prod = (products || []).find((p) => p.id === item.productoId);
+          const p1 = prod && prod.precios && prod.precios["plist_1"] || item.precioUnitario * 1.2;
+          const p4 = prod && prod.precios && prod.precios["plist_4"] || (prod && prod.costo ? prod.costo * 1.15 : item.precioUnitario * 0.85);
+          return `
         <tr>
-          <td>
-            <div class="font-bold">${item.nombre}</div>
-            <div class="text-xs text-muted">SKU: ${item.sku}</div>
+          <td style="vertical-align: middle;">
+            <div class="font-bold" style="font-size: 11.5px; line-height: 1.2;">${item.nombre}</div>
+            <div class="text-xs text-muted" style="font-size: 10px;">SKU: ${item.sku} \u2022 P1: $${Math.round(p1).toLocaleString("es-CO")} | P4: $${Math.round(p4).toLocaleString("es-CO")}</div>
           </td>
-          <td class="text-center">
-            <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 55px; padding: 2px 4px; text-align: center;">
+          <td class="text-center" style="vertical-align: middle;">
+            <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 50px; padding: 2px 4px; text-align: center; font-size: 11.5px; font-weight: 700;">
           </td>
-          <td class="text-right">
-            ${isFreelanceMode ? `<input type="number" min="0" step="any" class="form-control pos-item-price" data-idx="${idx}" value="${item.precioUnitario}" style="width: 90px; padding: 2px 6px; text-align: right; font-weight: 700; border-color: #86efac;" title="Precio acordado con cliente">` : Formatters.currency(item.precioUnitario)}
+          <td class="text-right" style="vertical-align: middle;">
+            <div style="display: inline-flex; align-items: center; gap: 2px;">
+              <button type="button" class="btn btn-secondary btn-sm pos-price-step-down" data-idx="${idx}" title="- $100 COP" style="padding: 1px 4px; font-size: 9.5px; font-weight: 800; border-radius: 4px;">-100</button>
+              <input type="number" step="100" class="form-control pos-item-price-input" data-idx="${idx}" value="${Math.round(item.precioUnitario / 100) * 100}" style="width: 78px; padding: 2px 3px; text-align: right; font-weight: 800; font-size: 11px; border-color: var(--brand-primary);" title="Precio en m\xFAltiplos de 100">
+              <button type="button" class="btn btn-secondary btn-sm pos-price-step-up" data-idx="${idx}" title="+ $100 COP" style="padding: 1px 4px; font-size: 9.5px; font-weight: 800; border-radius: 4px;">+100</button>
+            </div>
           </td>
-          <td class="text-right"><strong>${Formatters.currency(item.cantidad * item.precioUnitario)}</strong></td>
-          <td class="text-right">
+          <td class="text-right" style="vertical-align: middle;">
+            <strong style="font-size: 12px; color: var(--text-main);">${Formatters.currency(item.cantidad * item.precioUnitario)}</strong>
+          </td>
+          <td class="text-right" style="vertical-align: middle;">
             <button class="btn btn-danger btn-sm pos-btn-remove" data-idx="${idx}" style="padding: 2px 6px;">&times;</button>
           </td>
         </tr>
-      `).join("");
+      `;
+        }).join("");
         const cobraIva = !this.selectedClient || this.selectedClient.aplicaIva !== false;
         const tieneFE = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
         const totals = TaxService.calculateTotals(this.cart, 0, {
@@ -6487,6 +6547,61 @@ Generado por Nexa ERP.`;
         updateCartView();
         this.render(container);
       });
+      const syncAssignedSeller = () => {
+        const banner = container.querySelector("#pos-assigned-seller-banner");
+        const sellerLabel = container.querySelector("#pos-seller-label");
+        const sellerBadge = container.querySelector("#pos-seller-badge");
+        const commBadge = container.querySelector("#pos-seller-commission-badge");
+        if (!this.selectedClient || !this.selectedClient.vendedorFreelanceId) {
+          this.selectedFreelancer = null;
+          if (sellerLabel)
+            sellerLabel.textContent = "Venta Directa F\xE1brica";
+          if (sellerBadge) {
+            sellerBadge.textContent = "Rayo Pro";
+            sellerBadge.className = "badge badge-neutral";
+          }
+          if (commBadge)
+            commBadge.style.display = "none";
+          return;
+        }
+        const fl = (freelancers || []).find((f) => f.id === this.selectedClient.vendedorFreelanceId);
+        const chk = container.querySelector("#pos-chk-freelance");
+        const selWrap = container.querySelector("#pos-freelancer-select-wrap");
+        const sel = container.querySelector("#pos-select-freelancer");
+        if (fl) {
+          this.selectedFreelancer = fl;
+          if (sellerLabel)
+            sellerLabel.textContent = `Vendedor: ${fl.nombre}`;
+          if (sellerBadge) {
+            sellerBadge.textContent = fl.zona || "Freelance";
+            sellerBadge.className = "badge badge-info";
+          }
+          if (commBadge)
+            commBadge.style.display = "block";
+          if (chk)
+            chk.checked = true;
+          if (selWrap)
+            selWrap.style.display = "block";
+          if (sel)
+            sel.value = fl.id;
+        } else {
+          this.selectedFreelancer = null;
+          if (sellerLabel)
+            sellerLabel.textContent = "Venta Directa F\xE1brica";
+          if (sellerBadge) {
+            sellerBadge.textContent = "Rayo Pro";
+            sellerBadge.className = "badge badge-neutral";
+          }
+          if (commBadge)
+            commBadge.style.display = "none";
+          if (chk)
+            chk.checked = false;
+          if (selWrap)
+            selWrap.style.display = "none";
+          if (sel)
+            sel.value = "";
+        }
+      };
       const updateClientTaxBadge = () => {
         const feStatus = container.querySelector("#pos-fe-status");
         const ivaStatus = container.querySelector("#pos-iva-status");
@@ -6504,6 +6619,7 @@ Generado por Nexa ERP.`;
         }
       };
       updateClientTaxBadge();
+      syncAssignedSeller();
       container.querySelector("#pos-select-client").addEventListener("change", (e) => {
         const cli = clients.find((c) => c.id === e.target.value);
         this.selectedClient = cli;
@@ -6525,8 +6641,10 @@ Generado por Nexa ERP.`;
         if (pricelistSel && hasPreciosEsp) {
           Toast.info("Cliente con precios acordados \u2014 precios personalizados aplicados autom\xE1ticamente.");
         }
+        syncAssignedSeller();
         updateClientTaxBadge();
         updateCartView();
+        calcularComision();
       });
       const btnPosAddClient = container.querySelector("#btn-pos-add-client");
       if (btnPosAddClient) {
@@ -12689,6 +12807,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           <p>Gesti\xF3n de vendedores independientes, comisiones autom\xE1ticas y liquidaciones</p>
         </div>
         <div class="view-actions">
+          <a href="#clients" class="btn btn-secondary btn-sm" style="text-decoration: none;">\u{1F465} Directorio Clientes</a>
           <button class="btn btn-primary" id="btn-nuevo-freelancer">+ Registrar Vendedor</button>
         </div>
       </div>

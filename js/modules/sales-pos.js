@@ -140,6 +140,20 @@ export const SalesPosModule = {
                   `).join('')}
                 </select>
               </div>
+              <!-- Banner Dinámico de Vendedor Asignado al Cliente -->
+              <div id="pos-assigned-seller-banner" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 113, 227, 0.06); padding: 6px 10px; border-radius: 6px; margin: 4px 0 6px 0; border: 1px solid rgba(0, 113, 227, 0.15);">
+                <div class="d-flex items-center gap-2">
+                  <span id="pos-seller-icon" style="font-size: 14px;">👤</span>
+                  <div>
+                    <span class="text-xs font-bold" id="pos-seller-label" style="color: var(--text-main);">Venta Directa Fábrica</span>
+                    <span class="badge badge-neutral" id="pos-seller-badge" style="font-size: 9.5px; margin-left: 4px;">Rayo Pro</span>
+                  </div>
+                </div>
+                <div id="pos-seller-commission-badge" style="display: none;">
+                  <span class="badge badge-success" style="font-size: 10.5px; font-weight: 800; background: #16a34a;" id="pos-lbl-commission-quick">+$ 0 Comisión</span>
+                </div>
+              </div>
+
               <div class="d-flex justify-between items-center text-xs text-muted" style="font-size: 10.5px;">
                 <span id="pos-fe-status">⚡ Facturación Electrónica: <strong>Sí</strong></span>
                 <span id="pos-iva-status" class="badge badge-success">Con IVA (19%)</span>
@@ -288,28 +302,35 @@ export const SalesPosModule = {
         return;
       }
 
-      const isFreelanceMode = !!this.selectedFreelancer;
-      tbody.innerHTML = this.cart.map((item, idx) => `
+      tbody.innerHTML = this.cart.map((item, idx) => {
+        const prod = (products || []).find(p => p.id === item.productoId);
+        const p1 = (prod && prod.precios && prod.precios['plist_1']) || (item.precioUnitario * 1.2);
+        const p4 = (prod && prod.precios && prod.precios['plist_4']) || (prod && prod.costo ? prod.costo * 1.15 : item.precioUnitario * 0.85);
+        return `
         <tr>
-          <td>
-            <div class="font-bold">${item.nombre}</div>
-            <div class="text-xs text-muted">SKU: ${item.sku}</div>
+          <td style="vertical-align: middle;">
+            <div class="font-bold" style="font-size: 11.5px; line-height: 1.2;">${item.nombre}</div>
+            <div class="text-xs text-muted" style="font-size: 10px;">SKU: ${item.sku} • P1: $${Math.round(p1).toLocaleString('es-CO')} | P4: $${Math.round(p4).toLocaleString('es-CO')}</div>
           </td>
-          <td class="text-center">
-            <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 55px; padding: 2px 4px; text-align: center;">
+          <td class="text-center" style="vertical-align: middle;">
+            <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 50px; padding: 2px 4px; text-align: center; font-size: 11.5px; font-weight: 700;">
           </td>
-          <td class="text-right">
-            ${isFreelanceMode
-              ? `<input type="number" min="0" step="any" class="form-control pos-item-price" data-idx="${idx}" value="${item.precioUnitario}" style="width: 90px; padding: 2px 6px; text-align: right; font-weight: 700; border-color: #86efac;" title="Precio acordado con cliente">`
-              : Formatters.currency(item.precioUnitario)
-            }
+          <td class="text-right" style="vertical-align: middle;">
+            <div style="display: inline-flex; align-items: center; gap: 2px;">
+              <button type="button" class="btn btn-secondary btn-sm pos-price-step-down" data-idx="${idx}" title="- $100 COP" style="padding: 1px 4px; font-size: 9.5px; font-weight: 800; border-radius: 4px;">-100</button>
+              <input type="number" step="100" class="form-control pos-item-price-input" data-idx="${idx}" value="${Math.round(item.precioUnitario / 100) * 100}" style="width: 78px; padding: 2px 3px; text-align: right; font-weight: 800; font-size: 11px; border-color: var(--brand-primary);" title="Precio en múltiplos de 100">
+              <button type="button" class="btn btn-secondary btn-sm pos-price-step-up" data-idx="${idx}" title="+ $100 COP" style="padding: 1px 4px; font-size: 9.5px; font-weight: 800; border-radius: 4px;">+100</button>
+            </div>
           </td>
-          <td class="text-right"><strong>${Formatters.currency(item.cantidad * item.precioUnitario)}</strong></td>
-          <td class="text-right">
+          <td class="text-right" style="vertical-align: middle;">
+            <strong style="font-size: 12px; color: var(--text-main);">${Formatters.currency(item.cantidad * item.precioUnitario)}</strong>
+          </td>
+          <td class="text-right" style="vertical-align: middle;">
             <button class="btn btn-danger btn-sm pos-btn-remove" data-idx="${idx}" style="padding: 2px 6px;">&times;</button>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
       const cobraIva = !this.selectedClient || this.selectedClient.aplicaIva !== false;
       const tieneFE = !this.selectedClient || this.selectedClient.facturaElectronica !== false;
@@ -394,6 +415,55 @@ export const SalesPosModule = {
     });
 
     // Función auxiliar para refrescar el badge tributario del cliente
+    
+    // Sincronizar automáticamente el Vendedor Freelance asociado al Cliente
+    const syncAssignedSeller = () => {
+      const banner = container.querySelector('#pos-assigned-seller-banner');
+      const sellerLabel = container.querySelector('#pos-seller-label');
+      const sellerBadge = container.querySelector('#pos-seller-badge');
+      const commBadge = container.querySelector('#pos-seller-commission-badge');
+
+      if (!this.selectedClient || !this.selectedClient.vendedorFreelanceId) {
+        this.selectedFreelancer = null;
+        if (sellerLabel) sellerLabel.textContent = 'Venta Directa Fábrica';
+        if (sellerBadge) {
+          sellerBadge.textContent = 'Rayo Pro';
+          sellerBadge.className = 'badge badge-neutral';
+        }
+        if (commBadge) commBadge.style.display = 'none';
+        return;
+      }
+
+      const fl = (freelancers || []).find(f => f.id === this.selectedClient.vendedorFreelanceId);
+      const chk = container.querySelector('#pos-chk-freelance');
+      const selWrap = container.querySelector('#pos-freelancer-select-wrap');
+      const sel = container.querySelector('#pos-select-freelancer');
+
+      if (fl) {
+        this.selectedFreelancer = fl;
+        if (sellerLabel) sellerLabel.textContent = `Vendedor: ${fl.nombre}`;
+        if (sellerBadge) {
+          sellerBadge.textContent = fl.zona || 'Freelance';
+          sellerBadge.className = 'badge badge-info';
+        }
+        if (commBadge) commBadge.style.display = 'block';
+        if (chk) chk.checked = true;
+        if (selWrap) selWrap.style.display = 'block';
+        if (sel) sel.value = fl.id;
+      } else {
+        this.selectedFreelancer = null;
+        if (sellerLabel) sellerLabel.textContent = 'Venta Directa Fábrica';
+        if (sellerBadge) {
+          sellerBadge.textContent = 'Rayo Pro';
+          sellerBadge.className = 'badge badge-neutral';
+        }
+        if (commBadge) commBadge.style.display = 'none';
+        if (chk) chk.checked = false;
+        if (selWrap) selWrap.style.display = 'none';
+        if (sel) sel.value = '';
+      }
+    };
+
     const updateClientTaxBadge = () => {
       const feStatus = container.querySelector('#pos-fe-status');
       const ivaStatus = container.querySelector('#pos-iva-status');
@@ -413,6 +483,7 @@ export const SalesPosModule = {
     };
 
     updateClientTaxBadge();
+    syncAssignedSeller();
 
     // Cambio de cliente
     container.querySelector('#pos-select-client').addEventListener('change', (e) => {
@@ -438,8 +509,10 @@ export const SalesPosModule = {
       if (pricelistSel && hasPreciosEsp) {
         Toast.info('Cliente con precios acordados — precios personalizados aplicados automáticamente.');
       }
+      syncAssignedSeller();
       updateClientTaxBadge();
       updateCartView();
+      calcularComision();
     });
 
     // Crear nuevo cliente
