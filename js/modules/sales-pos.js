@@ -56,38 +56,22 @@ export const SalesPosModule = {
     }
 
     container.innerHTML = `
-      <!-- Sub-Barra de Pestañas Superiores del Dominio Comercial -->
-      <div class="sub-nav-tabs">
-        <a href="#sales-pos" class="sub-nav-tab active">
-          <span>🛒</span>
-          <span>Terminal de Venta POS</span>
-        </a>
-        <a href="#shipping" class="sub-nav-tab">
-          <span>🚚</span>
-          <span>Pedidos & Envíos</span>
-        </a>
-        <a href="javascript:void(0)" class="sub-nav-tab" id="tab-quick-history">
-          <span>📜</span>
-          <span>Historial de Facturas</span>
-        </a>
-      </div>
-
-      <!-- Barra de KPIs Ejecutivos del POS (Look Idéntico a la Imagen) -->
+      <!-- Barra de KPIs Ejecutivos del POS en Español Puro -->
       <div class="pos-kpi-bar">
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Revenue (Facturación del Turno)</div>
-          <div class="pos-kpi-amount" style="color: #F5F7FA;">${Formatters.currency(currentShift ? ((currentShift.totalVentasEfectivo||0) + (currentShift.totalVentasTransferencia||0) + (currentShift.totalVentasNequiDaviplata||0) + (currentShift.totalVentasTarjeta||0)) : 0)}</div>
-          <div class="text-xs" style="color: #929BAA;">Turno ${currentShift ? '🟢 Activo en curso' : '🔴 Sin abrir'}</div>
+          <div class="pos-kpi-title">Facturación del Turno</div>
+          <div class="pos-kpi-amount" style="color: var(--text-main);">${Formatters.currency(currentShift ? ((currentShift.totalVentasEfectivo||0) + (currentShift.totalVentasTransferencia||0) + (currentShift.totalVentasNequiDaviplata||0) + (currentShift.totalVentasTarjeta||0)) : 0)}</div>
+          <div class="text-xs" style="color: var(--text-secondary);">Turno ${currentShift ? '🟢 Activo en curso' : '🔴 Sin abrir'}</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Cash (Efectivo en Caja)</div>
+          <div class="pos-kpi-title">Efectivo en Caja</div>
           <div class="pos-kpi-amount text-financial">${Formatters.currency(currentShift ? (currentShift.saldoEsperado || currentShift.montoApertura || 0) : 0)}</div>
-          <div class="text-xs" style="color: #929BAA;">Disponible físicamente</div>
+          <div class="text-xs" style="color: var(--text-secondary);">Disponible físicamente</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Net Profit / Comisiones Freelance</div>
+          <div class="pos-kpi-title">Comisiones Freelance Acumuladas</div>
           <div class="pos-kpi-amount text-financial">${Formatters.currency(freelancers.reduce((a, fl) => a + (fl.comisionesTotalesGanadas || 0), 0))}</div>
-          <div class="text-xs" style="color: #929BAA;">${freelancers.length} Vendedores activos con liquidación en CXP</div>
+          <div class="text-xs" style="color: var(--text-secondary);">${freelancers.length} Vendedores activos con liquidación en CXP</div>
         </div>
       </div>
 
@@ -301,7 +285,7 @@ export const SalesPosModule = {
                   <div class="text-xs text-muted" style="font-size: 9.5px;">Margen P3 a P1</div>
                 </div>
               </div>
-              <div id="pos-comision-detalle" style="font-size: 11px; color: #929BAA; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(79, 197, 138, 0.3);">
+              <div id="pos-comision-detalle" style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(79, 197, 138, 0.3);">
                 Agregue productos al carrito para calcular comisión.
               </div>
             </div>

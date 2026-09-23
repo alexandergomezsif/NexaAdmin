@@ -24,16 +24,7 @@ export const CashModule = {
     const shiftMovements = currentShift ? movements.filter(m => m.turnoId === currentShift.id) : [];
 
     container.innerHTML = `
-            <!-- Sub-Barra de Pestañas: Finanzas & Cartera -->
-      <div class="sub-nav-tabs">
-        <a href="#cash" class="sub-nav-tab active"><span>💵</span><span>Caja & Turnos</span></a>
-        <a href="#purchases" class="sub-nav-tab"><span>🛍️</span><span>Compras & Proveedores</span></a>
-        <a href="#expenses" class="sub-nav-tab"><span>🏷️</span><span>Gastos Operativos</span></a>
-        <a href="#cxc" class="sub-nav-tab"><span>📈</span><span>Cuentas por Cobrar (CXC)</span></a>
-        <a href="#cxp" class="sub-nav-tab"><span>📉</span><span>Cuentas por Pagar (CXP)</span></a>
-      </div>
-
-      <div class="view-header">
+            <div class="view-header">
         <div class="view-title-wrap">
           <h1>Control de Caja & Arqueos</h1>
           <p>Manejo de turnos, efectivo físico, ingresos, retiros a banco y diferencias de caja</p>

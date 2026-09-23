@@ -274,15 +274,48 @@ class NexaApp {
 
     this.currentRoute = hash;
 
-    // Actualizar sidebar activo
+    // Identificar a qué macro-categoría pertenece la ruta actual
+    let activeMacroKey = null;
+    for (const [key, macro] of Object.entries(MACRO_CATEGORIES)) {
+      if (macro.routes.includes(hash)) {
+        activeMacroKey = key;
+        break;
+      }
+    }
+
+    const currentMacro = activeMacroKey ? MACRO_CATEGORIES[activeMacroKey] : null;
+    const targetSidebarRoute = currentMacro ? currentMacro.sidebarRoute : hash;
+
+    // Actualizar sidebar activo (mantener iluminada la macro-sección)
     document.querySelectorAll('.nav-item').forEach(item => {
       const route = item.getAttribute('data-route');
-      if (route === hash) {
+      if (route === targetSidebarRoute || route === hash) {
         item.classList.add('active');
       } else {
         item.classList.remove('active');
       }
     });
+
+    // Renderizar la Barra Fija de Submódulos Permanente
+    const subnavBar = document.getElementById('macro-subnav-bar');
+    if (subnavBar) {
+      if (currentMacro && currentMacro.tabs && currentMacro.tabs.length > 0) {
+        subnavBar.style.display = 'block';
+        subnavBar.innerHTML = `
+          <div class="sub-nav-tabs" style="margin-bottom: 0;">
+            ${currentMacro.tabs.map(tab => `
+              <a href="#${tab.route}" class="sub-nav-tab ${tab.route === hash ? 'active' : ''}">
+                <span>${tab.icon}</span>
+                <span>${tab.label}</span>
+              </a>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        subnavBar.style.display = 'none';
+        subnavBar.innerHTML = '';
+      }
+    }
 
     // Cerrar sidebar en móvil si está abierto
     const sidebar = document.getElementById('app-sidebar');

@@ -23,16 +23,7 @@ export const InventoryModule = {
     ]);
 
     container.innerHTML = `
-            <!-- Sub-Barra de Pestañas Superiores de Inventario & Planta -->
-      <div class="sub-nav-tabs">
-        <a href="#products" class="sub-nav-tab"><span>📦</span><span>Catálogo de Productos</span></a>
-        <a href="#inventory" class="sub-nav-tab active"><span>📑</span><span>Inventario & Kardex</span></a>
-        <a href="#production" class="sub-nav-tab"><span>⚙️</span><span>Producción & BOM</span></a>
-        <a href="#formulas-vault" class="sub-nav-tab"><span>🔒</span><span>Bóveda de Fórmulas</span></a>
-        <a href="#pricing-calculator" class="sub-nav-tab"><span>💡</span><span>Costos & Precios IA</span></a>
-      </div>
-
-      <div class="view-header">
+            <div class="view-header">
         <div class="view-title-wrap">
           <h1>Inventario & Kardex Multibodega</h1>
           <p>Trazabilidad completa de entradas, salidas, consumos de producción y traslados</p>

@@ -445,8 +445,8 @@ body:not(.dark-mode) .brand-icon {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: #182231;
-  border: 1px solid #303C4D;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -462,7 +462,7 @@ body:not(.dark-mode) .brand-icon {
   gap: 12px;
   padding: 10px 14px;
   border-radius: 12px;
-  color: #929BAA;
+  color: var(--text-secondary);
   text-decoration: none;
   font-size: 13.5px;
   font-weight: 600;
@@ -473,7 +473,7 @@ body:not(.dark-mode) .brand-icon {
 
 .nav-item:hover {
   background: rgba(24, 34, 49, 0.6);
-  color: #F5F7FA;
+  color: var(--text-main);
   border-color: rgba(48, 60, 77, 0.5);
 }
 
@@ -485,7 +485,7 @@ body:not(.dark-mode) .brand-icon {
 
 .nav-item.active {
   background: #263141;
-  color: #F5F7FA;
+  color: var(--text-main);
   border-color: #303C4D;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
@@ -497,7 +497,7 @@ body:not(.dark-mode) .brand-icon {
   box-shadow: 0 0 14px rgba(76, 125, 255, 0.4);
 }
 
-/* 3. Tarjetas KPI Superiores (Revenue, Cash, Net Profit) */
+/* 3. Tarjetas KPI Superiores (Variables Semánticas para Modo Claro y Oscuro) */
 .pos-kpi-bar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -506,19 +506,19 @@ body:not(.dark-mode) .brand-icon {
 }
 
 .pos-kpi-card {
-  background: #182231;
-  border: 1px solid #303C4D;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .pos-kpi-card:hover {
-  border-color: #4C7DFF;
+  border-color: var(--brand-primary);
   transform: translateY(-2px);
 }
 
@@ -527,24 +527,24 @@ body:not(.dark-mode) .brand-icon {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: #929BAA;
+  color: var(--text-secondary);
 }
 
 .pos-kpi-amount {
   font-size: 24px;
   font-weight: 800;
-  color: #F5F7FA;
+  color: var(--text-main);
   letter-spacing: -0.02em;
 }
 
 .pos-kpi-amount.text-financial {
-  color: #4FC58A;
+  color: var(--color-success);
 }
 
 /* 4. Tarjetas de Productos en el Catálogo */
 .pos-product-card {
-  background: #182231 !important;
-  border: 1px solid #303C4D !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 12px !important;
   padding: 14px !important;
   display: flex !important;
@@ -555,30 +555,31 @@ body:not(.dark-mode) .brand-icon {
 }
 
 .pos-product-card:hover {
-  background: #263141 !important;
-  border-color: #4C7DFF !important;
+  background: var(--bg-card-hover) !important;
+  border-color: var(--brand-primary) !important;
   box-shadow: 0 6px 20px rgba(76, 125, 255, 0.15) !important;
   transform: translateY(-2px);
 }
 
-/* 5. Sub-Nav Tabs de Módulos (Acceso Completo a los 22 Módulos) */
+/* 5. Sub-Nav Tabs de Módulos (Permanentes y Reactivas en Modo Claro y Oscuro) */
 .sub-nav-tabs {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #111927;
-  border: 1px solid #303C4D;
-  padding: 5px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
   border-radius: 12px;
   margin-bottom: 16px;
   overflow-x: auto;
+  box-shadow: var(--shadow-xs);
 }
 
 .sub-nav-tab {
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #929BAA;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
   border-radius: 8px;
   text-decoration: none;
   transition: all 0.15s ease;
@@ -590,13 +591,13 @@ body:not(.dark-mode) .brand-icon {
 }
 
 .sub-nav-tab:hover {
-  color: #F5F7FA;
-  background: #182231;
+  color: var(--text-main);
+  background: var(--bg-card-hover);
 }
 
 .sub-nav-tab.active {
-  color: #FFFFFF;
-  background: #4C7DFF;
-  border-color: #5C8DFF;
-  box-shadow: 0 2px 8px rgba(76, 125, 255, 0.4);
+  color: #FFFFFF !important;
+  background: var(--brand-primary);
+  border-color: var(--brand-primary-hover);
+  box-shadow: 0 2px 8px rgba(76, 125, 255, 0.35);
 }

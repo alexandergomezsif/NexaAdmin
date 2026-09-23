@@ -4035,16 +4035,7 @@ Generado por Nexa ERP.`;
         DB2.getAll(STORES.WAREHOUSES, tenantId)
       ]);
       container.innerHTML = `
-            <!-- Sub-Barra de Pesta\xF1as Superiores de Inventario & Planta -->
-      <div class="sub-nav-tabs">
-        <a href="#products" class="sub-nav-tab active"><span>\u{1F4E6}</span><span>Cat\xE1logo de Productos</span></a>
-        <a href="#inventory" class="sub-nav-tab"><span>\u{1F4D1}</span><span>Inventario & Kardex</span></a>
-        <a href="#production" class="sub-nav-tab"><span>\u2699\uFE0F</span><span>Producci\xF3n & BOM</span></a>
-        <a href="#formulas-vault" class="sub-nav-tab"><span>\u{1F512}</span><span>B\xF3veda de F\xF3rmulas</span></a>
-        <a href="#pricing-calculator" class="sub-nav-tab"><span>\u{1F4A1}</span><span>Costos & Precios IA</span></a>
-      </div>
-
-      <div class="view-header">
+            <div class="view-header">
         <div class="view-title-wrap">
           <h1>Cat\xE1logo de Productos & Insumos</h1>
           <p>Control de materias primas, productos terminados, 5 listas de precios y niveles de stock</p>
@@ -4474,16 +4465,7 @@ Generado por Nexa ERP.`;
         KardexService.getMovements(tenantId)
       ]);
       container.innerHTML = `
-            <!-- Sub-Barra de Pesta\xF1as Superiores de Inventario & Planta -->
-      <div class="sub-nav-tabs">
-        <a href="#products" class="sub-nav-tab"><span>\u{1F4E6}</span><span>Cat\xE1logo de Productos</span></a>
-        <a href="#inventory" class="sub-nav-tab active"><span>\u{1F4D1}</span><span>Inventario & Kardex</span></a>
-        <a href="#production" class="sub-nav-tab"><span>\u2699\uFE0F</span><span>Producci\xF3n & BOM</span></a>
-        <a href="#formulas-vault" class="sub-nav-tab"><span>\u{1F512}</span><span>B\xF3veda de F\xF3rmulas</span></a>
-        <a href="#pricing-calculator" class="sub-nav-tab"><span>\u{1F4A1}</span><span>Costos & Precios IA</span></a>
-      </div>
-
-      <div class="view-header">
+            <div class="view-header">
         <div class="view-title-wrap">
           <h1>Inventario & Kardex Multibodega</h1>
           <p>Trazabilidad completa de entradas, salidas, consumos de producci\xF3n y traslados</p>
@@ -6226,38 +6208,22 @@ Generado por Nexa ERP.`;
         this.selectedFreelancer = null;
       }
       container.innerHTML = `
-      <!-- Sub-Barra de Pesta\xF1as Superiores del Dominio Comercial -->
-      <div class="sub-nav-tabs">
-        <a href="#sales-pos" class="sub-nav-tab active">
-          <span>\u{1F6D2}</span>
-          <span>Terminal de Venta POS</span>
-        </a>
-        <a href="#shipping" class="sub-nav-tab">
-          <span>\u{1F69A}</span>
-          <span>Pedidos & Env\xEDos</span>
-        </a>
-        <a href="javascript:void(0)" class="sub-nav-tab" id="tab-quick-history">
-          <span>\u{1F4DC}</span>
-          <span>Historial de Facturas</span>
-        </a>
-      </div>
-
-      <!-- Barra de KPIs Ejecutivos del POS (Look Id\xE9ntico a la Imagen) -->
+      <!-- Barra de KPIs Ejecutivos del POS en Espa\xF1ol Puro -->
       <div class="pos-kpi-bar">
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Revenue (Facturaci\xF3n del Turno)</div>
-          <div class="pos-kpi-amount" style="color: #F5F7FA;">${Formatters.currency(currentShift ? (currentShift.totalVentasEfectivo || 0) + (currentShift.totalVentasTransferencia || 0) + (currentShift.totalVentasNequiDaviplata || 0) + (currentShift.totalVentasTarjeta || 0) : 0)}</div>
-          <div class="text-xs" style="color: #929BAA;">Turno ${currentShift ? "\u{1F7E2} Activo en curso" : "\u{1F534} Sin abrir"}</div>
+          <div class="pos-kpi-title">Facturaci\xF3n del Turno</div>
+          <div class="pos-kpi-amount" style="color: var(--text-main);">${Formatters.currency(currentShift ? (currentShift.totalVentasEfectivo || 0) + (currentShift.totalVentasTransferencia || 0) + (currentShift.totalVentasNequiDaviplata || 0) + (currentShift.totalVentasTarjeta || 0) : 0)}</div>
+          <div class="text-xs" style="color: var(--text-secondary);">Turno ${currentShift ? "\u{1F7E2} Activo en curso" : "\u{1F534} Sin abrir"}</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Cash (Efectivo en Caja)</div>
+          <div class="pos-kpi-title">Efectivo en Caja</div>
           <div class="pos-kpi-amount text-financial">${Formatters.currency(currentShift ? currentShift.saldoEsperado || currentShift.montoApertura || 0 : 0)}</div>
-          <div class="text-xs" style="color: #929BAA;">Disponible f\xEDsicamente</div>
+          <div class="text-xs" style="color: var(--text-secondary);">Disponible f\xEDsicamente</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Net Profit / Comisiones Freelance</div>
+          <div class="pos-kpi-title">Comisiones Freelance Acumuladas</div>
           <div class="pos-kpi-amount text-financial">${Formatters.currency(freelancers.reduce((a, fl) => a + (fl.comisionesTotalesGanadas || 0), 0))}</div>
-          <div class="text-xs" style="color: #929BAA;">${freelancers.length} Vendedores activos con liquidaci\xF3n en CXP</div>
+          <div class="text-xs" style="color: var(--text-secondary);">${freelancers.length} Vendedores activos con liquidaci\xF3n en CXP</div>
         </div>
       </div>
 
@@ -6471,7 +6437,7 @@ Generado por Nexa ERP.`;
                   <div class="text-xs text-muted" style="font-size: 9.5px;">Margen P3 a P1</div>
                 </div>
               </div>
-              <div id="pos-comision-detalle" style="font-size: 11px; color: #929BAA; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(79, 197, 138, 0.3);">
+              <div id="pos-comision-detalle" style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(79, 197, 138, 0.3);">
                 Agregue productos al carrito para calcular comisi\xF3n.
               </div>
             </div>
@@ -8171,16 +8137,7 @@ Generado por Nexa ERP.`;
       ]);
       const shiftMovements = currentShift ? movements.filter((m) => m.turnoId === currentShift.id) : [];
       container.innerHTML = `
-            <!-- Sub-Barra de Pesta\xF1as: Finanzas & Cartera -->
-      <div class="sub-nav-tabs">
-        <a href="#cash" class="sub-nav-tab active"><span>\u{1F4B5}</span><span>Caja & Turnos</span></a>
-        <a href="#purchases" class="sub-nav-tab"><span>\u{1F6CD}\uFE0F</span><span>Compras & Proveedores</span></a>
-        <a href="#expenses" class="sub-nav-tab"><span>\u{1F3F7}\uFE0F</span><span>Gastos Operativos</span></a>
-        <a href="#cxc" class="sub-nav-tab"><span>\u{1F4C8}</span><span>Cuentas por Cobrar (CXC)</span></a>
-        <a href="#cxp" class="sub-nav-tab"><span>\u{1F4C9}</span><span>Cuentas por Pagar (CXP)</span></a>
-      </div>
-
-      <div class="view-header">
+            <div class="view-header">
         <div class="view-title-wrap">
           <h1>Control de Caja & Arqueos</h1>
           <p>Manejo de turnos, efectivo f\xEDsico, ingresos, retiros a banco y diferencias de caja</p>
@@ -10022,17 +9979,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       const warehouses = await DB2.getAll(STORES.WAREHOUSES, tenant.id);
       const isDev = AuthServiceInstance.isDeveloper();
       container.innerHTML = `
-            <!-- Sub-Barra de Pesta\xF1as: Configuraci\xF3n & Sistema -->
-      <div class="sub-nav-tabs">
-        <a href="#dashboard" class="sub-nav-tab"><span>\u{1F4CA}</span><span>Dashboard</span></a>
-        <a href="#settings" class="sub-nav-tab active"><span>\u2699\uFE0F</span><span>Par\xE1metros & Empresa</span></a>
-        <a href="#users" class="sub-nav-tab"><span>\u{1F6E1}\uFE0F</span><span>Usuarios & Roles</span></a>
-        <a href="#backup" class="sub-nav-tab"><span>\u{1F4BE}</span><span>Respaldo Base de Datos</span></a>
-        <a href="#importer" class="sub-nav-tab"><span>\u{1F4E5}</span><span>Importador Masivo</span></a>
-        <a href="#reports" class="sub-nav-tab"><span>\u{1F4C8}</span><span>Reportes</span></a>
-      </div>
-
-      <div class="view-header">
+            <div class="view-header">
         <div class="view-title-wrap">
           <h1>Configuraci\xF3n General & Multiempresa</h1>
           <p>Identidad visual, datos tributarios DIAN, paleta de colores corporativos y par\xE1metros del sistema</p>
@@ -13556,14 +13503,42 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         return;
       }
       this.currentRoute = hash;
+      let activeMacroKey = null;
+      for (const [key, macro] of Object.entries(MACRO_CATEGORIES)) {
+        if (macro.routes.includes(hash)) {
+          activeMacroKey = key;
+          break;
+        }
+      }
+      const currentMacro = activeMacroKey ? MACRO_CATEGORIES[activeMacroKey] : null;
+      const targetSidebarRoute = currentMacro ? currentMacro.sidebarRoute : hash;
       document.querySelectorAll(".nav-item").forEach((item) => {
         const route = item.getAttribute("data-route");
-        if (route === hash) {
+        if (route === targetSidebarRoute || route === hash) {
           item.classList.add("active");
         } else {
           item.classList.remove("active");
         }
       });
+      const subnavBar = document.getElementById("macro-subnav-bar");
+      if (subnavBar) {
+        if (currentMacro && currentMacro.tabs && currentMacro.tabs.length > 0) {
+          subnavBar.style.display = "block";
+          subnavBar.innerHTML = `
+          <div class="sub-nav-tabs" style="margin-bottom: 0;">
+            ${currentMacro.tabs.map((tab) => `
+              <a href="#${tab.route}" class="sub-nav-tab ${tab.route === hash ? "active" : ""}">
+                <span>${tab.icon}</span>
+                <span>${tab.label}</span>
+              </a>
+            `).join("")}
+          </div>
+        `;
+        } else {
+          subnavBar.style.display = "none";
+          subnavBar.innerHTML = "";
+        }
+      }
       const sidebar = document.getElementById("app-sidebar");
       const overlay = document.getElementById("sidebar-overlay");
       if (sidebar)
