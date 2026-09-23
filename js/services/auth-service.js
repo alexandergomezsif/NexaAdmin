@@ -36,7 +36,7 @@ export const PERMISSIONS = {
 export const ROLE_ALLOWED_MODULES = {
   // DESARROLLADOR / AUTOR DEL SOFTWARE: Acceso irrestricto a los 20 módulos, auditoría forense y control multiempresa
   [ROLES.DEV]: [
-    'dashboard', 'sales-pos', 'clients', 'shipping',
+    'dashboard', 'sales-pos', 'clients', 'freelancers', 'shipping',
     'products', 'inventory', 'production',
     'purchases', 'cash', 'expenses', 'cxc', 'cxp',
     'reports', 'users', 'audit', 'settings',
@@ -47,7 +47,7 @@ export const ROLE_ALLOWED_MODULES = {
   // GERENCIA: Enfoque estratégico, comercial, financiero y operativo completo.
   // Protege la propiedad intelectual: NO tiene acceso a 'users' (Módulo 13) ni 'audit' (Módulo 14).
   [ROLES.GERENTE]: [
-    'dashboard', 'sales-pos', 'clients', 'shipping',
+    'dashboard', 'sales-pos', 'clients', 'freelancers', 'shipping',
     'products', 'inventory', 'production',
     'purchases', 'cash', 'expenses', 'cxc', 'cxp',
     'reports', 'settings', 'backup', 'importer', 'integrations', 'documents',
@@ -56,7 +56,7 @@ export const ROLE_ALLOWED_MODULES = {
 
   // ASESOR COMERCIAL / VENTAS: POS, Clientes 360, Pedidos y Despachos, Catálogo y Documentos
   [ROLES.VENDEDOR]: [
-    'sales-pos', 'clients', 'shipping', 'products', 'documents'
+    'sales-pos', 'clients', 'freelancers', 'shipping', 'products', 'documents'
   ],
 
   // LOGÍSTICA & BODEGA: Catálogo, Inventario/Kardex, Despachos y Recepción de Compras
