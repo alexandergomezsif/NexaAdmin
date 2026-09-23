@@ -100,6 +100,7 @@ export const FreelancersModule = {
                   <tr>
                     <th>Vendedor</th>
                     <th>Zona</th>
+                    <th>Precio Base</th>
                     <th>Ventas este mes</th>
                     <th>Comisión ganada</th>
                     <th>Pendiente de pago</th>
@@ -123,7 +124,12 @@ export const FreelancersModule = {
                           <div class="font-bold">${f.nombre}</div>
                           <div class="text-xs text-muted">${f.nitCc ? 'CC: ' + f.nitCc : ''} ${f.telefono ? '· ' + f.telefono : ''}</div>
                         </td>
-                        <td><span class="badge badge-info" style="font-size: 10px;">${f.zona || '—'}</span></td>
+                        <td><span class="badge badge-neutral" style="font-size: 10px;">${f.zona || '—'}</span></td>
+                        <td>
+                          <span class="badge badge-info" style="font-size: 10.5px; font-weight: 700;">
+                            ${f.precioBaseId === 'plist_2' ? 'P2 - Taller' : (f.precioBaseId === 'plist_4' ? 'P4 - Distribuidor' : 'P3 - Mayorista')}
+                          </span>
+                        </td>
                         <td>
                           <strong>${fSalesMes.length}</strong> ventas
                           <div class="text-xs text-muted">${Formatters.currency(fSalesMes.reduce((a, s) => a + s.total, 0))}</div>
@@ -141,7 +147,8 @@ export const FreelancersModule = {
                         </td>
                         <td>
                           <div class="d-flex gap-2">
-                            <button class="btn btn-secondary btn-sm btn-ver-freelancer" data-id="${f.id}">Ver</button>
+                            <button class="btn btn-secondary btn-sm btn-ver-freelancer" data-id="${f.id}" title="Ver Ficha">👁️ Ver</button>
+                            <button class="btn btn-secondary btn-sm btn-edit-freelancer" data-id="${f.id}" title="Editar Datos">✏️ Editar</button>
                             ${pendiente > 0 ? `<button class="btn btn-primary btn-sm btn-liquidar-freelancer" data-id="${f.id}" data-nombre="${f.nombre}" data-pendiente="${pendiente}">💸 Liquidar</button>` : ''}
                           </div>
                         </td>
@@ -167,6 +174,15 @@ export const FreelancersModule = {
         const id = btn.getAttribute('data-id');
         const f = freelancers.find(x => x.id === id);
         if (f) this.openFreelancerDetail(f, freelanceSales, allCxp, tenantId, () => this.render(container));
+      });
+    });
+
+    // Editar vendedor freelance
+    container.querySelectorAll('.btn-edit-freelancer').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const f = freelancers.find(x => x.id === id);
+        if (f) this.openFreelancerWizard(f, tenantId, () => this.render(container));
       });
     });
 
@@ -212,17 +228,29 @@ export const FreelancersModule = {
               </div>
             </div>
             <div class="form-row" style="gap: 12px;">
-              <div class="form-group mb-0" style="flex: 1;">
+              <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Zona de Ventas</label>
                 <input type="text" class="form-control" id="fl-zona" value="${f.zona || ''}" placeholder="Ej: Medellín Norte, Eje Cafetero...">
               </div>
-              <div class="form-group mb-0" style="flex: 1;">
+              <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Estado</label>
                 <select class="form-select" id="fl-estado">
                   <option value="ACTIVO" ${(!f.estado || f.estado === 'ACTIVO') ? 'selected' : ''}>Activo</option>
                   <option value="INACTIVO" ${f.estado === 'INACTIVO' ? 'selected' : ''}>Inactivo</option>
                 </select>
               </div>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label font-bold" style="color: var(--brand-primary);">🏷️ Lista de Precios Base (Costo de Fábrica del Vendedor)</label>
+              <select class="form-select" id="fl-precio-base" style="font-weight: 700; color: #4C7DFF;">
+                <option value="plist_3" ${(!f.precioBaseId || f.precioBaseId === 'plist_3') ? 'selected' : ''}>P3 - Precio Mayorista (Predeterminado Oficial)</option>
+                <option value="plist_2" ${f.precioBaseId === 'plist_2' ? 'selected' : ''}>P2 - Precio Taller / Detailing</option>
+                <option value="plist_4" ${f.precioBaseId === 'plist_4' ? 'selected' : ''}>P4 - Precio Distribuidor</option>
+                <option value="plist_1" ${f.precioBaseId === 'plist_1' ? 'selected' : ''}>P1 - Precio Público Máximo</option>
+              </select>
+              <span class="text-xs text-muted" style="display: block; margin-top: 4px;">
+                Base sobre la que se liquida la comisión. El vendedor tiene un rango de venta libre desde <strong>Precio 3</strong> hasta <strong>Precio 1</strong>. La diferencia en $$ es su ganancia libre.
+              </span>
             </div>
           </div>
         </div>
@@ -294,7 +322,7 @@ export const FreelancersModule = {
               zona: dialog.querySelector('#fl-zona').value.trim(),
               estado: dialog.querySelector('#fl-estado').value,
               tipo: 'FREELANCER',
-              precioBaseId: 'plist_3',
+              precioBaseId: dialog.querySelector('#fl-precio-base') ? dialog.querySelector('#fl-precio-base').value : 'plist_3',
               datosBancarios: {
                 banco: dialog.querySelector('#fl-banco').value,
                 tipoCuenta: dialog.querySelector('#fl-tipo-cuenta').value,

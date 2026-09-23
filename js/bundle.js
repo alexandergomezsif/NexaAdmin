@@ -6494,12 +6494,17 @@ Generado por Nexa ERP.`;
         tbody.innerHTML = this.cart.map((item, idx) => {
           const prod = (products || []).find((p) => p.id === item.productoId);
           const p1 = prod && prod.precios && prod.precios["plist_1"] || item.precioUnitario * 1.2;
-          const p4 = prod && prod.precios && prod.precios["plist_4"] || (prod && prod.costo ? prod.costo * 1.15 : item.precioUnitario * 0.85);
+          const basePriceId = this.selectedFreelancer && this.selectedFreelancer.precioBaseId || "plist_3";
+          const pBase = prod && prod.precios && prod.precios[basePriceId] || prod && prod.precios && prod.precios["plist_3"] || item.precioUnitario * 0.9;
+          const comisionItem = Math.max(0, (item.precioUnitario - pBase) * item.cantidad);
           return `
         <tr>
           <td style="vertical-align: middle;">
             <div class="font-bold" style="font-size: 11.5px; line-height: 1.2;">${item.nombre}</div>
-            <div class="text-xs text-muted" style="font-size: 10px;">SKU: ${item.sku} \u2022 P1: $${Math.round(p1).toLocaleString("es-CO")} | P4: $${Math.round(p4).toLocaleString("es-CO")}</div>
+            <div class="text-xs text-muted" style="font-size: 10px;">
+              SKU: ${item.sku} \u2022 Base P3: <strong>$${Math.round(pBase).toLocaleString("es-CO")}</strong> | Techo P1: <strong>$${Math.round(p1).toLocaleString("es-CO")}</strong>
+              ${comisionItem > 0 ? `<span class="badge badge-success" style="font-size: 9px; margin-left: 4px; background: #16a34a; font-weight: 800;">+$${Math.round(comisionItem).toLocaleString("es-CO")} com</span>` : ""}
+            </div>
           </td>
           <td class="text-center" style="vertical-align: middle;">
             <input type="number" min="1" max="${item.stockMaximoDisponible}" class="form-control pos-item-qty" data-idx="${idx}" value="${item.cantidad}" style="width: 50px; padding: 2px 4px; text-align: center; font-size: 11.5px; font-weight: 700;">
@@ -6539,6 +6544,9 @@ Generado por Nexa ERP.`;
         const received = Number(container.querySelector("#pos-inp-received").value || totals.total);
         const change = Math.max(0, received - totals.total);
         container.querySelector("#pos-lbl-change").textContent = Formatters.currency(change);
+        if (typeof calcularComision === "function") {
+          calcularComision();
+        }
       };
       const addProductToCart = (prodId) => {
         const prod = sellableProducts.find((p) => p.id === prodId);
@@ -6550,7 +6558,15 @@ Generado por Nexa ERP.`;
         }
         const existing = this.cart.find((i) => i.productoId === prod.id);
         const precioEsp = this.selectedClient && this.selectedClient.preciosEspeciales && this.selectedClient.preciosEspeciales[prod.id];
-        const unitPrice = precioEsp ? precioEsp : prod.precios && prod.precios[this.selectedPriceListId] || (prod.costo || prod.costoPromedio || 0) * 1.5;
+        let unitPrice = 0;
+        if (precioEsp) {
+          unitPrice = precioEsp;
+        } else if (this.selectedFreelancer) {
+          const baseId = this.selectedFreelancer.precioBaseId || "plist_3";
+          unitPrice = prod.precios && prod.precios[baseId] || prod.precios && prod.precios["plist_3"] || (prod.costo || prod.costoPromedio || 0) * 1.3;
+        } else {
+          unitPrice = prod.precios && prod.precios[this.selectedPriceListId] || (prod.costo || prod.costoPromedio || 0) * 1.5;
+        }
         if (existing) {
           if (existing.cantidad + 1 > prod.stock) {
             Toast.warning(`No hay m\xE1s existencias f\xEDsicas de ${prod.nombre} (Stock actual: ${prod.stock}).`);
@@ -12928,6 +12944,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   <tr>
                     <th>Vendedor</th>
                     <th>Zona</th>
+                    <th>Precio Base</th>
                     <th>Ventas este mes</th>
                     <th>Comisi\xF3n ganada</th>
                     <th>Pendiente de pago</th>
@@ -12950,7 +12967,12 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                           <div class="font-bold">${f.nombre}</div>
                           <div class="text-xs text-muted">${f.nitCc ? "CC: " + f.nitCc : ""} ${f.telefono ? "\xB7 " + f.telefono : ""}</div>
                         </td>
-                        <td><span class="badge badge-info" style="font-size: 10px;">${f.zona || "\u2014"}</span></td>
+                        <td><span class="badge badge-neutral" style="font-size: 10px;">${f.zona || "\u2014"}</span></td>
+                        <td>
+                          <span class="badge badge-info" style="font-size: 10.5px; font-weight: 700;">
+                            ${f.precioBaseId === "plist_2" ? "P2 - Taller" : f.precioBaseId === "plist_4" ? "P4 - Distribuidor" : "P3 - Mayorista"}
+                          </span>
+                        </td>
                         <td>
                           <strong>${fSalesMes.length}</strong> ventas
                           <div class="text-xs text-muted">${Formatters.currency(fSalesMes.reduce((a, s) => a + s.total, 0))}</div>
@@ -12966,7 +12988,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                         </td>
                         <td>
                           <div class="d-flex gap-2">
-                            <button class="btn btn-secondary btn-sm btn-ver-freelancer" data-id="${f.id}">Ver</button>
+                            <button class="btn btn-secondary btn-sm btn-ver-freelancer" data-id="${f.id}" title="Ver Ficha">\u{1F441}\uFE0F Ver</button>
+                            <button class="btn btn-secondary btn-sm btn-edit-freelancer" data-id="${f.id}" title="Editar Datos">\u270F\uFE0F Editar</button>
                             ${pendiente > 0 ? `<button class="btn btn-primary btn-sm btn-liquidar-freelancer" data-id="${f.id}" data-nombre="${f.nombre}" data-pendiente="${pendiente}">\u{1F4B8} Liquidar</button>` : ""}
                           </div>
                         </td>
@@ -12989,6 +13012,14 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           const f = freelancers.find((x) => x.id === id);
           if (f)
             this.openFreelancerDetail(f, freelanceSales, allCxp, tenantId, () => this.render(container));
+        });
+      });
+      container.querySelectorAll(".btn-edit-freelancer").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const f = freelancers.find((x) => x.id === id);
+          if (f)
+            this.openFreelancerWizard(f, tenantId, () => this.render(container));
         });
       });
       container.querySelectorAll(".btn-liquidar-freelancer").forEach((btn) => {
@@ -13030,17 +13061,29 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
               </div>
             </div>
             <div class="form-row" style="gap: 12px;">
-              <div class="form-group mb-0" style="flex: 1;">
+              <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Zona de Ventas</label>
                 <input type="text" class="form-control" id="fl-zona" value="${f.zona || ""}" placeholder="Ej: Medell\xEDn Norte, Eje Cafetero...">
               </div>
-              <div class="form-group mb-0" style="flex: 1;">
+              <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Estado</label>
                 <select class="form-select" id="fl-estado">
                   <option value="ACTIVO" ${!f.estado || f.estado === "ACTIVO" ? "selected" : ""}>Activo</option>
                   <option value="INACTIVO" ${f.estado === "INACTIVO" ? "selected" : ""}>Inactivo</option>
                 </select>
               </div>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label font-bold" style="color: var(--brand-primary);">\u{1F3F7}\uFE0F Lista de Precios Base (Costo de F\xE1brica del Vendedor)</label>
+              <select class="form-select" id="fl-precio-base" style="font-weight: 700; color: #4C7DFF;">
+                <option value="plist_3" ${!f.precioBaseId || f.precioBaseId === "plist_3" ? "selected" : ""}>P3 - Precio Mayorista (Predeterminado Oficial)</option>
+                <option value="plist_2" ${f.precioBaseId === "plist_2" ? "selected" : ""}>P2 - Precio Taller / Detailing</option>
+                <option value="plist_4" ${f.precioBaseId === "plist_4" ? "selected" : ""}>P4 - Precio Distribuidor</option>
+                <option value="plist_1" ${f.precioBaseId === "plist_1" ? "selected" : ""}>P1 - Precio P\xFAblico M\xE1ximo</option>
+              </select>
+              <span class="text-xs text-muted" style="display: block; margin-top: 4px;">
+                Base sobre la que se liquida la comisi\xF3n. El vendedor tiene un rango de venta libre desde <strong>Precio 3</strong> hasta <strong>Precio 1</strong>. La diferencia en $$ es su ganancia libre.
+              </span>
             </div>
           </div>
         </div>
@@ -13113,7 +13156,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 zona: dialog.querySelector("#fl-zona").value.trim(),
                 estado: dialog.querySelector("#fl-estado").value,
                 tipo: "FREELANCER",
-                precioBaseId: "plist_3",
+                precioBaseId: dialog.querySelector("#fl-precio-base") ? dialog.querySelector("#fl-precio-base").value : "plist_3",
                 datosBancarios: {
                   banco: dialog.querySelector("#fl-banco").value,
                   tipoCuenta: dialog.querySelector("#fl-tipo-cuenta").value,
