@@ -6237,22 +6237,22 @@ Generado por Nexa ERP.`;
         </a>
       </div>
 
-      <!-- Barra de KPIs Ejecutivos del POS (Look Id\xE9ntico al Mockup) -->
+      <!-- Barra de KPIs Ejecutivos del POS (Look Id\xE9ntico a la Imagen) -->
       <div class="pos-kpi-bar">
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Ventas del Turno (Facturaci\xF3n)</div>
-          <div class="pos-kpi-amount" style="color: var(--brand-primary);">${Formatters.currency(currentShift ? (currentShift.totalVentasEfectivo || 0) + (currentShift.totalVentasTransferencia || 0) + (currentShift.totalVentasNequiDaviplata || 0) + (currentShift.totalVentasTarjeta || 0) : 0)}</div>
-          <div class="text-xs text-muted">Turno de caja ${currentShift ? "activo" : "sin abrir"}</div>
+          <div class="pos-kpi-title">Revenue (Facturaci\xF3n del Turno)</div>
+          <div class="pos-kpi-amount" style="color: #F5F7FA;">${Formatters.currency(currentShift ? (currentShift.totalVentasEfectivo || 0) + (currentShift.totalVentasTransferencia || 0) + (currentShift.totalVentasNequiDaviplata || 0) + (currentShift.totalVentasTarjeta || 0) : 0)}</div>
+          <div class="text-xs" style="color: #929BAA;">Turno ${currentShift ? "\u{1F7E2} Activo en curso" : "\u{1F534} Sin abrir"}</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Efectivo en Caja</div>
-          <div class="pos-kpi-amount text-success">${Formatters.currency(currentShift ? currentShift.saldoEsperado || currentShift.montoApertura || 0 : 0)}</div>
-          <div class="text-xs text-muted">Disponible en caja f\xEDsica</div>
+          <div class="pos-kpi-title">Cash (Efectivo en Caja)</div>
+          <div class="pos-kpi-amount text-financial">${Formatters.currency(currentShift ? currentShift.saldoEsperado || currentShift.montoApertura || 0 : 0)}</div>
+          <div class="text-xs" style="color: #929BAA;">Disponible f\xEDsicamente</div>
         </div>
         <div class="pos-kpi-card">
-          <div class="pos-kpi-title">Red Freelance Asignada</div>
-          <div class="pos-kpi-amount" style="color: #10b981;">${freelancers.length} Vendedores</div>
-          <div class="text-xs text-muted">Comisiones autom\xE1ticas en CXP</div>
+          <div class="pos-kpi-title">Net Profit / Comisiones Freelance</div>
+          <div class="pos-kpi-amount text-financial">${Formatters.currency(freelancers.reduce((a, fl) => a + (fl.comisionesTotalesGanadas || 0), 0))}</div>
+          <div class="text-xs" style="color: #929BAA;">${freelancers.length} Vendedores activos con liquidaci\xF3n en CXP</div>
         </div>
       </div>
 

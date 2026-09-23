@@ -7,50 +7,48 @@
    MODO OSCURO PREMIUM (APPLE OLEO DARK THEME - ALTO CONTRASTE)
    ========================================================================== */
 body.dark-mode {
-  /* Fondos y Superficies Ultra-Modernas Deep Slate Navy */
-  --bg-app: #0b0f19;                         /* Deep Slate Navy (Linear App Style) */
-  --bg-surface: rgba(18, 24, 38, 0.85);      /* Frosted Glass oscuro */
-  --bg-surface-solid: #111726;               /* Fondo sólido de tarjetas y modales */
-  --bg-card: rgba(22, 30, 49, 0.75);
-  --bg-card-hover: rgba(30, 41, 67, 0.9);
-  --bg-sidebar: rgba(11, 15, 25, 0.95);
-  --bg-sidebar-hover: rgba(255, 255, 255, 0.06);
-  --bg-sidebar-active: rgba(59, 130, 246, 0.2);
-  --bg-input: rgba(255, 255, 255, 0.06);
+  /* Paleta Cromática Exacta de la Imagen / Brief */
+  --bg-app: #080F1C;                         /* Fondo Principal Ultra Dark Navy */
+  --bg-surface: #111927;                     /* Fondo Secundario */
+  --bg-surface-solid: #111927;
+  --bg-card: #182231;                        /* Panel / Tarjeta Dark Glass */
+  --bg-card-hover: #263141;                  /* Panel Activo / Hover */
+  --bg-sidebar: rgba(11, 17, 29, 0.95);      /* Sidebar Oscuro Translúcido */
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.04);
+  --bg-sidebar-active: #263141;
+  --bg-input: #182231;
 
-  /* Bordes Suaves de Alta Tecnología */
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-light: rgba(255, 255, 255, 0.05);
-  --border-focus: #3b82f6;
+  /* Bordes Suaves de 1px Bajo Contraste */
+  --border-color: #303C4D;
+  --border-light: rgba(48, 60, 77, 0.6);
+  --border-focus: #4C7DFF;
 
-  /* Tipografía iOS Dark con Contraste WCAG AAA Impecable */
-  --text-main: #f8fafc;                      /* Blanco tiza de máxima legibilidad */
-  --text-secondary: #cbd5e1;                 /* Gris plateado claro */
-  --text-muted: #94a3b8;                     /* Gris medio para etiquetas */
-  --text-light: #64748b;
-  --text-white: #ffffff;
+  /* Jerarquía Tipográfica de Alto Contraste */
+  --text-main: #F5F7FA;                      /* Blanco Tiza Puro */
+  --text-secondary: #929BAA;                 /* Gris Slate Suave */
+  --text-muted: #64748B;
+  --text-light: #475569;
+  --text-white: #FFFFFF;
 
-  /* Colores de Acento Vibrantes Apple Dark */
-  --brand-primary: #0a84ff;                  /* Azul vibrante iOS Dark */
-  --brand-primary-hover: #409cff;
-  --brand-primary-light: rgba(10, 132, 255, 0.2);
-  --brand-primary-subtle: rgba(10, 132, 255, 0.1);
+  /* Colores de Acento Eléctricos */
+  --brand-primary: #4C7DFF;                  /* Azul Primario Eléctrico */
+  --brand-primary-hover: #5C8DFF;            /* Azul Luminoso */
+  --brand-primary-light: rgba(76, 125, 255, 0.18);
+  --brand-primary-subtle: rgba(76, 125, 255, 0.08);
 
-  --color-success: #32d74b;
-  --color-success-bg: rgba(50, 215, 75, 0.18);
-  --color-warning: #ffd60a;
-  --color-warning-bg: rgba(255, 214, 10, 0.18);
-  --color-danger: #ff453a;
-  --color-danger-bg: rgba(255, 69, 58, 0.2);
-  --color-info: #64d2ff;
-  --color-info-bg: rgba(100, 210, 255, 0.18);
+  --color-success: #4FC58A;                  /* Verde Financiero Exacto */
+  --color-success-bg: rgba(79, 197, 138, 0.15);
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.15);
+  --color-danger: #EF4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.15);
+  --color-info: #38BDF8;
+  --color-info-bg: rgba(56, 189, 248, 0.15);
 
-  /* Sombras y Luces en Modo Oscuro */
-  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.6);
-  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.7);
-  --shadow-lg: 0 16px 45px rgba(0, 0, 0, 0.8);
-  --shadow-sheet: 0 24px 70px rgba(0, 0, 0, 0.9);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.65);
 }
 
 /* ==========================================================================
@@ -418,4 +416,187 @@ body:not(.dark-mode) .brand-icon {
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: -0.02em;
+}
+
+
+/* ==========================================================================
+   COMPONENTES VISUALES EXACTOS AL MOCKUP DESKTOP-APP PREMIUM
+   ========================================================================== */
+
+/* 1. Controles de Ventana macOS (Red, Yellow, Green Dots) */
+.mac-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 14px 18px 8px 18px;
+}
+.mac-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mac-dot-close { background-color: #ff5f56; }
+.mac-dot-minimize { background-color: #ffbd2e; }
+.mac-dot-expand { background-color: #27c93f; }
+
+/* 2. Cajas Cuadradas Redondeadas para Iconos del Menú (.nav-icon-box) */
+.nav-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #182231;
+  border: 1px solid #303C4D;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  color: #4C7DFF;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: #929BAA;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+
+.nav-item:hover {
+  background: rgba(24, 34, 49, 0.6);
+  color: #F5F7FA;
+  border-color: rgba(48, 60, 77, 0.5);
+}
+
+.nav-item:hover .nav-icon-box {
+  background: #263141;
+  border-color: #4C7DFF;
+  box-shadow: 0 0 12px rgba(76, 125, 255, 0.25);
+}
+
+.nav-item.active {
+  background: #263141;
+  color: #F5F7FA;
+  border-color: #303C4D;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.nav-item.active .nav-icon-box {
+  background: #4C7DFF;
+  color: #FFFFFF;
+  border-color: #5C8DFF;
+  box-shadow: 0 0 14px rgba(76, 125, 255, 0.4);
+}
+
+/* 3. Tarjetas KPI Superiores (Revenue, Cash, Net Profit) */
+.pos-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.pos-kpi-card {
+  background: #182231;
+  border: 1px solid #303C4D;
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.pos-kpi-card:hover {
+  border-color: #4C7DFF;
+  transform: translateY(-2px);
+}
+
+.pos-kpi-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #929BAA;
+}
+
+.pos-kpi-amount {
+  font-size: 24px;
+  font-weight: 800;
+  color: #F5F7FA;
+  letter-spacing: -0.02em;
+}
+
+.pos-kpi-amount.text-financial {
+  color: #4FC58A;
+}
+
+/* 4. Tarjetas de Productos en el Catálogo */
+.pos-product-card {
+  background: #182231 !important;
+  border: 1px solid #303C4D !important;
+  border-radius: 12px !important;
+  padding: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  transition: all 0.2s ease !important;
+  min-height: 110px;
+}
+
+.pos-product-card:hover {
+  background: #263141 !important;
+  border-color: #4C7DFF !important;
+  box-shadow: 0 6px 20px rgba(76, 125, 255, 0.15) !important;
+  transform: translateY(-2px);
+}
+
+/* 5. Sub-Nav Tabs de Módulos (Acceso Completo a los 22 Módulos) */
+.sub-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #111927;
+  border: 1px solid #303C4D;
+  padding: 5px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.sub-nav-tab {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #929BAA;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+}
+
+.sub-nav-tab:hover {
+  color: #F5F7FA;
+  background: #182231;
+}
+
+.sub-nav-tab.active {
+  color: #FFFFFF;
+  background: #4C7DFF;
+  border-color: #5C8DFF;
+  box-shadow: 0 2px 8px rgba(76, 125, 255, 0.4);
 }

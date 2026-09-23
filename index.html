@@ -36,50 +36,59 @@
     <!-- ====================================================================
          SIDEBAR LATERAL MODULAR (20 MÓDULOS EN GRUPOS FUNCIONALES)
          ==================================================================== -->
-    <aside class="app-sidebar" id="app-sidebar">
+        <aside class="app-sidebar" id="app-sidebar" style="background: var(--bg-sidebar); border-right: 1px solid var(--border-color); width: 250px;">
       
+      <!-- Controles de Ventana macOS -->
+      <div class="mac-window-controls">
+        <span class="mac-dot mac-dot-close"></span>
+        <span class="mac-dot mac-dot-minimize"></span>
+        <span class="mac-dot mac-dot-expand"></span>
+      </div>
+
       <!-- Encabezado de Marca Dinámico -->
-      <div class="sidebar-brand">
-        <div class="brand-icon" id="sidebar-brand-icon">⚡</div>
-        <div class="brand-info">
-          <div class="brand-title" id="sidebar-brand-name">Rayo Pro</div>
-          <div class="brand-subtitle" id="sidebar-brand-nit">NIT: 901.458.321-4</div>
+      <div class="sidebar-brand" style="border-bottom: 1px solid var(--border-color); padding: 8px 18px 16px 18px; height: auto;">
+        <div class="d-flex items-center gap-3">
+          <div class="brand-icon" id="sidebar-brand-icon" style="background: #182231; border: 1px solid #303C4D; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;">⚡</div>
+          <div class="brand-info">
+            <div class="brand-title" id="sidebar-brand-name" style="font-size: 16px; font-weight: 800; color: #F5F7FA; letter-spacing: -0.02em;">Rayo Pro</div>
+            <div class="brand-subtitle" style="font-size: 11px; color: #4C7DFF; font-weight: 600;">ERP & POS Business</div>
+          </div>
         </div>
       </div>
 
-      <!-- Menú de Navegación por Módulos -->
-            <!-- Menú de Navegación por Módulos (5 Macro-Secciones Limpias) -->
-            <!-- Menú de Navegación Minimalista (5 Macro-Secciones) -->
-      <nav class="sidebar-nav" style="padding: 16px 10px; display: flex; flex-direction: column; gap: 6px;">
-        <a class="nav-item active" href="#sales-pos" data-route="sales-pos" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
-          <span class="nav-icon" style="font-size: 20px;">🛒</span>
-          <span style="font-size: 14px; font-weight: 700;">Ventas POS</span>
+      <!-- Menú de Navegación por Módulos (5 Macro-Secciones con Cajas de Icono) -->
+      <nav class="sidebar-nav" style="padding: 16px 12px; display: flex; flex-direction: column; gap: 6px;">
+        <a class="nav-item active" href="#sales-pos" data-route="sales-pos" title="Punto de Venta Mostrador y Facturación">
+          <div class="nav-icon-box">🛒</div>
+          <span>Ventas POS</span>
         </a>
-        <a class="nav-item" href="#inventory" data-route="inventory" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
-          <span class="nav-icon" style="font-size: 20px;">📦</span>
-          <span style="font-size: 14px; font-weight: 700;">Inventario & Planta</span>
+        <a class="nav-item" href="#inventory" data-route="inventory" title="Catálogo de Productos, Kardex y Fórmulas">
+          <div class="nav-icon-box">📦</div>
+          <span>Inventario & Planta</span>
         </a>
-        <a class="nav-item" href="#clients" data-route="clients" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
-          <span class="nav-icon" style="font-size: 20px;">👥</span>
-          <span style="font-size: 14px; font-weight: 700;">Clientes & Vendedores</span>
+        <a class="nav-item" href="#cash" data-route="cash" title="Caja, Compras, Gastos y Cartera">
+          <div class="nav-icon-box">💵</div>
+          <span>Finanzas & Cartera</span>
         </a>
-        <a class="nav-item" href="#cash" data-route="cash" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
-          <span class="nav-icon" style="font-size: 20px;">💵</span>
-          <span style="font-size: 14px; font-weight: 700;">Finanzas & Cartera</span>
+        <a class="nav-item" href="#clients" data-route="clients" title="Ficha 360° de Clientes y Red Freelance">
+          <div class="nav-icon-box">👥</div>
+          <span>Clientes & Vendedores</span>
         </a>
-        <a class="nav-item" href="#settings" data-route="settings" style="padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
-          <span class="nav-icon" style="font-size: 20px;">⚙️</span>
-          <span style="font-size: 14px; font-weight: 700;">Configuración</span>
+        <a class="nav-item" href="#settings" data-route="settings" title="Configuración General, Usuarios y Respaldo">
+          <div class="nav-icon-box">⚙️</div>
+          <span>Configuración</span>
         </a>
       </nav>
 
-      <!-- Pie del Sidebar -->
-      <div class="sidebar-footer">
-        <div class="d-flex items-center gap-2">
-          <div style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></div>
-          <span style="font-size: 11px; color: #94a3b8;">Nexa Cloud Ready</span>
+      <!-- Pie del Sidebar con Estado del Sistema -->
+      <div class="sidebar-footer" style="padding: 12px 18px; border-top: 1px solid var(--border-color); background: rgba(8, 15, 28, 0.5);">
+        <div class="d-flex items-center justify-between">
+          <div class="d-flex items-center gap-2">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: #4FC58A; box-shadow: 0 0 8px #4FC58A;"></div>
+            <span style="font-size: 11px; color: #929BAA; font-weight: 600;">Cloud Ready</span>
+          </div>
+          <span style="font-size: 10px; color: #64748B; font-family: monospace;">v2.6.2-pwa</span>
         </div>
-        <span style="font-size: 10px; color: #64748b;">v2.6.0-co</span>
       </div>
     </aside>
 
