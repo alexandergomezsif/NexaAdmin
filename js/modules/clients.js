@@ -64,14 +64,16 @@ export const ClientsModule = {
     const tenant = TenantServiceInstance.getActiveTenant();
     const tenantId = tenant ? tenant.id : 'tenant_rayopro';
 
-    const [clients, priceLists, sales, cxcList, shipments, products] = await Promise.all([
+    const [clients, priceLists, sales, cxcList, shipments, products, allSuppliers] = await Promise.all([
       DB.getAll(STORES.CUSTOMERS, tenantId),
       DB.getAll(STORES.PRICE_LISTS, tenantId),
       DB.getAll(STORES.SALES, tenantId),
       DB.getAll(STORES.RECEIVABLES_CXC, tenantId),
       DB.getAll(STORES.ORDERS_SHIPPING, tenantId),
-      DB.getAll(STORES.PRODUCTS, tenantId)
+      DB.getAll(STORES.PRODUCTS, tenantId),
+      DB.getAll(STORES.SUPPLIERS, tenantId)
     ]);
+    const freelancers = allSuppliers.filter(s => s.tipo === 'FREELANCER' && s.estado === 'ACTIVO');
 
     container.innerHTML = `
       <div class="view-header">
@@ -80,6 +82,7 @@ export const ClientsModule = {
           <p>Control de terceros, cartera, asignación de listas de precios y cupos comerciales</p>
         </div>
         <div class="view-actions">
+          <a href="#freelancers" class="btn btn-secondary btn-sm" style="text-decoration: none; border-color: var(--brand-primary); color: var(--brand-primary);">🤝 Red Vendedores Freelance</a>
           <button class="btn btn-secondary btn-sm" id="btn-export-clients">📊 Exportar</button>
           <button class="btn btn-primary btn-sm" id="btn-new-client">➕ Nuevo Cliente</button>
         </div>
@@ -132,6 +135,15 @@ export const ClientsModule = {
               ${row.whatsapp ? `<div>💬 <a href="https://wa.me/${row.whatsapp.replace(/\D/g, '')}" target="_blank" style="color: var(--brand-primary);">${row.whatsapp}</a></div>` : ''}
             </div>
           `
+        },
+        {
+          key: 'vendedorFreelanceId',
+          title: 'Vendedor Freelance',
+          render: val => {
+            if (!val) return '<span class="text-muted" style="font-size: 11px;">Directo (Rayo Pro)</span>';
+            const f = (freelancers || []).find(x => x.id === val);
+            return f ? `<span class="badge badge-info" style="font-size: 11px;">🤝 ${f.nombre}</span>` : '<span class="text-muted">—</span>';
+          }
         },
         {
           key: 'listaPreciosId',
@@ -191,7 +203,7 @@ export const ClientsModule = {
     const newClientBtn = container.querySelector('#btn-new-client');
     if (newClientBtn) {
       newClientBtn.addEventListener('click', () => {
-        this.openClientModal(null, tenantId, priceLists, products, () => this.render(container));
+        this.openClientModal(null, tenantId, priceLists, products, freelancers, () => this.render(container));
       });
     }
 
@@ -200,7 +212,7 @@ export const ClientsModule = {
       if (editBtn) {
         const id = editBtn.getAttribute('data-id');
         const client = clients.find(c => c.id === id);
-        this.openClientModal(client, tenantId, priceLists, products, () => this.render(container));
+        this.openClientModal(client, tenantId, priceLists, products, freelancers, () => this.render(container));
         return;
       }
 
@@ -219,7 +231,7 @@ export const ClientsModule = {
   /**
    * Modal de Creación / Edición de Cliente
    */
-  openClientModal(client = null, tenantId, priceLists, products = [], onSaved) {
+  openClientModal(client = null, tenantId, priceLists, products = [], freelancers = [], onSaved) {
     const isEdit = !!client;
 
     const content = `
@@ -254,6 +266,22 @@ export const ClientsModule = {
             <label class="form-label">DV (Cálculo DIAN)</label>
             <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : '-'}" style="background: #f1f5f9; font-weight: bold;">
           </div>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(0, 113, 227, 0.04); border: 1px solid rgba(0, 113, 227, 0.2);">
+          <div class="d-flex justify-between items-center mb-2">
+            <label class="form-label font-bold" style="color: var(--brand-primary); margin: 0;">🤝 Vendedor Freelance Asignado</label>
+            <span class="badge badge-info" style="font-size: 10px;">Comisiones Automáticas</span>
+          </div>
+          <select class="form-select" name="vendedorFreelanceId" id="modal-client-freelancer" style="font-weight: 700;">
+            <option value="">-- Sin vendedor freelance (Venta Directa de Fábrica) --</option>
+            ${(freelancers || []).map(fl => `
+              <option value="${fl.id}" ${client && client.vendedorFreelanceId === fl.id ? 'selected' : ''}>
+                🤝 ${fl.nombre} ${fl.zona ? '(' + fl.zona + ')' : ''}
+              </option>
+            `).join('')}
+          </select>
+          <span class="text-xs text-muted mt-1">Al facturar en POS a este cliente, la venta y su comisión en $$ se asignarán automáticamente a este vendedor.</span>
         </div>
 
         <div class="form-row mb-1">
@@ -398,6 +426,7 @@ export const ClientsModule = {
               nombre: formData.get('nombre'),
               nitCc,
               dv: calculatedDv !== null ? calculatedDv : 0,
+              vendedorFreelanceId: formData.get('vendedorFreelanceId') || null,
               tipoCliente: formData.get('tipoCliente'),
               listaPreciosId: formData.get('listaPreciosId'),
               facturaElectronica: formData.get('facturaElectronica') === 'SI',

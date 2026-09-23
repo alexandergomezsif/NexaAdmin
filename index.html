@@ -48,109 +48,86 @@
       </div>
 
       <!-- Menú de Navegación por Módulos -->
+            <!-- Menú de Navegación por Módulos (5 Macro-Secciones Limpias) -->
       <nav class="sidebar-nav">
         
-        <!-- PRINCIPAL -->
-        <div class="nav-section-title">Principal</div>
-        <a class="nav-item active" href="#dashboard" data-route="dashboard">
-          <span class="nav-icon">📊</span>
-          <span>1. Dashboard Ejecutivo</span>
-        </a>
-
-        <!-- DOMINIO COMERCIAL -->
-        <div class="nav-section-title">Comercial & Clientes</div>
-        <a class="nav-item" href="#sales-pos" data-route="sales-pos">
+        <!-- 1. VENTAS & DESPACHOS -->
+        <div class="nav-section-title">Comercial</div>
+        <a class="nav-item active" href="#sales-pos" data-route="sales-pos" title="Punto de Venta Mostrador y Facturación">
           <span class="nav-icon">🛒</span>
-          <span>7. Ventas / POS Mostrador</span>
+          <span>Ventas & POS</span>
         </a>
-        <a class="nav-item" href="#clients" data-route="clients">
-          <span class="nav-icon">👥</span>
-          <span>2. Clientes (Ficha 360°)</span>
-        </a>
-        <a class="nav-item" href="#shipping" data-route="shipping">
+        <a class="nav-item" href="#shipping" data-route="shipping" title="Control de Despachos y Envíos">
           <span class="nav-icon">🚚</span>
-          <span>8. Pedidos & Envíos</span>
+          <span>Pedidos & Envíos</span>
         </a>
 
-        <!-- DOMINIO DE INVENTARIO Y FABRICACIÓN -->
-        <div class="nav-section-title">Inventario & Planta</div>
-        <a class="nav-item" href="#products" data-route="products">
+        <!-- 2. INVENTARIO & PLANTA -->
+        <div class="nav-section-title">Inventario & Producción</div>
+        <a class="nav-item" href="#products" data-route="products" title="Catálogo de Productos y Precios">
           <span class="nav-icon">📦</span>
-          <span>3. Catálogo de Productos</span>
+          <span>Catálogo Productos</span>
         </a>
-        <a class="nav-item" href="#inventory" data-route="inventory">
+        <a class="nav-item" href="#inventory" data-route="inventory" title="Existencias Físicas y Movimientos Kardex">
           <span class="nav-icon">📑</span>
-          <span>4. Inventario & Kardex</span>
+          <span>Inventario & Kardex</span>
         </a>
-        <a class="nav-item" href="#production" data-route="production">
+        <a class="nav-item" href="#production" data-route="production" title="Órdenes de Fabricación y Fórmulas">
           <span class="nav-icon">⚙️</span>
-          <span>5. Producción & BOM</span>
+          <span>Producción & Fórmulas</span>
         </a>
-        <a class="nav-item" href="#formulas-vault" data-route="formulas-vault">
-          <span class="nav-icon">🧪</span>
-          <span>Bóveda Fórmulas 🔒</span>
-        </a>
-
-        <!-- DOMINIO DE COMPRAS Y FINANZAS -->
-        <div class="nav-section-title">Compras & Tesorería</div>
-        <a class="nav-item" href="#pricing-calculator" data-route="pricing-calculator">
+        <a class="nav-item" href="#pricing-calculator" data-route="pricing-calculator" title="Calculadora de Costos y Precios">
           <span class="nav-icon">💡</span>
-          <span>Costos & Precios (IA)</span>
-        </a>
-        <a class="nav-item" href="#purchases" data-route="purchases">
-          <span class="nav-icon">🛍️</span>
-          <span>6. Compras & Proveedores</span>
-        </a>
-        <a class="nav-item" href="#cash" data-route="cash">
-          <span class="nav-icon">💵</span>
-          <span>9. Caja & Arqueos</span>
-        </a>
-        <a class="nav-item" href="#expenses" data-route="expenses">
-          <span class="nav-icon">🏷️</span>
-          <span>10. Gastos Operativos</span>
-        </a>
-        <a class="nav-item" href="#cxc" data-route="cxc">
-          <span class="nav-icon">📈</span>
-          <span>11. Cuentas por Cobrar</span>
-        </a>
-        <a class="nav-item" href="#cxp" data-route="cxp">
-          <span class="nav-icon">📉</span>
-          <span>12. Cuentas por Pagar</span>
+          <span>Costos & Precios IA</span>
         </a>
 
-        <!-- DOMINIO DE ADMINISTRACIÓN Y CONTROL -->
-        <div class="nav-section-title">Administración & Sistema</div>
-        <a class="nav-item" href="#reports" data-route="reports">
+        <!-- 3. CLIENTES & VENDEDORES -->
+        <div class="nav-section-title">Terceros & Red Comercial</div>
+        <a class="nav-item" href="#clients" data-route="clients" title="Ficha 360° de Clientes y Vendedores Asignados">
+          <span class="nav-icon">👥</span>
+          <span>Clientes & Cartera</span>
+        </a>
+        <a class="nav-item" href="#freelancers" data-route="freelancers" title="Red de Vendedores Freelance y Comisiones">
+          <span class="nav-icon">🤝</span>
+          <span>Vendedores Freelance</span>
+        </a>
+
+        <!-- 4. FINANZAS & TESORERÍA -->
+        <div class="nav-section-title">Finanzas & Caja</div>
+        <a class="nav-item" href="#cash" data-route="cash" title="Control de Caja, Turnos y Arqueos">
+          <span class="nav-icon">💵</span>
+          <span>Caja & Arqueos</span>
+        </a>
+        <a class="nav-item" href="#purchases" data-route="purchases" title="Compras a Proveedores de Materias Primas">
+          <span class="nav-icon">🛍️</span>
+          <span>Compras & Insumos</span>
+        </a>
+        <a class="nav-item" href="#expenses" data-route="expenses" title="Gastos Operativos de Planta y Administración">
+          <span class="nav-icon">🏷️</span>
+          <span>Gastos Operativos</span>
+        </a>
+        <a class="nav-item" href="#cxc" data-route="cxc" title="Cuentas por Cobrar a Clientes">
+          <span class="nav-icon">📈</span>
+          <span>Cuentas por Cobrar</span>
+        </a>
+        <a class="nav-item" href="#cxp" data-route="cxp" title="Cuentas por Pagar Proveedores y Comisiones Freelance">
+          <span class="nav-icon">📉</span>
+          <span>Cuentas por Pagar</span>
+        </a>
+
+        <!-- 5. CONFIGURACIÓN & SISTEMA -->
+        <div class="nav-section-title">Sistema & Reportes</div>
+        <a class="nav-item" href="#dashboard" data-route="dashboard" title="Resumen Ejecutivo y Métricas">
           <span class="nav-icon">📊</span>
-          <span>15. Reportes Gerenciales</span>
+          <span>Dashboard Ejecutivo</span>
         </a>
-        <a class="nav-item" href="#users" data-route="users">
-          <span class="nav-icon">🛡️</span>
-          <span>13. Usuarios & Permisos</span>
+        <a class="nav-item" href="#reports" data-route="reports" title="Reportes y Estadísticas">
+          <span class="nav-icon">📈</span>
+          <span>Reportes Gerenciales</span>
         </a>
-        <a class="nav-item" href="#audit" data-route="audit">
-          <span class="nav-icon">🔍</span>
-          <span>14. Auditoría Transaccional</span>
-        </a>
-        <a class="nav-item" href="#settings" data-route="settings">
+        <a class="nav-item" href="#settings" data-route="settings" title="Parámetros, Usuarios, Respaldo y Empresa">
           <span class="nav-icon">⚙️</span>
-          <span>16. Configuración General</span>
-        </a>
-        <a class="nav-item" href="#backup" data-route="backup">
-          <span class="nav-icon">💾</span>
-          <span>17. Respaldo & Restaurar</span>
-        </a>
-        <a class="nav-item" href="#importer" data-route="importer">
-          <span class="nav-icon">📥</span>
-          <span>18. Importación Masiva</span>
-        </a>
-        <a class="nav-item" href="#integrations" data-route="integrations">
-          <span class="nav-icon">🔌</span>
-          <span>19. Integraciones & DIAN</span>
-        </a>
-        <a class="nav-item" href="#documents" data-route="documents">
-          <span class="nav-icon">📄</span>
-          <span>20. Plantillas Documentos</span>
+          <span>Configuración & Ajustes</span>
         </a>
       </nav>
 
