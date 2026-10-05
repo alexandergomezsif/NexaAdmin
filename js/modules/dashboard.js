@@ -49,7 +49,7 @@ export const DashboardModule = {
     const productosStockBajo = products.filter(p => p.stock > 0 && p.stock <= (p.stockMinimo || 15));
     const productosAgotados = products.filter(p => Number(p.stock || 0) <= 0);
     const carteraVencida = cxc.filter(c => c.estado === 'VENCIDO' || (c.diasMora && c.diasMora > 0));
-    const enviosPendientes = shipping.filter(s => s.estadoCiclo !== 'ENTREGADO');
+    const enviosPendientes = shipping.filter(s => !['ENTREGADO', 'CANCELADO', 'DEVUELTO'].includes(s.estadoCiclo));
 
     const utilidadEstimada = resMes.utilidadOperativa;
 

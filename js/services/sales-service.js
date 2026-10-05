@@ -445,7 +445,7 @@ export const SalesService = {
         // Despacho
         const despachos = (await tx.getAll(STORES.ORDERS_SHIPPING, sale.tenantId)).filter(d => d.ventaId === sale.id);
         for (const d of despachos) {
-          d.estadoCiclo = 'ANULADO';
+          d.estadoCiclo = 'CANCELADO';
           await tx.put(STORES.ORDERS_SHIPPING, d);
         }
       }

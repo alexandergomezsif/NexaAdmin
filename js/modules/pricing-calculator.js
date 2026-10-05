@@ -5,6 +5,8 @@
  * - Asistente Modal (Wizard): 4 pasos didácticos para fijar costos, márgenes y cascada comercial
  */
 
+import { AuditService } from '../services/audit-service.js';
+import { PricingService } from '../services/pricing-service.js';
 import { DB, STORES } from '../services/db-service.js';
 import { Formatters, esc } from '../utils/formatters.js';
 import { Toast } from '../components/toast.js';
@@ -845,43 +847,43 @@ export const PricingCalculatorModule = {
         const btnSave = root.querySelector('#wiz-btn-save');
         if (btnSave) btnSave.addEventListener('click', async () => {
           let target = this.products.find(p => p.id === wiz.productId);
-          
+          const priceLists = await DB.getAll(STORES.PRICE_LISTS, this.tenantId);
+          // Precio por lista: si la lista incluye IVA se guarda con IVA; redondeado a $100
+          const r100 = (v) => Math.round(v / 100) * 100;
+          const precios = {};
+          [['P1', tiers.t1], ['P2', tiers.t2], ['P3', tiers.t3], ['P4', tiers.t4]].forEach(([code, t]) => {
+            const pl = PricingService.findByCode(priceLists, code);
+            if (pl) precios[pl.id] = r100(pl.incluyeIva ? t.p * 1.19 : t.p);
+          });
+
           if (!target) {
-            // Si es un producto nuevo simulado, crearlo en el catálogo
+            const all = await DB.getAll(STORES.PRODUCTS, this.tenantId);
+            let n = all.length + 1;
+            while (all.some(p => p.sku === `PT-${String(n).padStart(4, '0')}`)) n++;
             target = {
-              id: 'prod_' + Date.now(),
               tenantId: this.tenantId,
-              nombre: wiz.productName || 'Producto Nuevo',
-              sku: 'PT-' + Math.floor(1000 + Math.random() * 9000),
+              nombre: wiz.productName || 'Producto nuevo',
+              sku: `PT-${String(n).padStart(4, '0')}`,
               tipoItem: 'PRODUCTO_TERMINADO',
-              unidadMedida: 'UNIDAD',
-              costo: costoTotalFinal,
-              precioVenta: precioSinIva,
+              categoria: 'General',
+              unidadMedida: 'Unidad',
+              costoPromedio: Math.round(costoTotalFinal * 100) / 100,
+              costoEstimadoCalculadora: costoTotalFinal,
               stock: 0,
-              preciosEspeciales: {
-                plist_1: tiers.t1.p,
-                plist_2: tiers.t2.p,
-                plist_3: tiers.t3.p,
-                plist_4: tiers.t4.p
-              },
-              fechaCreacion: new Date().toISOString()
+              precios,
+              estado: 'ACTIVO'
             };
-            await DB.update(STORES.PRODUCTS, target);
-            Toast.success(`¡Producto "${target.nombre}" creado y precios guardados!`);
+            await DB.add(STORES.PRODUCTS, target);
+            await AuditService.log({ modulo: 'Productos', accion: 'CREAR', registroId: target.sku, campoModificado: 'Creado desde calculadora', valorNuevo: target.nombre });
+            Toast.success(`Producto "${target.nombre}" (${target.sku}) creado con precios P1–P4. Revise el SKU en Catálogo.`);
           } else {
-            // Actualizar producto existente
-            target.costo = costoTotalFinal;
-            target.precioVenta = precioSinIva;
-            target.preciosEspeciales = {
-              ...(target.preciosEspeciales || {}),
-              plist_1: tiers.t1.p,
-              plist_2: tiers.t2.p,
-              plist_3: tiers.t3.p,
-              plist_4: tiers.t4.p
-            };
-            target.fechaModificacion = new Date().toISOString();
+            const antes = JSON.stringify(target.precios || {});
+            // El costo promedio real lo lleva el Kardex; aquí solo se guarda la estimación
+            target.costoEstimadoCalculadora = costoTotalFinal;
+            target.precios = { ...(target.precios || {}), ...precios };
             await DB.update(STORES.PRODUCTS, target);
-            Toast.success(`¡Precios actualizados para "${target.nombre}"!`);
+            await AuditService.log({ modulo: 'Productos', accion: 'MODIFICAR', registroId: target.sku, campoModificado: 'Precios desde calculadora', valorAnterior: antes, valorNuevo: JSON.stringify(target.precios) });
+            Toast.success(`Precios P1–P4 actualizados para "${target.nombre}".`);
           }
 
           Modal.close();

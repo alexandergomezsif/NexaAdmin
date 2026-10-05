@@ -207,7 +207,7 @@ export const ShippingModule = {
         <div class="form-row mb-3">
           <div class="form-group">
             <label class="form-label">Número de Guía / Consecutivo</label>
-            <input type="text" class="form-control" name="numeroGuia" required value="GUIA-${Math.floor(100000 + Math.random() * 900000)}" placeholder="Ej: 21987364501">
+            <input type="text" class="form-control" name="numeroGuia" value="" placeholder="Número de guía de la transportadora (ej: 21987364501)">
           </div>
           <div class="form-group">
             <label class="form-label">Costo Flete ($ COP)</label>

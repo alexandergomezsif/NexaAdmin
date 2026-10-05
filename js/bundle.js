@@ -3569,7 +3569,7 @@
           }
           const despachos = (await tx.getAll(STORES.ORDERS_SHIPPING, sale.tenantId)).filter((d) => d.ventaId === sale.id);
           for (const d of despachos) {
-            d.estadoCiclo = "ANULADO";
+            d.estadoCiclo = "CANCELADO";
             await tx.put(STORES.ORDERS_SHIPPING, d);
           }
         }
@@ -3804,7 +3804,7 @@
       const productosStockBajo = products.filter((p) => p.stock > 0 && p.stock <= (p.stockMinimo || 15));
       const productosAgotados = products.filter((p) => Number(p.stock || 0) <= 0);
       const carteraVencida = cxc.filter((c) => c.estado === "VENCIDO" || c.diasMora && c.diasMora > 0);
-      const enviosPendientes = shipping.filter((s) => s.estadoCiclo !== "ENTREGADO");
+      const enviosPendientes = shipping.filter((s) => !["ENTREGADO", "CANCELADO", "DEVUELTO"].includes(s.estadoCiclo));
       const utilidadEstimada = resMes.utilidadOperativa;
       container.innerHTML = `
       <div class="view-header">
@@ -8232,7 +8232,7 @@ Generado por Nexa ERP.`;
         <div class="form-row mb-3">
           <div class="form-group">
             <label class="form-label">Número de Guía / Consecutivo</label>
-            <input type="text" class="form-control" name="numeroGuia" required value="GUIA-${Math.floor(1e5 + Math.random() * 900000)}" placeholder="Ej: 21987364501">
+            <input type="text" class="form-control" name="numeroGuia" value="" placeholder="Número de guía de la transportadora (ej: 21987364501)">
           </div>
           <div class="form-group">
             <label class="form-label">Costo Flete ($ COP)</label>
@@ -13354,40 +13354,42 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
           if (btnSave)
             btnSave.addEventListener("click", async () => {
               let target = this.products.find((p) => p.id === wiz.productId);
+              const priceLists = await DB.getAll(STORES.PRICE_LISTS, this.tenantId);
+              const r100 = (v) => Math.round(v / 100) * 100;
+              const precios = {};
+              [["P1", tiers.t1], ["P2", tiers.t2], ["P3", tiers.t3], ["P4", tiers.t4]].forEach(([code, t]) => {
+                const pl = PricingService.findByCode(priceLists, code);
+                if (pl)
+                  precios[pl.id] = r100(pl.incluyeIva ? t.p * 1.19 : t.p);
+              });
               if (!target) {
+                const all = await DB.getAll(STORES.PRODUCTS, this.tenantId);
+                let n = all.length + 1;
+                while (all.some((p) => p.sku === `PT-${String(n).padStart(4, "0")}`))
+                  n++;
                 target = {
-                  id: "prod_" + Date.now(),
                   tenantId: this.tenantId,
-                  nombre: wiz.productName || "Producto Nuevo",
-                  sku: "PT-" + Math.floor(1000 + Math.random() * 9000),
+                  nombre: wiz.productName || "Producto nuevo",
+                  sku: `PT-${String(n).padStart(4, "0")}`,
                   tipoItem: "PRODUCTO_TERMINADO",
-                  unidadMedida: "UNIDAD",
-                  costo: costoTotalFinal,
-                  precioVenta: precioSinIva,
+                  categoria: "General",
+                  unidadMedida: "Unidad",
+                  costoPromedio: Math.round(costoTotalFinal * 100) / 100,
+                  costoEstimadoCalculadora: costoTotalFinal,
                   stock: 0,
-                  preciosEspeciales: {
-                    plist_1: tiers.t1.p,
-                    plist_2: tiers.t2.p,
-                    plist_3: tiers.t3.p,
-                    plist_4: tiers.t4.p
-                  },
-                  fechaCreacion: new Date().toISOString()
+                  precios,
+                  estado: "ACTIVO"
                 };
-                await DB.update(STORES.PRODUCTS, target);
-                Toast.success(`¡Producto "${target.nombre}" creado y precios guardados!`);
+                await DB.add(STORES.PRODUCTS, target);
+                await AuditService.log({ modulo: "Productos", accion: "CREAR", registroId: target.sku, campoModificado: "Creado desde calculadora", valorNuevo: target.nombre });
+                Toast.success(`Producto "${target.nombre}" (${target.sku}) creado con precios P1–P4. Revise el SKU en Catálogo.`);
               } else {
-                target.costo = costoTotalFinal;
-                target.precioVenta = precioSinIva;
-                target.preciosEspeciales = {
-                  ...target.preciosEspeciales || {},
-                  plist_1: tiers.t1.p,
-                  plist_2: tiers.t2.p,
-                  plist_3: tiers.t3.p,
-                  plist_4: tiers.t4.p
-                };
-                target.fechaModificacion = new Date().toISOString();
+                const antes = JSON.stringify(target.precios || {});
+                target.costoEstimadoCalculadora = costoTotalFinal;
+                target.precios = { ...target.precios || {}, ...precios };
                 await DB.update(STORES.PRODUCTS, target);
-                Toast.success(`¡Precios actualizados para "${target.nombre}"!`);
+                await AuditService.log({ modulo: "Productos", accion: "MODIFICAR", registroId: target.sku, campoModificado: "Precios desde calculadora", valorAnterior: antes, valorNuevo: JSON.stringify(target.precios) });
+                Toast.success(`Precios P1–P4 actualizados para "${target.nombre}".`);
               }
               Modal.close();
               if (onSaved)
