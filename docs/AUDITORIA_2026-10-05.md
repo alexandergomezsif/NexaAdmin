@@ -1,5 +1,7 @@
 # Auditoría técnica y plan de corrección — NexaAdmin (Rayo Pro)
 
+> **Estado:** las fases 0 a 5 se implementaron en la versión 3.0.0 (ver `CHANGELOG.md`). Este documento conserva el diagnóstico original.
+
 **Fecha:** 2026-10-05 · **Versión auditada:** commit `237404c` (v2.6.2-pwa) · **Alcance:** todo el código fuente (`js/`, `css/`, `index.html`, `service-worker.js`), scripts de build/deploy, archivos versionados en Git.
 
 ## 0. Cómo se hizo esta auditoría
