@@ -12,7 +12,7 @@ Ultima Actualizacion: 2026-09-14 17:35 (Hora Colombia)
 [2026-09-14] - VERSION / COMMIT: 04a3615 & 3ac6828 (Actualizacion desde otro ordenador)
 --------------------------------------------------------------------------------
 1. SEGURIDAD & AUTENTICACION:
-   - Modificada la contrasena maestra del perfil Desarrollador a: 'Admin.2026'.
+   - Modificada la contrasena del perfil Desarrollador (valor retirado de este archivo).
    - Actualizado en: js/services/auth-service.js.
 
 2. MODULO DE USUARIOS (Modulo 13):
@@ -87,7 +87,7 @@ INSTRUCCIONES PARA ANTIGRAVITY AL CAMBIAR DE ORDENADOR:
 --------------------------------------------------------------------------------
 [2026-09-14 17:50] - ACTUALIZACION VIA DEPLOY SCRIPT:
 --------------------------------------------------------------------------------
-- Actualizar clave por defecto de desarrollador a Admin.2026 en seed y auto-sync
+- Actualizar clave por defecto de desarrollador en seed y auto-sync (valor retirado)
 
 
 --------------------------------------------------------------------------------
