@@ -1,35 +1,12 @@
-// Captura global de errores para diagnósticos inmediatos
-window.addEventListener('error', (e) => {
-  console.error('Nexa Global Error:', e.error || e.message);
-  const container = document.getElementById('view-container');
-  if (container && (!container.children.length || container.innerHTML.includes('Cargando'))) {
-    container.innerHTML = `
-      <div style="margin: 20px; padding: 20px; background: #fef2f2; border: 1px solid #f87171; border-radius: 12px; color: #991b1b;">
-        <h3 style="margin-top:0; font-size: 16px;">⚠️ Excepción JavaScript Detectada</h3>
-        <p style="font-size: 13px;">${e.message} en <strong>${e.filename}:${e.lineno}</strong></p>
-      </div>
-    `;
-  }
-});
-
-window.addEventListener('unhandledrejection', (e) => {
-  console.error('Nexa Unhandled Promise Rejection:', e.reason);
-  const container = document.getElementById('view-container');
-  if (container && (!container.children.length || container.innerHTML.includes('Cargando'))) {
-    container.innerHTML = `
-      <div style="margin: 20px; padding: 20px; background: #fef2f2; border: 1px solid #f87171; border-radius: 12px; color: #991b1b;">
-        <h3 style="margin-top:0; font-size: 16px;">⚠️ Error de Promesa Asíncrona</h3>
-        <p style="font-size: 13px;">${e.reason && (e.reason.message || e.reason)}</p>
-      </div>
-    `;
-  }
-});
 import { TenantServiceInstance } from './services/tenant-service.js';
 import { AuthServiceInstance } from './services/auth-service.js';
 import { CashService } from './services/cash-service.js';
 import { EventBus } from './utils/event-bus.js';
 import { Toast } from './components/toast.js';
 import { Modal } from './components/modal.js';
+import { ROLES } from './services/auth-service.js';
+import { DB, STORES } from './services/db-service.js';
+import { esc } from './utils/formatters.js';
 
 // Módulos
 import { DashboardModule } from './modules/dashboard.js';
@@ -55,6 +32,33 @@ import { DocumentsModule } from './modules/documents.js';
 import { FormulasVaultModule } from './modules/formulas-vault.js';
 import { PricingCalculatorModule } from './modules/pricing-calculator.js';
 import { FreelancersModule } from './modules/freelancers.js';
+
+// Captura global de errores para diagnósticos inmediatos
+window.addEventListener('error', (e) => {
+  console.error('Nexa Global Error:', e.error || e.message);
+  const container = document.getElementById('view-container');
+  if (container && (!container.children.length || container.innerHTML.includes('Cargando'))) {
+    container.innerHTML = `
+      <div style="margin: 20px; padding: 20px; background: #fef2f2; border: 1px solid #f87171; border-radius: 12px; color: #991b1b;">
+        <h3 style="margin-top:0; font-size: 16px;">⚠️ Excepción JavaScript Detectada</h3>
+        <p style="font-size: 13px;">${esc(e.message)} en <strong>${esc(e.filename)}:${esc(e.lineno)}</strong></p>
+      </div>
+    `;
+  }
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('Nexa Unhandled Promise Rejection:', e.reason);
+  const container = document.getElementById('view-container');
+  if (container && (!container.children.length || container.innerHTML.includes('Cargando'))) {
+    container.innerHTML = `
+      <div style="margin: 20px; padding: 20px; background: #fef2f2; border: 1px solid #f87171; border-radius: 12px; color: #991b1b;">
+        <h3 style="margin-top:0; font-size: 16px;">⚠️ Error de Promesa Asíncrona</h3>
+        <p style="font-size: 13px;">${esc(e.reason && (e.reason.message || e.reason))}</p>
+      </div>
+    `;
+  }
+});
 
 const MODULES = {
   dashboard: DashboardModule,
@@ -146,43 +150,42 @@ class NexaApp {
     this.contentContainer = document.getElementById('view-container');
 
     try {
-      // 1. Inicializar empresa activa y aplicar CSS variables dinámicas
+      // 1. Base de datos, migraciones y empresa activa
       const tenant = await TenantServiceInstance.init();
-      
-      // 2. Inicializar usuario y permisos RBAC
-      const currentUser = await AuthServiceInstance.init(tenant.id);
 
-      if (!currentUser) {
-        this.renderLoginScreen(tenant);
+      // 2. Autenticación (sin usuarios ni claves por defecto)
+      const currentUser = await AuthServiceInstance.init();
+
+      if (AuthServiceInstance.needsSetup) {
+        this.renderAuthScreen('setup', tenant);
         return;
       }
-      
-      this.startAuthenticatedApp(tenant);
+      if (!currentUser) {
+        this.renderAuthScreen('login', tenant);
+        return;
+      }
 
+      this.startAuthenticatedApp(tenant);
       console.log('⚡ Nexa ERP inicializado correctamente para:', tenant.nombreComercial);
     } catch (err) {
       console.error('Error al inicializar Nexa ERP:', err);
       if (this.contentContainer) {
         this.contentContainer.innerHTML = `
           <div class="alert alert-danger">
-            <strong>Error al inicializar el sistema:</strong> ${err.message}
+            <strong>Error al inicializar el sistema:</strong> ${esc(err.message)}
           </div>
         `;
       }
     }
   }
 
-
   startAuthenticatedApp(tenant) {
-    // 3. Inicializar Topbar y Controles
     this.initShellUI(tenant);
-
-    // 4. Configurar Enrutador SPA
     this.setupRouter();
 
-    // 5. Escuchar cambios de empresa para re-renderizar
     EventBus.on('tenant:changed', (newTenant) => {
       this.updateBrandUI(newTenant);
+      this.updateCashIndicator();
       this.loadCurrentRoute();
     });
 
@@ -190,95 +193,159 @@ class NexaApp {
       this.updateUserUI(newUser);
     });
 
-    // 6. Cargar vista inicial
     this.loadCurrentRoute();
   }
 
-  async renderLoginScreen(tenant) {
-    const { DB, STORES } = await import('./services/db-service.js');
-    const users = await DB.getAll(STORES.USERS, tenant.id);
-    
+  /**
+   * Pantallas de acceso: 'setup' (primer arranque), 'login', 'change' (cambio obligatorio),
+   * 'recover' (código de recuperación) y 'code' (mostrar código de recuperación nuevo).
+   */
+  renderAuthScreen(mode, tenant, ctx = {}) {
+    const initialTheme = localStorage.getItem('nexa_theme') || 'dark';
+    document.body.classList.toggle('dark-mode', initialTheme === 'dark');
+    const rules = AuthServiceInstance.passwordRules();
+
+    const forms = {
+      setup: `
+        <h2 class="auth-title">Configuración inicial</h2>
+        <p class="auth-sub">No hay usuarios en este equipo. Cree la cuenta de administrador (rol Desarrollador).</p>
+        <form id="auth-form" autocomplete="off">
+          <div class="form-group mb-3"><label class="form-label">Nombre</label>
+            <input class="form-control" name="nombre" required placeholder="Ej: Alexander Gómez"></div>
+          <div class="form-group mb-3"><label class="form-label">Usuario</label>
+            <input class="form-control" name="usuario" required value="admin" autocomplete="username"></div>
+          <div class="form-group mb-3"><label class="form-label">Contraseña</label>
+            <input type="password" class="form-control" name="pass1" required autocomplete="new-password">
+            <div class="form-help">${esc(rules)}</div></div>
+          <div class="form-group mb-4"><label class="form-label">Repetir contraseña</label>
+            <input type="password" class="form-control" name="pass2" required autocomplete="new-password"></div>
+          <button type="submit" class="btn btn-primary w-100 auth-btn">Crear administrador</button>
+        </form>`,
+      login: `
+        <h2 class="auth-title">Iniciar sesión</h2>
+        <p class="auth-sub">Ingrese sus credenciales para acceder.</p>
+        <form id="auth-form">
+          <div class="form-group mb-3"><label class="form-label">Usuario</label>
+            <input type="text" class="form-control" name="usuario" required autocomplete="username" autofocus></div>
+          <div class="form-group mb-4"><label class="form-label">Contraseña</label>
+            <input type="password" class="form-control" name="password" required autocomplete="current-password"></div>
+          <button type="submit" class="btn btn-primary w-100 auth-btn">Ingresar</button>
+        </form>
+        <div class="text-center mt-3"><a href="#" id="link-recover" class="text-xs">¿Olvidó su contraseña? Usar código de recuperación</a></div>`,
+      change: `
+        <h2 class="auth-title">Cambio de contraseña obligatorio</h2>
+        <p class="auth-sub">Hola <strong>${esc(ctx.user ? ctx.user.nombre : '')}</strong>. Su contraseña actual es débil o temporal; defina una nueva para continuar.</p>
+        <form id="auth-form" autocomplete="off">
+          <div class="form-group mb-3"><label class="form-label">Nueva contraseña</label>
+            <input type="password" class="form-control" name="pass1" required autocomplete="new-password" autofocus>
+            <div class="form-help">${esc(rules)}</div></div>
+          <div class="form-group mb-4"><label class="form-label">Repetir nueva contraseña</label>
+            <input type="password" class="form-control" name="pass2" required autocomplete="new-password"></div>
+          <button type="submit" class="btn btn-primary w-100 auth-btn">Guardar y continuar</button>
+        </form>`,
+      recover: `
+        <h2 class="auth-title">Recuperar acceso</h2>
+        <p class="auth-sub">Use el código de recuperación que se mostró al configurar el sistema. Después de usarlo se genera uno nuevo.</p>
+        <form id="auth-form" autocomplete="off">
+          <div class="form-group mb-3"><label class="form-label">Usuario a recuperar</label>
+            <input class="form-control" name="usuario" required></div>
+          <div class="form-group mb-3"><label class="form-label">Código de recuperación</label>
+            <input class="form-control" name="code" required placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family: monospace; letter-spacing: 1px;"></div>
+          <div class="form-group mb-3"><label class="form-label">Nueva contraseña</label>
+            <input type="password" class="form-control" name="pass1" required autocomplete="new-password">
+            <div class="form-help">${esc(rules)}</div></div>
+          <div class="form-group mb-4"><label class="form-label">Repetir nueva contraseña</label>
+            <input type="password" class="form-control" name="pass2" required autocomplete="new-password"></div>
+          <button type="submit" class="btn btn-primary w-100 auth-btn">Restablecer contraseña</button>
+        </form>
+        <div class="text-center mt-3"><a href="#" id="link-back-login" class="text-xs">Volver al inicio de sesión</a></div>`,
+      code: `
+        <h2 class="auth-title">Guarde su código de recuperación</h2>
+        <p class="auth-sub">Es la ÚNICA forma de recuperar el acceso si olvida su contraseña. Se muestra una sola vez: anótelo en papel y guárdelo en un lugar seguro (no en este computador).</p>
+        <div class="recovery-code" id="recovery-code">${esc(ctx.code || '')}</div>
+        <button type="button" class="btn btn-secondary w-100 mb-2" id="btn-copy-code">Copiar código</button>
+        <label class="d-flex items-center gap-2 text-xs mb-3"><input type="checkbox" id="chk-code-saved"> Ya anoté el código en un lugar seguro</label>
+        <button type="button" class="btn btn-primary w-100 auth-btn" id="btn-code-continue" disabled>Continuar</button>`
+    };
+
     document.body.innerHTML = `
-      <div style="display: flex; height: 100vh; background: var(--bg-surface-solid); font-family: 'Inter', sans-serif;">
-        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px;">
-          <div style="width: 100%; max-width: 400px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="font-size: 28px; font-weight: 800; color: var(--brand-primary); margin-bottom: 8px;">NexaAdmin ERP</h1>
-              <p style="color: var(--text-secondary); font-size: 14px;">Inicie sesión para acceder a su espacio de trabajo</p>
-            </div>
-            
-            <div class="card" style="padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
-              <div id="login-error-box" class="alert alert-danger" style="display: none; font-size: 13px; margin-bottom: 15px; padding: 10px; border-radius: 6px;"></div>
-              
-              <form id="login-form">
-                <div class="form-group mb-3">
-                  <label class="form-label" style="font-weight: 600;">Usuario</label>
-                  <input type="text" class="form-control" id="login-username" list="user-list" placeholder="admin, gerente, o vendedor" required autocomplete="username" autofocus>
-                  <datalist id="user-list">
-                    ${users.map(u => `<option value="${u.usuario || u.id}">${u.nombre || u.usuario} (${u.rol || 'Usuario'})</option>`).join('')}
-                    <option value="admin">Desarrollador Master (admin)</option>
-                    <option value="desarrollador">Desarrollador Master</option>
-                  </datalist>
-                </div>
-                
-                <div class="form-group mb-4">
-                  <label class="form-label" style="font-weight: 600;">Contraseña</label>
-                  <input type="password" class="form-control" id="login-password" placeholder="Su clave de acceso (ej: 1234)" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary w-100" style="padding: 12px; font-weight: 700; font-size: 15px;">
-                  Ingresar al Sistema
-                </button>
-              </form>
-            </div>
-            
-            <div style="text-align: center; margin-top: 24px; color: var(--text-muted); font-size: 12px;">
-              &copy; ${new Date().getFullYear()} NexaAdmin ERP local. <br>
-              <em>Protección activa. Todos los intentos de acceso son auditados.</em>
-            </div>
+      <div class="auth-wrap">
+        <div class="auth-box">
+          <div class="text-center mb-4">
+            <h1 class="auth-brand">NexaAdmin ERP</h1>
+            <div class="text-xs text-muted">${esc(tenant ? tenant.nombreComercial : '')}</div>
+          </div>
+          <div class="card auth-card">
+            <div id="auth-error" class="alert alert-danger" style="display: none; font-size: 13px; margin-bottom: 15px;"></div>
+            ${forms[mode]}
+          </div>
+          <div class="text-center mt-4 text-xs text-muted">
+            &copy; ${new Date().getFullYear()} NexaAdmin ERP · Los intentos de acceso quedan registrados en la auditoría.
           </div>
         </div>
       </div>
     `;
 
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
+    const errBox = document.getElementById('auth-error');
+    const showError = (msg) => { errBox.textContent = msg; errBox.style.display = 'block'; };
+    const form = document.getElementById('auth-form');
+    const submitBtn = form ? form.querySelector('button[type=submit]') : null;
+    const busy = (on) => { if (submitBtn) submitBtn.disabled = on; };
+
+    const recoverLink = document.getElementById('link-recover');
+    if (recoverLink) recoverLink.addEventListener('click', (e) => { e.preventDefault(); this.renderAuthScreen('recover', tenant); });
+    const backLink = document.getElementById('link-back-login');
+    if (backLink) backLink.addEventListener('click', (e) => { e.preventDefault(); this.renderAuthScreen('login', tenant); });
+
+    if (mode === 'code') {
+      const chk = document.getElementById('chk-code-saved');
+      const btn = document.getElementById('btn-code-continue');
+      chk.addEventListener('change', () => { btn.disabled = !chk.checked; });
+      document.getElementById('btn-copy-code').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(ctx.code); Toast.success('Código copiado.'); } catch (e) { Toast.warning('No se pudo copiar; anótelo manualmente.'); }
+      });
+      btn.addEventListener('click', () => window.location.reload());
+      return;
+    }
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const errBox = document.getElementById('login-error-box');
-      if (errBox) errBox.style.display = 'none';
-
-      const showError = (msg) => {
-        if (errBox) {
-          errBox.textContent = msg;
-          errBox.style.display = 'block';
-        }
-        import('./components/toast.js').then(({ Toast }) => { Toast.error(msg); });
-      };
-
+      errBox.style.display = 'none';
+      const fd = new FormData(form);
+      const pass1 = fd.get('pass1');
+      if (pass1 !== null && pass1 !== fd.get('pass2')) {
+        showError('Las contraseñas no coinciden.');
+        return;
+      }
+      busy(true);
       try {
-        const usernameInput = (document.getElementById('login-username').value || '').trim();
-        const pass = (document.getElementById('login-password').value || '').trim();
-        const uInput = usernameInput.toLowerCase();
-
-        const userObj = users.find(u => {
-          const uName = (u.usuario || '').toLowerCase();
-          const uId = (u.id || '').toLowerCase();
-          const uRole = (u.rol || '').toLowerCase();
-          return uName === uInput || uId === uInput || 
-            (uInput === 'admin' && (uId === 'usr_dev' || uRole.includes('desarrollador'))) ||
-            (uInput === 'desarrollador' && (uId === 'usr_dev' || uRole.includes('desarrollador')));
-        });
-        
-        if (!userObj) {
-          showError(`Usuario "${usernameInput}" no encontrado.`);
-          return;
+        if (mode === 'setup') {
+          const code = await AuthServiceInstance.createInitialAdmin({
+            nombre: fd.get('nombre'), usuario: fd.get('usuario'), password: pass1, tenantId: tenant ? tenant.id : null
+          });
+          this.renderAuthScreen('code', tenant, { code });
+        } else if (mode === 'login') {
+          const res = await AuthServiceInstance.login(fd.get('usuario'), fd.get('password'));
+          if (res.mustChange) {
+            this.renderAuthScreen('change', tenant, { user: res.user, currentPassword: fd.get('password') });
+          } else {
+            window.location.reload();
+          }
+        } else if (mode === 'change') {
+          const user = await AuthServiceInstance.changePassword(ctx.user.id, ctx.currentPassword, pass1);
+          if (user.rol === ROLES.DEV && !(await AuthServiceInstance.hasRecoveryCode())) {
+            const code = await AuthServiceInstance.regenerateRecoveryCode();
+            this.renderAuthScreen('code', tenant, { code });
+          } else {
+            window.location.reload();
+          }
+        } else if (mode === 'recover') {
+          const code = await AuthServiceInstance.recoverWithCode(fd.get('usuario'), fd.get('code'), pass1);
+          this.renderAuthScreen('code', tenant, { code });
         }
-        
-        const { AuthServiceInstance } = await import('./services/auth-service.js');
-        await AuthServiceInstance.switchUser(userObj.id, pass);
-        // Reload page to start app cleanly
-        window.location.reload();
       } catch (err) {
-        showError(err.message || 'Error al autenticar usuario.');
+        showError(err.message || 'No fue posible completar la operación.');
+        busy(false);
       }
     });
   }
@@ -321,7 +388,7 @@ class NexaApp {
     // Verificación de Control de Accesos Anti-Saturación (RBAC)
     if (!AuthServiceInstance.canAccessRoute(hash)) {
       const defaultRoute = AuthServiceInstance.getDefaultRoute();
-      Toast.warning(`El módulo #${hash} no está habilitado para su rol actual. Redirigiendo a #${defaultRoute}`);
+      if (MODULES[hash]) Toast.warning(`El módulo "${hash}" no está habilitado para su rol.`);
       window.location.hash = `#${defaultRoute}`;
       return;
     }
@@ -388,8 +455,8 @@ class NexaApp {
         this.contentContainer.innerHTML = `
           <div class="alert alert-danger m-4">
             <h4 style="margin: 0 0 8px 0; font-size: 16px;">⚠️ Error al cargar el módulo "${hash}"</h4>
-            <p style="margin: 0; font-size: 13px;">${modErr.message || modErr}</p>
-            <pre style="margin-top: 10px; font-size: 11px; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 6px;">${modErr.stack || ''}</pre>
+            <p style="margin: 0; font-size: 13px;">${esc(modErr.message || modErr)}</p>
+            <pre style="margin-top: 10px; font-size: 11px; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 6px; white-space: pre-wrap;">${esc(modErr.stack || '')}</pre>
           </div>
         `;
       }
@@ -424,6 +491,10 @@ class NexaApp {
     const tenantSelector = document.getElementById('topbar-tenant-selector');
     if (tenantSelector) {
       tenantSelector.addEventListener('click', async () => {
+        if (!AuthServiceInstance.canManageTenants()) {
+          Toast.info('El cambio de empresa está reservado al rol Desarrollador.');
+          return;
+        }
         const tenants = await TenantServiceInstance.getAllTenants();
         const activeTenant = TenantServiceInstance.getActiveTenant();
 
@@ -433,11 +504,11 @@ class NexaApp {
             <p class="text-xs text-muted mb-3">Conmute entre organizaciones en tiempo real sin recargar código ni reiniciar sesión:</p>
             <div class="d-flex flex-col gap-2">
               ${tenants.map(t => `
-                <div class="card p-3 tenant-pick-card" data-id="${t.id}" style="cursor: pointer; margin-bottom: 0; border: 1px solid ${t.id === activeTenant.id ? 'var(--brand-primary)' : 'var(--border-color)'}; background: ${t.id === activeTenant.id ? 'var(--brand-primary-light)' : '#fff'};">
+                <div class="card p-3 tenant-pick-card" data-id="${esc(t.id)}" style="cursor: pointer; margin-bottom: 0; border: 1px solid ${t.id === activeTenant.id ? 'var(--brand-primary)' : 'var(--border-color)'};">
                   <div class="d-flex justify-between items-center">
                     <div>
-                      <strong style="font-size: 14px; color: ${t.id === activeTenant.id ? 'var(--brand-primary)' : 'var(--text-main)'};">${t.nombreComercial}</strong>
-                      <div class="text-xs text-muted">NIT: ${t.nit}-${t.dv} • ${t.ciudad}</div>
+                      <strong style="font-size: 14px; color: ${t.id === activeTenant.id ? 'var(--brand-primary)' : 'var(--text-main)'};">${esc(t.nombreComercial)}</strong>
+                      <div class="text-xs text-muted">NIT: ${esc(t.nit)}-${esc(t.dv)} • ${esc(t.ciudad)}</div>
                     </div>
                     ${t.id === activeTenant.id ? '<span class="badge badge-success">Activa</span>' : ''}
                   </div>
@@ -499,7 +570,7 @@ class NexaApp {
   }
 
   initTheme() {
-    const savedTheme = localStorage.getItem('nexa_theme') || 'light';
+    const savedTheme = localStorage.getItem('nexa_theme') || 'dark';
     const icon = document.getElementById('theme-toggle-icon');
     if (savedTheme === 'dark') {
       document.body.classList.add('dark-mode');
@@ -536,7 +607,7 @@ class NexaApp {
       if (shift) {
         ind.className = 'badge badge-success';
         ind.textContent = '● Caja Abierta';
-        ind.title = `Turno abierto con base: $ ${shift.montoApertura}`;
+        ind.title = `Turno abierto por ${shift.usuarioNombre || '-'}`;
       } else {
         ind.className = 'badge badge-warning';
         ind.textContent = '○ Caja Cerrada';
@@ -561,13 +632,13 @@ class NexaApp {
     if (topbarBrandEl) topbarBrandEl.textContent = tenant.nombreComercial;
 
     if (brandIconEl) {
-      brandIconEl.innerHTML = `<img src="${isotipoSrc}" alt="${tenant.nombreComercial}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px; display: block;">`;
+      brandIconEl.innerHTML = `<img src="${esc(isotipoSrc)}" alt="${esc(tenant.nombreComercial)}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 8px; display: block;">`;
       brandIconEl.style.background = isDark ? '#000000' : '#ffffff';
       brandIconEl.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)';
     }
 
     if (topbarBrandIconEl) {
-      topbarBrandIconEl.innerHTML = `<img src="${isotipoSrc}" alt="${tenant.nombreComercial}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; display: block;">`;
+      topbarBrandIconEl.innerHTML = `<img src="${esc(isotipoSrc)}" alt="${esc(tenant.nombreComercial)}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; display: block;">`;
     }
   }
 
@@ -628,65 +699,50 @@ class NexaApp {
   }
 
   async openUserRoleModal() {
-    const tenant = TenantServiceInstance.getActiveTenant();
-    const tenantId = tenant ? tenant.id : 'tenant_rayopro';
-    const users = await AuthServiceInstance.init(tenantId).then(async () => {
-      const { DB, STORES } = await import('./services/db-service.js');
-      return await DB.getAll(STORES.USERS, tenantId);
-    });
-
     const currentUser = AuthServiceInstance.getCurrentUser();
-    const isDev = currentUser.rol === 'Desarrollador';
+    const isDev = AuthServiceInstance.isDeveloper();
+    const users = isDev ? (await DB.getAll(STORES.USERS)).filter(u => u.estado !== 'INACTIVO') : [currentUser];
 
-    const renderUsers = isDev ? users : [currentUser];
-
-    Modal.show({
-      title: 'Perfil Operativo',
+    const dialog = Modal.show({
+      title: 'Perfil de usuario',
       content: `
         <p class="text-xs text-muted mb-3">
-          ${isDev ? 'Modo Desarrollador: Puedes cambiar de sesión libremente.' : 'Para cambiar de usuario debes Cerrar Sesión.'}
+          ${isDev ? 'Modo Desarrollador: puede cambiar a otro perfil para soporte o pruebas (queda registrado en auditoría).' : 'Para cambiar de usuario cierre la sesión.'}
         </p>
         <div class="d-flex flex-col gap-2">
-          ${renderUsers.map(u => `
-            <div class="card p-3 user-switch-card" data-id="${u.id}" style="cursor: ${isDev ? 'pointer' : 'default'}; margin-bottom: 0; border: 1px solid ${u.id === currentUser.id ? 'var(--brand-primary)' : 'var(--border-color)'}; background: ${u.id === currentUser.id ? 'var(--brand-primary-light)' : 'var(--bg-surface)'};">
+          ${users.map(u => `
+            <div class="card p-3 user-switch-card" data-id="${esc(u.id)}" style="cursor: ${isDev && u.id !== currentUser.id ? 'pointer' : 'default'}; margin-bottom: 0; border: 1px solid ${u.id === currentUser.id ? 'var(--brand-primary)' : 'var(--border-color)'};">
               <div class="d-flex justify-between items-center">
                 <div class="d-flex items-center gap-3">
-                  <div class="user-avatar" style="width: 36px; height: 36px; font-size: 14px;">${u.nombre.charAt(0).toUpperCase()}</div>
+                  <div class="user-avatar" style="width: 36px; height: 36px; font-size: 14px;">${esc((u.nombre || '?').charAt(0).toUpperCase())}</div>
                   <div>
-                    <strong style="font-size: 14px; color: ${u.id === currentUser.id ? 'var(--brand-primary)' : 'var(--text-main)'};">${u.nombre}</strong>
-                    <div class="text-xs text-muted">${u.usuario} • Rol: <span class="badge ${u.rol === 'Desarrollador' ? 'badge-primary' : 'badge-info'}" style="font-size: 10px;">${u.rol}</span></div>
+                    <strong style="font-size: 14px;">${esc(u.nombre)}</strong>
+                    <div class="text-xs text-muted">${esc(u.usuario)} • ${esc(u.rol)}</div>
                   </div>
                 </div>
-                ${u.id === currentUser.id ? '<span class="badge badge-success">Activo</span>' : '<button class="btn btn-secondary btn-sm" style="pointer-events: none;">Forzar Ingreso</button>'}
+                ${u.id === currentUser.id ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-neutral">Cambiar</span>'}
               </div>
             </div>
           `).join('')}
         </div>
       `,
-            footerButtons: [
-        { label: 'Cerrar Sesión (Salir)', class: 'btn-danger', onClick: () => { Modal.close(); AuthServiceInstance.logout(); } },
-        { label: 'Gestionar Usuarios', class: 'btn-secondary', onClick: () => { Modal.close(); window.location.hash = '#users'; } },
+      footerButtons: [
+        { label: 'Cerrar sesión', class: 'btn-danger', onClick: () => { Modal.close(); AuthServiceInstance.logout(); } },
+        { label: 'Cambiar mi contraseña', class: 'btn-secondary', onClick: () => this.openChangeOwnPasswordModal() },
         { label: 'Cerrar', class: 'btn-secondary', onClick: () => Modal.close() }
       ]
     });
 
-        document.querySelectorAll('.user-switch-card').forEach(card => {
+    if (!isDev) return;
+    dialog.querySelectorAll('.user-switch-card').forEach(card => {
       card.addEventListener('click', async () => {
         const id = card.getAttribute('data-id');
-        if (id === currentUser.id) return; // No action on self click
-        
-        if (!isDev) return; // If not dev, switching is blocked, must logout
-
-        const targetUser = users.find(u => u.id === id);
-        if (!targetUser) return;
-
+        if (id === currentUser.id) return;
         try {
-          // Developers can force switch using the rescue password under the hood
-          await AuthServiceInstance.switchUser(id, 'NEXA_RESCUE_999');
+          const u = await AuthServiceInstance.switchUser(id);
           Modal.close();
-          Toast.success(`Perfil forzado a ${targetUser.nombre}`);
-          
-          // Must reload to properly construct sidebar & routes safely
+          Toast.success(`Perfil cambiado a ${u.nombre}`);
+          window.location.hash = '#' + AuthServiceInstance.getDefaultRoute();
           window.location.reload();
         } catch (err) {
           Toast.error(err.message);
@@ -695,69 +751,92 @@ class NexaApp {
     });
   }
 
+  openChangeOwnPasswordModal() {
+    const user = AuthServiceInstance.getCurrentUser();
+    const dialog = Modal.show({
+      title: 'Cambiar mi contraseña',
+      size: 'sm',
+      content: `
+        <form id="own-pass-form" autocomplete="off">
+          <div class="form-group mb-3"><label class="form-label">Contraseña actual</label>
+            <input type="password" class="form-control" name="cur" required autocomplete="current-password"></div>
+          <div class="form-group mb-3"><label class="form-label">Nueva contraseña</label>
+            <input type="password" class="form-control" name="p1" required autocomplete="new-password">
+            <div class="form-help">${esc(AuthServiceInstance.passwordRules())}</div></div>
+          <div class="form-group mb-3"><label class="form-label">Repetir nueva contraseña</label>
+            <input type="password" class="form-control" name="p2" required autocomplete="new-password"></div>
+        </form>`,
+      footerButtons: [
+        { label: 'Cancelar', class: 'btn-secondary', onClick: () => Modal.close() },
+        {
+          label: 'Guardar', class: 'btn-primary', onClick: async () => {
+            const fd = new FormData(dialog.querySelector('#own-pass-form'));
+            if (fd.get('p1') !== fd.get('p2')) { Toast.warning('Las contraseñas no coinciden.'); return; }
+            try {
+              await AuthServiceInstance.changePassword(user.id, fd.get('cur'), fd.get('p1'));
+              Modal.close();
+              Toast.success('Contraseña actualizada.');
+            } catch (err) {
+              Toast.error(err.message);
+            }
+          }
+        }
+      ]
+    });
+  }
+
   openGlobalSearch() {
-    Modal.show({
-      title: 'Búsqueda Global en Nexa ERP (Ctrl + K)',
+    const dialog = Modal.show({
+      title: 'Búsqueda global (Ctrl + K)',
       content: `
         <div class="form-group mb-3">
-          <input type="text" id="inp-modal-global-search" class="form-control" placeholder="Escriba cliente, SKU, producto, orden..." autofocus>
+          <input type="text" id="inp-modal-global-search" class="form-control" placeholder="Cliente, NIT, SKU, producto o número de venta..." autofocus>
         </div>
-        <div class="d-flex flex-col gap-2" id="global-search-results" style="max-height: 250px; overflow-y: auto;">
-          <div class="text-xs text-muted text-center" style="padding: 20px;">
-            Escriba para buscar en clientes, productos, órdenes o ventas...
-          </div>
+        <div class="d-flex flex-col gap-2" id="global-search-results" style="max-height: 300px; overflow-y: auto;">
+          <div class="text-xs text-muted text-center" style="padding: 20px;">Escriba al menos 2 caracteres.</div>
         </div>
       `,
       footerButtons: [{ label: 'Cerrar (Esc)', class: 'btn-secondary', onClick: () => Modal.close() }]
     });
 
-    const inp = document.getElementById('inp-modal-global-search');
-    const res = document.getElementById('global-search-results');
+    const inp = dialog.querySelector('#inp-modal-global-search');
+    const res = dialog.querySelector('#global-search-results');
+    setTimeout(() => inp.focus(), 50);
+    const allowed = (r) => AuthServiceInstance.canAccessRoute(r);
 
-    inp.addEventListener('input', async (e) => {
-      const q = e.target.value.toLowerCase().trim();
-      if (!q) {
-        res.innerHTML = '<div class="text-xs text-muted text-center" style="padding: 20px;">Escriba para buscar...</div>';
-        return;
-      }
-
-      const tenant = TenantServiceInstance.getActiveTenant();
-      const [prods, clients] = await Promise.all([
-        DB.getAll('products', tenant.id),
-        DB.getAll('customers', tenant.id)
-      ]);
-
-      const matchedProds = prods.filter(p => p.nombre.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
-      const matchedClients = clients.filter(c => c.nombre.toLowerCase().includes(q) || (c.nitCc && c.nitCc.includes(q)));
-
-      let html = '';
-      matchedProds.forEach(p => {
-        html += `
-          <div class="card p-2 mb-1" style="cursor: pointer;" onclick="window.location.hash='#products'; Modal.close();">
+    let timer = null;
+    inp.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const q = inp.value.toLowerCase().trim();
+        if (q.length < 2) {
+          res.innerHTML = '<div class="text-xs text-muted text-center" style="padding: 20px;">Escriba al menos 2 caracteres.</div>';
+          return;
+        }
+        const tenant = TenantServiceInstance.getActiveTenant();
+        const [prods, clients, sales] = await Promise.all([
+          allowed('products') ? DB.getAll(STORES.PRODUCTS, tenant.id) : [],
+          allowed('clients') ? DB.getAll(STORES.CUSTOMERS, tenant.id) : [],
+          allowed('sales-pos') ? DB.getAll(STORES.SALES, tenant.id) : []
+        ]);
+        const has = (v) => String(v || '').toLowerCase().includes(q);
+        const results = [
+          ...prods.filter(p => has(p.nombre) || has(p.sku)).slice(0, 8).map(p => ({ route: 'products', icon: '📦', title: p.nombre, sub: p.sku })),
+          ...clients.filter(c => has(c.nombre) || has(c.nitCc)).slice(0, 8).map(c => ({ route: 'clients', icon: '👤', title: c.nombre, sub: `NIT/CC: ${c.nitCc || '-'}` })),
+          ...sales.filter(s => has(s.consecutivo) || has(s.clienteNombre)).slice(0, 8).map(s => ({ route: 'sales-pos', icon: '🧾', title: s.consecutivo, sub: `${s.clienteNombre || ''} · ${s.estado || ''}` }))
+        ];
+        res.innerHTML = results.length ? results.map(r => `
+          <div class="card p-2 mb-1 global-search-hit" data-route="${esc(r.route)}" style="cursor: pointer;">
             <div class="d-flex justify-between items-center text-xs">
-              <strong>📦 ${p.nombre}</strong>
-              <span class="text-muted">${p.sku}</span>
+              <strong>${r.icon} ${esc(r.title)}</strong>
+              <span class="text-muted">${esc(r.sub)}</span>
             </div>
-          </div>
-        `;
-      });
-
-      matchedClients.forEach(c => {
-        html += `
-          <div class="card p-2 mb-1" style="cursor: pointer;" onclick="window.location.hash='#clients'; Modal.close();">
-            <div class="d-flex justify-between items-center text-xs">
-              <strong>👤 ${c.nombre}</strong>
-              <span class="text-muted">NIT/CC: ${c.nitCc}</span>
-            </div>
-          </div>
-        `;
-      });
-
-      if (matchedProds.length === 0 && matchedClients.length === 0) {
-        html = '<div class="text-xs text-muted text-center" style="padding: 20px;">Sin coincidencias encontradas.</div>';
-      }
-
-      res.innerHTML = html;
+          </div>`).join('') : '<div class="text-xs text-muted text-center" style="padding: 20px;">Sin coincidencias.</div>';
+        res.querySelectorAll('.global-search-hit').forEach(el => el.addEventListener('click', () => {
+          Modal.close();
+          window.location.hash = '#' + el.getAttribute('data-route');
+        }));
+      }, 200);
     });
   }
 }

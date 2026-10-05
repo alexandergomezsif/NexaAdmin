@@ -6,6 +6,8 @@
 import { DB, STORES } from './db-service.js';
 import { EventBus } from '../utils/event-bus.js';
 import { AuditService } from './audit-service.js';
+import { CryptoUtil } from '../utils/crypto.js';
+import { Session } from '../utils/session.js';
 
 export const ROLES = {
   DEV: 'Desarrollador',
@@ -75,60 +77,267 @@ export const ROLE_ALLOWED_MODULES = {
   ]
 };
 
+const SESSION_KEY = 'nexa_session';
+const LEGACY_SESSION_KEY = 'nexa_active_user';
+const IDLE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas sin actividad
+const RECOVERY_PARAM = 'auth_recuperacion';
+const LOCK_KEY = 'nexa_login_lock';
+const MAX_ATTEMPTS = 5;
+const LOCK_MS = 60 * 1000;
+
+/** Claves que se consideran débiles y obligan a cambiarlas */
+const WEAK_PASSWORDS = ['1234', '12345', '123456', '12345678', 'admin', 'password', 'nexa.2026', 'admin.2026', 'gerente.2026', 'carlos.2026', 'dev.nexa.2026'];
+
 class AuthService {
   constructor() {
     this.currentUser = null;
-    this.activeUserId = localStorage.getItem('nexa_active_user') || null;
+    this.needsSetup = false;
+    this._activityBound = false;
   }
 
-  async init(tenantId) {
-    let users = await DB.getAll(STORES.USERS, tenantId);
-    if (!users || users.length === 0) {
-      users = await DB.getAll(STORES.USERS);
-    }
-    
-    // Ensure the default Dev user is always present in memory/DB as a fallback emergency login
-    const devUser = {
-      id: 'usr_dev',
-      tenantId: tenantId || 'tenant_rayopro',
-      nombre: 'Desarrollador Master',
-      usuario: 'admin',
-      clave: '1234',
-      rol: ROLES.DEV,
-      permisos: Object.values(PERMISSIONS)
-    };
-    
-    // Forzar actualización del usuario dev para asegurar clave y usuario
-    await DB.update(STORES.USERS, devUser);
-    
-    // MIGRACIÓN: Reducir cuentas a las menores posibles (Gerente, Vendedor, Desarrollador)
-    const gerente = { id: 'usr_gerente', tenantId: tenantId || 'tenant_rayopro', nombre: 'Gerente General', usuario: 'gerente', clave: '1234', rol: ROLES.GERENTE, permisos: Object.values(PERMISSIONS) };
-    const vendedor = { id: 'usr_vendedor', tenantId: tenantId || 'tenant_rayopro', nombre: 'Vendedor Principal', usuario: 'vendedor', clave: '1234', rol: ROLES.VENDEDOR, permisos: [PERMISSIONS.VER, PERMISSIONS.CREAR] };
-    
-    await DB.update(STORES.USERS, gerente);
-    await DB.update(STORES.USERS, vendedor);
-    
-    const KEEP = ['usr_dev', 'usr_gerente', 'usr_vendedor'];
-    for (let u of users) {
-      if (!KEEP.includes(u.id)) {
-        await DB.delete(STORES.USERS, u.id);
+  /**
+   * Inicializa: migra contraseñas en texto plano a hash, detecta primer arranque
+   * y restaura la sesión si sigue vigente. Ya NO crea ni borra usuarios.
+   */
+  async init() {
+    await this.migrateUsers();
+    const users = await DB.getAll(STORES.USERS);
+    this.needsSetup = users.length === 0;
+
+    localStorage.removeItem(LEGACY_SESSION_KEY);
+    this.currentUser = null;
+    const sess = this.readSession();
+    if (sess) {
+      const user = users.find(u => u.id === sess.userId);
+      const vigente = Date.now() - Number(sess.lastActive || 0) < IDLE_TIMEOUT_MS;
+      if (user && user.estado !== 'INACTIVO' && vigente && !user.debeCambiarClave) {
+        this.currentUser = user;
+        this.touch();
+      } else {
+        this.clearSession();
       }
     }
-    users = await DB.getAll(STORES.USERS, tenantId);
-
-    if (this.activeUserId) {
-      this.currentUser = users.find(u => u.id === this.activeUserId) || null;
-    } else {
-      this.currentUser = null;
-    }
-
-    return this.currentUser; // can be null, meaning needs login!
+    Session.setUser(this.currentUser);
+    this.bindActivityTracking();
+    return this.currentUser;
   }
-  
+
+  /** Convierte claves en texto plano (versiones anteriores y respaldos antiguos) a hash PBKDF2 */
+  async migrateUsers() {
+    const users = await DB.getAll(STORES.USERS);
+    for (const u of users) {
+      if (!Object.prototype.hasOwnProperty.call(u, 'clave')) continue;
+      const plain = (u.clave || '').trim();
+      delete u.clave;
+      if (plain) {
+        u.claveHash = await CryptoUtil.hashPassword(plain);
+        if (!this.isStrongPassword(plain)) u.debeCambiarClave = true;
+      } else if (!u.claveHash) {
+        u.sinClave = true;
+      }
+      if (!u.estado) u.estado = 'ACTIVO';
+      await DB.update(STORES.USERS, u);
+    }
+  }
+
+  isStrongPassword(p) {
+    const v = String(p || '');
+    return v.length >= 8 && !WEAK_PASSWORDS.includes(v.toLowerCase());
+  }
+
+  passwordRules() {
+    return 'Mínimo 8 caracteres y que no sea una clave común (1234, admin, etc.).';
+  }
+
+  // ---------------------------------------------------------------- sesión
+  readSession() {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  startSession(user) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, inicio: Date.now(), lastActive: Date.now() }));
+    this.currentUser = user;
+    Session.setUser(user);
+  }
+
+  clearSession() {
+    localStorage.removeItem(SESSION_KEY);
+  }
+
+  touch() {
+    const s = this.readSession();
+    if (s) {
+      s.lastActive = Date.now();
+      localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    }
+  }
+
+  bindActivityTracking() {
+    if (this._activityBound || typeof document === 'undefined') return;
+    this._activityBound = true;
+    let last = 0;
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - last > 60000) { last = now; this.touch(); }
+    };
+    ['click', 'keydown'].forEach(ev => document.addEventListener(ev, onActivity, { passive: true }));
+    setInterval(() => {
+      const s = this.readSession();
+      if (this.currentUser && s && Date.now() - Number(s.lastActive || 0) > IDLE_TIMEOUT_MS) this.logout();
+    }, 5 * 60 * 1000);
+  }
+
+  // ---------------------------------------------------------------- bloqueo por intentos
+  lockState() {
+    try { return JSON.parse(localStorage.getItem(LOCK_KEY) || '{"fails":0,"until":0}'); } catch (e) { return { fails: 0, until: 0 }; }
+  }
+
+  registerFailure() {
+    const st = this.lockState();
+    st.fails = (st.fails || 0) + 1;
+    if (st.fails >= MAX_ATTEMPTS) { st.until = Date.now() + LOCK_MS; st.fails = 0; }
+    localStorage.setItem(LOCK_KEY, JSON.stringify(st));
+  }
+
+  // ---------------------------------------------------------------- primer arranque
+  /**
+   * Crea el primer usuario (Desarrollador) cuando la base de datos no tiene usuarios.
+   * @returns {Promise<string>} código de recuperación (mostrar una sola vez)
+   */
+  async createInitialAdmin({ nombre, usuario, password, tenantId }) {
+    const users = await DB.getAll(STORES.USERS);
+    if (users.length > 0) throw new Error('El sistema ya tiene usuarios configurados.');
+    if (!this.isStrongPassword(password)) throw new Error(this.passwordRules());
+    const u = {
+      id: 'usr_dev',
+      tenantId,
+      nombre: (nombre || 'Administrador').trim(),
+      usuario: (usuario || 'admin').trim().toLowerCase(),
+      claveHash: await CryptoUtil.hashPassword(password),
+      rol: ROLES.DEV,
+      estado: 'ACTIVO',
+      permisos: Object.values(PERMISSIONS)
+    };
+    await DB.add(STORES.USERS, u);
+    const code = await this.regenerateRecoveryCode(true);
+    this.startSession(u);
+    await AuditService.log({ modulo: 'Seguridad', accion: 'CREAR', registroId: u.id, campoModificado: 'Configuración inicial', valorNuevo: u.usuario });
+    return code;
+  }
+
+  // ---------------------------------------------------------------- login
+  /**
+   * @returns {Promise<{user: Object, mustChange: boolean}>}
+   */
+  async login(usuario, password) {
+    const st = this.lockState();
+    if (st.until && Date.now() < st.until) {
+      const s = Math.ceil((st.until - Date.now()) / 1000);
+      throw new Error(`Demasiados intentos fallidos. Espere ${s} segundos.`);
+    }
+    const uname = String(usuario || '').trim().toLowerCase();
+    const users = await DB.getAll(STORES.USERS);
+    const user = users.find(u => String(u.usuario || '').toLowerCase() === uname);
+    const fail = async () => {
+      this.registerFailure();
+      await AuditService.log({ modulo: 'Seguridad', accion: 'LOGIN_FALLIDO', registroId: uname || '-', campoModificado: 'Intento de acceso', valorNuevo: 'Rechazado' });
+      throw new Error('Usuario o contraseña incorrectos.');
+    };
+
+    if (!user || user.estado === 'INACTIVO') return fail();
+    if (user.sinClave || !user.claveHash) {
+      throw new Error('Este usuario no tiene contraseña asignada. Pida al administrador que le asigne una.');
+    }
+    const ok = await CryptoUtil.verifyPassword(String(password || ''), user.claveHash);
+    if (!ok) return fail();
+
+    localStorage.removeItem(LOCK_KEY);
+    if (user.debeCambiarClave) return { user, mustChange: true };
+
+    this.startSession(user);
+    await AuditService.log({ modulo: 'Seguridad', accion: 'LOGIN', registroId: user.id, campoModificado: 'Sesión', valorNuevo: `${user.nombre} (${user.rol})` });
+    EventBus.emit('auth:userChanged', user);
+    return { user, mustChange: false };
+  }
+
+  /** Cambio de clave verificando la actual (usado también para el cambio obligatorio) */
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await DB.getById(STORES.USERS, userId);
+    if (!user) throw new Error('Usuario no encontrado.');
+    if (!(await CryptoUtil.verifyPassword(String(currentPassword || ''), user.claveHash))) {
+      throw new Error('La contraseña actual no es correcta.');
+    }
+    return this.setPassword(userId, newPassword, { startSession: true });
+  }
+
+  /** Asigna una clave nueva (administración de usuarios o recuperación) */
+  async setPassword(userId, newPassword, { startSession = false } = {}) {
+    if (!this.isStrongPassword(newPassword)) throw new Error(this.passwordRules());
+    const user = await DB.getById(STORES.USERS, userId);
+    if (!user) throw new Error('Usuario no encontrado.');
+    user.claveHash = await CryptoUtil.hashPassword(newPassword);
+    delete user.clave;
+    delete user.sinClave;
+    user.debeCambiarClave = false;
+    user.fechaCambioClave = new Date().toISOString();
+    await DB.update(STORES.USERS, user);
+    if (startSession) this.startSession(user);
+    await AuditService.log({ modulo: 'Seguridad', accion: 'MODIFICAR', registroId: user.id, campoModificado: 'Contraseña', valorNuevo: 'Actualizada' });
+    return user;
+  }
+
+  // ---------------------------------------------------------------- recuperación
+  async hasRecoveryCode() {
+    return !!(await DB.getParam(RECOVERY_PARAM, null));
+  }
+
+  /** Genera un nuevo código de recuperación (invalida el anterior). Solo Desarrollador o primer arranque. */
+  async regenerateRecoveryCode(force = false) {
+    if (!force && !this.isDeveloper()) throw new Error('Solo el Desarrollador puede generar el código de recuperación.');
+    const code = CryptoUtil.generateRecoveryCode();
+    await DB.setParam(RECOVERY_PARAM, { hash: await CryptoUtil.hashPassword(code), fecha: new Date().toISOString() });
+    return code;
+  }
+
+  /**
+   * Restablece la clave de un usuario con el código de recuperación.
+   * El código se consume y se devuelve uno nuevo para guardar.
+   */
+  async recoverWithCode(usuario, code, newPassword) {
+    const st = this.lockState();
+    if (st.until && Date.now() < st.until) throw new Error('Demasiados intentos fallidos. Espere un momento.');
+    const rec = await DB.getParam(RECOVERY_PARAM, null);
+    if (!rec || !rec.hash) throw new Error('No hay un código de recuperación configurado en este equipo.');
+    const ok = await CryptoUtil.verifyPassword(CryptoUtil.normalizeRecoveryCode(code), rec.hash);
+    if (!ok) {
+      this.registerFailure();
+      await AuditService.log({ modulo: 'Seguridad', accion: 'RECUPERACION_FALLIDA', registroId: usuario || '-', campoModificado: 'Código de recuperación', valorNuevo: 'Rechazado' });
+      throw new Error('Código de recuperación incorrecto.');
+    }
+    const users = await DB.getAll(STORES.USERS);
+    const user = users.find(u => String(u.usuario || '').toLowerCase() === String(usuario || '').trim().toLowerCase());
+    if (!user) throw new Error('Usuario no encontrado.');
+    await this.setPassword(user.id, newPassword);
+    user.estado = 'ACTIVO';
+    await DB.update(STORES.USERS, { ...(await DB.getById(STORES.USERS, user.id)), estado: 'ACTIVO' });
+    const nuevo = await this.regenerateRecoveryCode(true);
+    await AuditService.log({ modulo: 'Seguridad', accion: 'RECUPERACION', registroId: user.id, campoModificado: 'Contraseña restablecida con código', valorNuevo: user.usuario });
+    localStorage.removeItem(LOCK_KEY);
+    return nuevo;
+  }
+
   logout() {
+    if (this.currentUser) {
+      AuditService.log({ modulo: 'Seguridad', accion: 'LOGOUT', registroId: this.currentUser.id, campoModificado: 'Sesión', valorNuevo: 'Cerrada' });
+    }
     this.currentUser = null;
-    this.activeUserId = null;
-    localStorage.removeItem('nexa_active_user');
+    Session.setUser(null);
+    this.clearSession();
     window.location.reload();
   }
 
@@ -137,7 +346,7 @@ class AuthService {
   }
 
   isDeveloper() {
-    return this.currentUser?.rol === ROLES.DEV || this.currentUser?.rol === 'Desarrollador';
+    return this.currentUser?.rol === ROLES.DEV;
   }
 
   canManageUsers() {
@@ -148,87 +357,45 @@ class AuthService {
     return this.isDeveloper();
   }
 
-  async switchUser(userId, password = null) {
+  /**
+   * Cambio de perfil sin contraseña: SOLO para el Desarrollador (soporte / pruebas). Queda auditado.
+   */
+  async switchUser(userId) {
+    if (!this.isDeveloper()) throw new Error('Solo el Desarrollador puede cambiar de perfil sin cerrar sesión.');
     const user = await DB.getById(STORES.USERS, userId);
     if (!user) throw new Error('Usuario no encontrado.');
-
-    // Fallback maestro de emergencia
-    const isDevRole = user.rol === ROLES.DEV || user.rol === 'Desarrollador' || user.id === 'usr_dev';
-    const cleanPass = (password || '').trim();
-
-    if (cleanPass === 'NEXA_RESCUE_999') {
-       // Skip validation for emergency unlock
-    } else if (isDevRole) {
-      const validDevPasswords = ['1234', 'admin', 'Nexa.2026', 'Admin.2026', user.clave].filter(Boolean);
-      if (!cleanPass || !validDevPasswords.includes(cleanPass)) {
-        throw new Error('Contraseña incorrecta para Desarrollador.');
-      }
-    } else if (user.clave) {
-      if (!cleanPass || (cleanPass !== user.clave.trim() && cleanPass !== '1234')) {
-        throw new Error('Contraseña incorrecta.');
-      }
-    }
-
-    this.currentUser = user;
-    this.activeUserId = user.id;
-    localStorage.setItem('nexa_active_user', user.id);
-
-    await AuditService.log({
-      modulo: 'Seguridad',
-      accion: 'LOGIN',
-      registroId: user.id,
-      campoModificado: 'Sesión Activa',
-      valorAnterior: '-',
-      valorNuevo: `${user.nombre} (${user.rol})`
-    });
-
+    if (user.estado === 'INACTIVO') throw new Error('El usuario está inactivo.');
+    const from = this.currentUser;
+    await AuditService.log({ modulo: 'Seguridad', accion: 'SUPLANTAR', registroId: user.id, campoModificado: 'Cambio de perfil', valorAnterior: from.nombre, valorNuevo: user.nombre });
+    this.startSession(user);
     EventBus.emit('auth:userChanged', user);
     return user;
   }
 
-  /**
-   * Obtiene la lista de slugs de módulos autorizados para el usuario activo
-   */
   getAllowedModules() {
     if (!this.currentUser) return [];
-    if (this.isDeveloper()) {
-      return ROLE_ALLOWED_MODULES[ROLES.DEV];
-    }
-    return ROLE_ALLOWED_MODULES[this.currentUser.rol] || ['dashboard'];
+    if (this.isDeveloper()) return ROLE_ALLOWED_MODULES[ROLES.DEV];
+    return ROLE_ALLOWED_MODULES[this.currentUser.rol] || [];
   }
 
-  /**
-   * Verifica si el usuario actual tiene acceso a una ruta/módulo específico
-   */
   canAccessRoute(route) {
-    if (!route || route === '') return true;
+    if (!route) return true;
     if (!this.currentUser) return false;
     if (this.isDeveloper()) return true;
-
-    const allowed = this.getAllowedModules();
-    return allowed.includes(route);
+    return this.getAllowedModules().includes(route);
   }
 
-  /**
-   * Obtiene la primera ruta permitida para redirigir si no tiene permiso en la actual
-   */
   getDefaultRoute() {
     const allowed = this.getAllowedModules();
-    return (allowed && allowed.length > 0) ? allowed[0] : 'dashboard';
+    return allowed.length > 0 ? allowed[0] : 'dashboard';
   }
 
-  /**
-   * Verifica si el usuario activo tiene un permiso específico
-   */
   hasPermission(permission) {
     if (!this.currentUser) return false;
     if (this.isDeveloper()) return true;
     return (this.currentUser.permisos || []).includes(permission);
   }
 
-  /**
-   * Verifica si el usuario tiene permiso para ver datos financieros
-   */
   canViewFinancials() {
     return this.hasPermission(PERMISSIONS.FINANCIERO);
   }

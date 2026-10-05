@@ -1,6 +1,14 @@
 /**
- * Nexa ERP - Servicio Tributario y Cálculo de Liquidaciones (Colombia)
- * Maneja IVA (0%, 5%, 19%), Descuentos, Retenciones y Totales de Documento
+ * Nexa ERP - Servicio Tributario y Liquidación de Documentos (Colombia)
+ *
+ * Reglas:
+ * - Tarifa por ítem (`ivaPct`, por defecto 19).
+ * - `precioIncluyeIva` en el ítem: si es true, el precio unitario ya contiene el IVA y
+ *   se descompone: base = bruto / (1 + tarifa); IVA = bruto - base. El cliente paga el precio de lista.
+ *   Si es false, el IVA se suma sobre el precio.
+ * - Si el cliente no aplica IVA (`aplicaIva === false`), no se liquida IVA:
+ *   el cliente paga el precio de lista (incluya o no IVA) y toda la línea se trata como base.
+ * - Valores redondeados a pesos por línea (COP no maneja centavos en la práctica).
  */
 
 export const TAX_RATES = {
@@ -9,55 +17,76 @@ export const TAX_RATES = {
   GENERAL: 0.19
 };
 
+const round = (n) => Math.round(Number(n) || 0);
+
 export const TaxService = {
   /**
-   * Calcula el subtotal, descuento, base gravable, IVA y total de una lista de ítems.
-   * Si el cliente está en etapa inicial o no se le factura con IVA (aplicaIva === false o sin factura electrónica),
-   * el IVA se liquida a $0 (0%) automáticamente.
-   * @param {Array} items - Array de objetos con { cantidad, precioUnitario, descuentoPct, ivaPct }
-   * @param {Number} globalDiscountPct - Porcentaje de descuento global
-   * @param {Object} options - { aplicaIva: boolean, facturaElectronica: boolean }
+   * @param {Array} items - { cantidad, precioUnitario, descuentoPct?, ivaPct?, precioIncluyeIva? }
+   * @param {Number} globalDiscountPct - descuento global (%) aplicado después de los descuentos por ítem
+   * @param {Object} options - { aplicaIva: boolean }
    */
-  calculateTotals(items = [], globalDiscountPct = 0, options = { aplicaIva: true, facturaElectronica: true }) {
-    let subtotalBruto = 0;
-    let totalDescuentosItems = 0;
-    let subtotalNeto = 0;
-    let totalIva = 0;
-
+  calculateTotals(items = [], globalDiscountPct = 0, options = { aplicaIva: true }) {
     const cobrarIva = options.aplicaIva !== false;
+    const gd = Math.min(100, Math.max(0, Number(globalDiscountPct) || 0)) / 100;
+
+    let subtotalBruto = 0;
+    let totalDescuentos = 0;
+    let baseGravable = 0;
+    let totalIva = 0;
+    let total = 0;
+    const lineas = [];
 
     items.forEach(item => {
       const qty = Number(item.cantidad) || 0;
       const price = Number(item.precioUnitario) || 0;
-      const itemGross = qty * price;
-      
-      const itemDiscPct = Number(item.descuentoPct) || 0;
-      const itemDiscount = itemGross * (itemDiscPct / 100);
-      const itemNet = itemGross - itemDiscount;
+      const discPct = Math.min(100, Math.max(0, Number(item.descuentoPct) || 0)) / 100;
+      const rate = (item.ivaPct !== undefined && item.ivaPct !== null ? Number(item.ivaPct) : 19) / 100;
 
-      // Si aplica IVA usa la tarifa del ítem (defecto 19%), de lo contrario 0%
-      const ivaPct = cobrarIva ? (item.ivaPct !== undefined ? Number(item.ivaPct) : 19) : 0;
-      const itemIva = itemNet * (ivaPct / 100);
+      const bruto = qty * price;
+      const despuesDescItem = bruto * (1 - discPct);
+      const neto = despuesDescItem * (1 - gd);
+      const descuento = bruto - neto;
 
-      subtotalBruto += itemGross;
-      totalDescuentosItems += itemDiscount;
-      subtotalNeto += itemNet;
-      totalIva += itemIva;
+      let base;
+      let iva;
+      let totalLinea;
+      if (!cobrarIva || rate === 0) {
+        base = neto;
+        iva = 0;
+        totalLinea = neto;
+      } else if (item.precioIncluyeIva) {
+        totalLinea = neto;
+        base = neto / (1 + rate);
+        iva = neto - base;
+      } else {
+        base = neto;
+        iva = neto * rate;
+        totalLinea = neto + iva;
+      }
+
+      const l = {
+        bruto: round(bruto),
+        descuento: round(descuento),
+        base: round(base),
+        iva: round(totalLinea) - round(base),
+        total: round(totalLinea)
+      };
+      lineas.push(l);
+      subtotalBruto += l.bruto;
+      totalDescuentos += l.descuento;
+      baseGravable += l.base;
+      totalIva += l.iva;
+      total += l.total;
     });
 
-    const globalDiscount = subtotalNeto * (Number(globalDiscountPct || 0) / 100);
-    const totalDescuentos = totalDescuentosItems + globalDiscount;
-    const baseGravableFinal = Math.max(0, subtotalNeto - globalDiscount);
-    const ivaFinal = (cobrarIva && baseGravableFinal > 0) ? (totalIva * (1 - (Number(globalDiscountPct || 0) / 100))) : 0;
-    const total = Math.round(baseGravableFinal + ivaFinal);
-
     return {
-      subtotalBruto: Math.round(subtotalBruto),
-      totalDescuentos: Math.round(totalDescuentos),
-      baseGravable: Math.round(baseGravableFinal),
-      totalIva: Math.round(ivaFinal),
+      subtotalBruto,
+      totalDescuentos,
+      baseGravable,
+      totalIva,
       aplicaIva: cobrarIva,
-      total
+      total,
+      lineas
     };
   }
 };

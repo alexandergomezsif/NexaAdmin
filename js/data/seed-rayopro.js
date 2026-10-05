@@ -72,11 +72,11 @@ export const SeedData = {
   ],
 
   price_lists: [
-    { id: 'plist_1', tenantId: RAYO_PRO_TENANT_ID, nombre: 'P1 - Precio Público / Final', descripcion: 'Mostrador y consumidor particular', esDefecto: true, orden: 1 },
-    { id: 'plist_2', tenantId: RAYO_PRO_TENANT_ID, nombre: 'P2 - Precio Lavaderos / Taller', descripcion: 'Autolavados y centros de detailing', esDefecto: false, orden: 2 },
-    { id: 'plist_3', tenantId: RAYO_PRO_TENANT_ID, nombre: 'P3 - Precio Mayorista (Docenas)', descripcion: 'Compras por cajas completas x 12 unidades', esDefecto: false, orden: 3 },
-    { id: 'plist_4', tenantId: RAYO_PRO_TENANT_ID, nombre: 'P4 - Precio Distribuidor Autorizado', descripcion: 'Almacenes y distribuidores regionales', esDefecto: false, orden: 4 },
-    { id: 'plist_5', tenantId: RAYO_PRO_TENANT_ID, nombre: 'P5 - Precio Especial Cano Trucks', descripcion: 'Tarifa preferencial convenio flotas', esDefecto: false, orden: 5 }
+    { id: 'plist_1', codigo: 'P1', incluyeIva: true, tenantId: RAYO_PRO_TENANT_ID, nombre: 'P1 - Precio Público / Final', descripcion: 'Mostrador y consumidor particular', esDefecto: true, orden: 1 },
+    { id: 'plist_2', codigo: 'P2', incluyeIva: false, tenantId: RAYO_PRO_TENANT_ID, nombre: 'P2 - Precio Lavaderos / Taller', descripcion: 'Autolavados y centros de detailing', esDefecto: false, orden: 2 },
+    { id: 'plist_3', codigo: 'P3', incluyeIva: false, tenantId: RAYO_PRO_TENANT_ID, nombre: 'P3 - Precio Mayorista (Docenas)', descripcion: 'Compras por cajas completas x 12 unidades', esDefecto: false, orden: 3 },
+    { id: 'plist_4', codigo: 'P4', incluyeIva: false, tenantId: RAYO_PRO_TENANT_ID, nombre: 'P4 - Precio Distribuidor Autorizado', descripcion: 'Almacenes y distribuidores regionales', esDefecto: false, orden: 4 },
+    { id: 'plist_5', codigo: 'P5', incluyeIva: false, tenantId: RAYO_PRO_TENANT_ID, nombre: 'P5 - Precio Especial Cano Trucks', descripcion: 'Tarifa preferencial convenio flotas', esDefecto: false, orden: 5 }
   ],
 
   warehouses: [
@@ -84,41 +84,8 @@ export const SeedData = {
     { id: 'wh_2', tenantId: RAYO_PRO_TENANT_ID, codigo: 'BOD-02', nombre: 'Planta de Producción & Reactores', direccion: 'Área de Envasado Nave B', esPrincipal: false, estado: 'ACTIVO' },
     { id: 'wh_3', tenantId: RAYO_PRO_TENANT_ID, codigo: 'BOD-03', nombre: 'Punto de Venta / Mostrador', direccion: 'Mostrador de atención y retail', esPrincipal: false, estado: 'ACTIVO' }
   ],
-  users: [
-    {
-      id: 'usr_dev',
-      tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Desarrollador Master',
-      usuario: 'admin',
-      clave: 'Nexa.2026',
-      email: 'desarrollador@nexa.software',
-      rol: 'Desarrollador',
-      estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR', 'EDITAR', 'ELIMINAR', 'AUTORIZAR', 'EXPORTAR', 'FINANCIERO', 'DEVELOPER']
-    },
-    {
-      id: 'usr_gerente',
-      tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Gerente General',
-      usuario: 'gerente',
-      clave: '1234',
-      email: 'gerencia@empresa.com',
-      rol: 'Gerente',
-      estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR', 'EDITAR', 'ELIMINAR', 'AUTORIZAR', 'EXPORTAR', 'FINANCIERO']
-    },
-    {
-      id: 'usr_vendedor',
-      tenantId: RAYO_PRO_TENANT_ID,
-      nombre: 'Vendedor Principal',
-      usuario: 'vendedor',
-      clave: '1234',
-      email: 'ventas@empresa.com',
-      rol: 'Vendedor',
-      estado: 'ACTIVO',
-      permisos: ['VER', 'CREAR']
-    }
-  ],
+  // Sin usuarios precargados: el primer arranque pide crear el administrador con su propia contraseña.
+  users: [],
 
   // CATÁLOGO REAL EXTRAÍDO DEL EXCEL RAYO PRO
   products: [
@@ -763,7 +730,7 @@ export const SeedData = {
     }
   ],
 
-  // CUENTAS POR COBRAR (CARTERA REAL DE DE EJEMPLO)
+  // CUENTAS POR COBRAR (CARTERA DE EJEMPLO)
   receivables_cxc: [
     {
       id: 'cxc_cano_01',

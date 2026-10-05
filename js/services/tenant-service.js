@@ -4,7 +4,9 @@
  */
 
 import { DB, STORES } from './db-service.js';
-import { SeedData, RAYO_PRO_TENANT_ID } from '../data/seed-rayopro.js';
+import { RAYO_PRO_TENANT_ID } from '../data/seed-rayopro.js';
+import { Migrations } from './migrations.js';
+import { Session } from '../utils/session.js';
 import { DianDV } from '../utils/dian-dv.js';
 import { EventBus } from '../utils/event-bus.js';
 
@@ -15,80 +17,22 @@ class TenantService {
   }
 
   /**
-   * Inicializa el servicio, asegura datos demo y aplica el tema visual
+   * Inicializa el servicio: aplica migraciones (incluida la semilla, SOLO si la BD está vacía)
+   * y selecciona la empresa activa.
    */
   async init() {
     await DB.init();
-    
-    // Verificar si existen empresas y catálogo real en BD; si no, poblar con seed
-    let tenants = await DB.getAll(STORES.TENANTS);
-    let prods = await DB.getAll(STORES.PRODUCTS, RAYO_PRO_TENANT_ID);
-    const hasRealDeseng = prods && prods.some(p => p.sku === 'DESENG-1L');
+    await Migrations.run();
 
-    if (!tenants || tenants.length === 0 || !hasRealDeseng) {
-      await this.seedInitialDatabase();
-      tenants = await DB.getAll(STORES.TENANTS);
-    } else {
-      // Sincronizar perfiles de usuario por si se agregaron nuevos roles al seed
-      let existingUsers = await DB.getAll(STORES.USERS, RAYO_PRO_TENANT_ID);
-      for (const u of SeedData.users) {
-        const found = existingUsers.find(eu => eu.id === u.id);
-        if (!found) {
-          await DB.update(STORES.USERS, u);
-        } else if (u.id === 'usr_dev' && (found.clave === 'dev.nexa.2026' || !found.clave)) {
-          found.clave = 'Admin.2026';
-          await DB.update(STORES.USERS, found);
-        }
-      }
-
-      // Sincronizar clientes con atributos tributarios (FE e IVA)
-      let existingCusts = await DB.getAll(STORES.CUSTOMERS, RAYO_PRO_TENANT_ID);
-      for (const c of SeedData.customers) {
-        const found = existingCusts.find(ec => ec.id === c.id);
-        if (!found) {
-          await DB.update(STORES.CUSTOMERS, c);
-        } else if (found.facturaElectronica === undefined || found.aplicaIva === undefined) {
-          found.facturaElectronica = c.facturaElectronica;
-          found.aplicaIva = c.aplicaIva;
-          await DB.update(STORES.CUSTOMERS, found);
-        }
-      }
-      // Sincronizar atributos de logo multiempresa
-      for (const t of tenants) {
-        let changed = false;
-        if (t.id === RAYO_PRO_TENANT_ID) {
-          if (!t.isotipoLightUrl) { t.isotipoLightUrl = 'datos/isotipo fondo blanco.jpg'; changed = true; }
-          if (!t.isotipoDarkUrl) { t.isotipoDarkUrl = 'datos/isotipo fondo negro.jpg'; changed = true; }
-          if (!t.logoHorizontalLightUrl) { t.logoHorizontalLightUrl = 'datos/logo+isotipo.jpg'; changed = true; }
-          if (!t.logoHorizontalDarkUrl) { t.logoHorizontalDarkUrl = 'datos/isotipo + logo fondo negro.jpg'; changed = true; }
-        }
-        if (changed) {
-          await DB.update(STORES.TENANTS, t);
-        }
-      }
-    }
-
-    // Seleccionar empresa activa
-    this.currentTenant = tenants.find(t => t.id === this.activeTenantId) || tenants[0];
+    const tenants = await DB.getAll(STORES.TENANTS);
+    this.currentTenant = tenants.find(t => t.id === this.activeTenantId) || tenants[0] || null;
     if (this.currentTenant) {
       this.activeTenantId = this.currentTenant.id;
       localStorage.setItem('nexa_active_tenant', this.activeTenantId);
+      Session.setTenant(this.activeTenantId);
       this.applyTheme(this.currentTenant);
     }
-
     return this.currentTenant;
-  }
-
-  /**
-   * Carga los datos demo en IndexedDB si es la primera ejecución
-   */
-  async seedInitialDatabase() {
-    for (const [storeKey, items] of Object.entries(SeedData)) {
-      const storeName = STORES[storeKey.toUpperCase()];
-      if (storeName && Array.isArray(items)) {
-        await DB.bulkAdd(storeName, items);
-      }
-    }
   }
 
   /**
@@ -115,6 +59,7 @@ class TenantService {
     this.currentTenant = tenant;
     this.activeTenantId = tenant.id;
     localStorage.setItem('nexa_active_tenant', this.activeTenantId);
+    Session.setTenant(this.activeTenantId);
     this.applyTheme(tenant);
 
     EventBus.emit('tenant:changed', tenant);
@@ -146,6 +91,11 @@ class TenantService {
     if (!tenantData.id) {
       tenantData.id = 'tenant_' + Date.now();
     }
+    if (!tenantData.prefijoVenta) {
+      const w = String(tenantData.nombreComercial || 'V').trim().split(/\s+/);
+      tenantData.prefijoVenta = ((w.length > 1 ? w[0][0] + w[1][0] : w[0].substring(0, 2)) || 'V').toUpperCase();
+    }
+    if (!tenantData.prefijoCotizacion) tenantData.prefijoCotizacion = 'COT';
     if (tenantData.nit) {
       tenantData.dv = DianDV.calculate(tenantData.nit);
     }
@@ -153,11 +103,11 @@ class TenantService {
 
     // Listas de precios estándar para la nueva organización
     const basePriceLists = [
-      { id: `plist_1_${created.id}`, tenantId: created.id, nombre: 'P1 - Precio Público / Final', descripcion: 'Mostrador y consumidor particular', esDefecto: true, orden: 1 },
-      { id: `plist_2_${created.id}`, tenantId: created.id, nombre: 'P2 - Precio Lavaderos / Taller', descripcion: 'Autolavados y centros de detailing', esDefecto: false, orden: 2 },
-      { id: `plist_3_${created.id}`, tenantId: created.id, nombre: 'P3 - Precio Mayorista (Docenas)', descripcion: 'Compras por cajas completas x 12 unidades', esDefecto: false, orden: 3 },
-      { id: `plist_4_${created.id}`, tenantId: created.id, nombre: 'P4 - Precio Distribuidor Autorizado', descripcion: 'Almacenes y distribuidores regionales', esDefecto: false, orden: 4 },
-      { id: `plist_5_${created.id}`, tenantId: created.id, nombre: 'P5 - Precio Especial Convenio', descripcion: 'Tarifa preferencial convenios', esDefecto: false, orden: 5 }
+      { id: `plist_1_${created.id}`, codigo: 'P1', incluyeIva: true, tenantId: created.id, nombre: 'P1 - Precio Público / Final', descripcion: 'Mostrador y consumidor particular', esDefecto: true, orden: 1 },
+      { id: `plist_2_${created.id}`, codigo: 'P2', incluyeIva: false, tenantId: created.id, nombre: 'P2 - Precio Lavaderos / Taller', descripcion: 'Autolavados y centros de detailing', esDefecto: false, orden: 2 },
+      { id: `plist_3_${created.id}`, codigo: 'P3', incluyeIva: false, tenantId: created.id, nombre: 'P3 - Precio Mayorista (Docenas)', descripcion: 'Compras por cajas completas x 12 unidades', esDefecto: false, orden: 3 },
+      { id: `plist_4_${created.id}`, codigo: 'P4', incluyeIva: false, tenantId: created.id, nombre: 'P4 - Precio Distribuidor Autorizado', descripcion: 'Almacenes y distribuidores regionales', esDefecto: false, orden: 4 },
+      { id: `plist_5_${created.id}`, codigo: 'P5', incluyeIva: false, tenantId: created.id, nombre: 'P5 - Precio Especial Convenio', descripcion: 'Tarifa preferencial convenios', esDefecto: false, orden: 5 }
     ];
     for (const pl of basePriceLists) {
       await DB.add(STORES.PRICE_LISTS, pl);

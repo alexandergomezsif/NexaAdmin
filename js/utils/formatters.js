@@ -92,7 +92,7 @@ export const Formatters = {
    * Fundamental al renderizar datos provenientes de JSON externos.
    */
   escapeHTML(str) {
-    if (!str) return '';
+    if (str === null || str === undefined) return '';
     return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -101,3 +101,6 @@ export const Formatters = {
       .replace(/'/g, '&#39;');
   }
 };
+
+/** Atajo para escapar texto que se inserta en plantillas HTML (previene XSS) */
+export const esc = (v) => Formatters.escapeHTML(v);

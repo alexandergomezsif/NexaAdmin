@@ -2,6 +2,8 @@
  * Nexa ERP - Componente Modal Dinámico y Accesible
  */
 
+import { esc } from '../utils/formatters.js';
+
 export const Modal = {
   activeModal: null,
 
@@ -19,7 +21,7 @@ export const Modal = {
 
     dialog.innerHTML = `
       <div class="modal-header">
-        <h3 class="modal-title">${title}</h3>
+        <h3 class="modal-title">${esc(title)}</h3>
         <button class="modal-close" aria-label="Cerrar">&times;</button>
       </div>
       <div class="modal-body">${content}</div>
@@ -60,17 +62,16 @@ export const Modal = {
 
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
-    this.activeModal = { backdrop, dialog, onClose };
 
-    // Atajo ESC para cerrar
+    // Atajo ESC para cerrar (el listener se elimina siempre al cerrar, sin acumularse)
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         this.close();
         if (onClose) onClose();
-        document.removeEventListener('keydown', handleEsc);
       }
     };
     document.addEventListener('keydown', handleEsc);
+    this.activeModal = { backdrop, dialog, onClose, handleEsc };
 
     return dialog;
   },
@@ -80,6 +81,7 @@ export const Modal = {
    */
   close() {
     if (this.activeModal) {
+      if (this.activeModal.handleEsc) document.removeEventListener('keydown', this.activeModal.handleEsc);
       if (this.activeModal.backdrop && this.activeModal.backdrop.parentElement) {
         this.activeModal.backdrop.parentElement.removeChild(this.activeModal.backdrop);
       }
@@ -93,7 +95,7 @@ export const Modal = {
   confirm({ title = '¿Está seguro?', message, confirmText = 'Confirmar', cancelText = 'Cancelar', isDanger = false, onConfirm }) {
     this.show({
       title,
-      content: `<p style="font-size: 14px; color: #475569;">${message}</p>`,
+      content: `<p style="font-size: 14px; color: var(--text-secondary);">${message}</p>`,
       size: 'sm',
       footerButtons: [
         { label: cancelText, class: 'btn-secondary', onClick: () => this.close() },

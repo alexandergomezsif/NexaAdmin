@@ -1,15 +1,24 @@
 /**
- * Nexa ERP - Servicio de Inventario y Kardex Ponderado Multibodega
- * Registra entradas, salidas, traslados, ajustes y actualiza costo promedio
+ * Nexa ERP - Servicio de Inventario y Kardex (costo promedio ponderado)
+ *
+ * Reglas:
+ * - Las SALIDAS se valoran SIEMPRE al costo promedio vigente (nunca al precio de venta).
+ * - Las ENTRADAS recalculan el costo promedio ponderado.
+ * - Una salida mayor al stock disponible se rechaza (salvo `permitirNegativo`).
+ *   Antes el stock se "recortaba" a 0 y el Kardex dejaba de cuadrar.
+ * - Costos con 2 decimales (materias primas por kg/ml).
+ * - Todas las operaciones pueden ejecutarse dentro de una transacción (`tx`) para que
+ *   un documento (venta, compra, producción) se grabe completo o no se grabe.
  */
 
 import { DB, STORES } from './db-service.js';
 import { AuditService } from './audit-service.js';
+import { Session } from '../utils/session.js';
 
 export const MOVEMENT_TYPES = {
   COMPRA: { label: 'Compra de Mercancía/Insumos', type: 'IN' },
   VENTA: { label: 'Venta Facturada / POS', type: 'OUT' },
-  DEVOLUCION_VENTA: { label: 'Devolución en Venta', type: 'IN' },
+  DEVOLUCION_VENTA: { label: 'Devolución / Anulación de Venta', type: 'IN' },
   DEVOLUCION_COMPRA: { label: 'Devolución a Proveedor', type: 'OUT' },
   AJUSTE_POS: { label: 'Ajuste de Inventario (+)', type: 'IN' },
   AJUSTE_NEG: { label: 'Ajuste de Inventario (-)', type: 'OUT' },
@@ -18,15 +27,20 @@ export const MOVEMENT_TYPES = {
   PRODUCCION_ENTRADA: { label: 'Entrada de Producto Terminado', type: 'IN' },
   CONSUMO_PRODUCCION: { label: 'Consumo de Materia Prima', type: 'OUT' },
   MERMA: { label: 'Baja por Merma Técnica', type: 'OUT' },
-  DANO: { label: 'Baja por Daño / Vencimiento', type: 'OUT' },
-  INVENTARIO_FISICO: { label: 'Ajuste Conteo Físico', type: 'AUDIT' }
+  DANO: { label: 'Baja por Daño / Vencimiento', type: 'OUT' }
 };
+
+/** Almacenes que debe incluir una transacción que use applyMovement */
+export const KARDEX_TX_STORES = [STORES.PRODUCTS, STORES.KARDEX, STORES.WAREHOUSES, STORES.AUDIT_LOGS];
+
+const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 export const KardexService = {
   /**
-   * Registra un movimiento en Kardex y actualiza las existencias del producto
+   * Aplica un movimiento dentro de una transacción abierta.
+   * @returns {Promise<Object>} movimiento guardado (incluye costoUnitario aplicado)
    */
-  async registerMovement({
+  async applyMovement(tx, {
     tenantId,
     productoId,
     bodegaId,
@@ -34,90 +48,95 @@ export const KardexService = {
     documentoNumero,
     cantidad,
     costoUnitario,
-    usuarioId,
-    observacion
+    observacion,
+    permitirNegativo = false
   }) {
-    const product = await DB.getById(STORES.PRODUCTS, productoId);
+    const def = MOVEMENT_TYPES[documentoTipo];
+    if (!def) throw new Error(`Tipo de movimiento desconocido: ${documentoTipo}`);
+
+    const qty = Number(cantidad);
+    if (!Number.isFinite(qty) || qty <= 0) throw new Error('La cantidad del movimiento debe ser mayor a cero.');
+
+    const product = await tx.get(STORES.PRODUCTS, productoId);
     if (!product) throw new Error(`Producto con ID ${productoId} no encontrado.`);
 
-    const warehouse = bodegaId ? await DB.getById(STORES.WAREHOUSES, bodegaId) : null;
-    const warehouseName = warehouse ? warehouse.nombre : 'Bodega Principal';
-
-    const isEntry = MOVEMENT_TYPES[documentoTipo]?.type === 'IN';
-    const isExit = MOVEMENT_TYPES[documentoTipo]?.type === 'OUT';
-
-    const cantEntrada = isEntry ? Number(cantidad) : 0;
-    const cantSalida = isExit ? Number(cantidad) : 0;
-    const unitCost = Number(costoUnitario || product.costoPromedio || 0);
+    const warehouse = bodegaId ? await tx.get(STORES.WAREHOUSES, bodegaId) : null;
+    const isEntry = def.type === 'IN';
 
     const prevStock = Number(product.stock || 0);
-    const newStock = isEntry ? prevStock + cantEntrada : prevStock - cantSalida;
+    const prevAvg = Number(product.costoPromedio || 0);
 
-    // Cálculo de costo promedio ponderado si es entrada
-    let newAvgCost = Number(product.costoPromedio || 0);
-    if (isEntry && newStock > 0 && cantEntrada > 0) {
-      const prevTotalCost = prevStock * newAvgCost;
-      const entryTotalCost = cantEntrada * unitCost;
-      newAvgCost = Math.round((prevTotalCost + entryTotalCost) / newStock);
+    if (!isEntry && qty > prevStock + 1e-9 && !permitirNegativo) {
+      throw new Error(`Stock insuficiente de "${product.nombre}": disponible ${prevStock}, requerido ${qty}.`);
     }
 
-    // Actualizar producto
-    product.stock = Math.max(0, newStock);
-    product.costoPromedio = newAvgCost;
-    if (isEntry && unitCost > 0) {
+    // Salidas al costo promedio (excepto devolución a proveedor, que sale al costo de la compra si se indica)
+    let unitCost;
+    if (isEntry) {
+      unitCost = round2(costoUnitario !== undefined && costoUnitario !== null ? costoUnitario : prevAvg);
+    } else {
+      unitCost = documentoTipo === 'DEVOLUCION_COMPRA' && costoUnitario ? round2(costoUnitario) : prevAvg;
+    }
+
+    const newStock = round2(isEntry ? prevStock + qty : prevStock - qty);
+
+    let newAvg = prevAvg;
+    if (isEntry && newStock > 0) {
+      const prevValue = Math.max(0, prevStock) * prevAvg;
+      newAvg = round2((prevValue + qty * unitCost) / newStock);
+    }
+
+    product.stock = newStock;
+    product.costoPromedio = newAvg;
+    if (isEntry && unitCost > 0 && (documentoTipo === 'COMPRA' || documentoTipo === 'PRODUCCION_ENTRADA')) {
       product.ultimoCosto = unitCost;
     }
-    await DB.update(STORES.PRODUCTS, product);
+    await tx.put(STORES.PRODUCTS, product);
 
-    // Registrar en Kardex
-    const movement = {
+    const movement = await tx.put(STORES.KARDEX, {
       tenantId,
       fecha: new Date().toISOString(),
       productoId,
       productoNombre: product.nombre,
       sku: product.sku,
-      bodegaId: bodegaId || 'wh_1',
-      bodegaNombre: warehouseName,
+      bodegaId: bodegaId || product.bodegaId || null,
+      bodegaNombre: warehouse ? warehouse.nombre : 'Bodega Principal',
       documentoTipo,
       documentoNumero: documentoNumero || '-',
-      cantidadEntrada: cantEntrada,
-      cantidadSalida: cantSalida,
-      saldoCantidad: product.stock,
+      cantidadEntrada: isEntry ? qty : 0,
+      cantidadSalida: isEntry ? 0 : qty,
+      saldoCantidad: newStock,
       costoUnitario: unitCost,
-      costoTotal: Math.round(Number(cantidad) * unitCost),
-      usuarioId: usuarioId || localStorage.getItem('nexa_active_user') || 'usr_admin',
-      usuarioNombre: 'Usuario Sistema',
+      costoTotal: round2(qty * unitCost),
+      costoPromedioResultante: newAvg,
+      usuarioId: Session.userId(),
+      usuarioNombre: Session.userName(),
       observacion: observacion || ''
-    };
+    });
 
-    const savedMovement = await DB.add(STORES.KARDEX, movement);
-
-    await AuditService.log({
+    await AuditService.logTx(tx, {
+      tenantId,
       modulo: 'Inventario',
       accion: isEntry ? 'ENTRADA' : 'SALIDA',
       registroId: product.sku,
-      campoModificado: `Movimiento: ${documentoTipo}`,
-      valorAnterior: `${prevStock} ${product.unidadMedida}`,
-      valorNuevo: `${product.stock} ${product.unidadMedida}`
+      campoModificado: `Movimiento: ${documentoTipo} (${documentoNumero || '-'})`,
+      valorAnterior: `${prevStock} ${product.unidadMedida || ''}`.trim(),
+      valorNuevo: `${newStock} ${product.unidadMedida || ''}`.trim()
     });
 
-    return savedMovement;
+    return movement;
   },
 
-  /**
-   * Obtiene los movimientos de Kardex con filtros opcionales
-   */
+  /** Registra un movimiento aislado en su propia transacción */
+  async registerMovement(params) {
+    return DB.runTransaction(KARDEX_TX_STORES, (tx) => this.applyMovement(tx, params));
+  },
+
   async getMovements(tenantId, filters = {}) {
     let list = await DB.getAll(STORES.KARDEX, tenantId);
-    if (filters.productoId) {
-      list = list.filter(m => m.productoId === filters.productoId);
-    }
-    if (filters.bodegaId) {
-      list = list.filter(m => m.bodegaId === filters.bodegaId);
-    }
-    if (filters.documentoTipo) {
-      list = list.filter(m => m.documentoTipo === filters.documentoTipo);
-    }
+    if (filters.productoId) list = list.filter(m => m.productoId === filters.productoId);
+    if (filters.bodegaId) list = list.filter(m => m.bodegaId === filters.bodegaId);
+    if (filters.documentoTipo) list = list.filter(m => m.documentoTipo === filters.documentoTipo);
     return list.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   }
 };

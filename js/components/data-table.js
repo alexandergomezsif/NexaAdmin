@@ -3,6 +3,8 @@
  * Soporta búsqueda en tiempo real, ordenamiento, paginación y renderers personalizados
  */
 
+import { esc } from '../utils/formatters.js';
+
 export class DataTable {
   constructor({
     containerId,
@@ -77,7 +79,7 @@ export class DataTable {
           <div class="table-toolbar">
             <div class="table-search">
               <span class="table-search-icon">🔍</span>
-              <input type="text" class="table-search-input" placeholder="${this.searchPlaceholder}" value="${this.searchQuery}">
+              <input type="text" class="table-search-input" placeholder="${esc(this.searchPlaceholder)}" value="${esc(this.searchQuery)}">
             </div>
             <div class="table-info-counter text-xs text-muted"></div>
           </div>
@@ -203,6 +205,8 @@ export class DataTable {
           content = col.render(row[col.key], row);
         } else if (content === null || content === undefined) {
           content = '-';
+        } else {
+          content = esc(content);
         }
         return `<td>${content}</td>`;
       }).join('');

@@ -2,6 +2,8 @@
  * Nexa ERP - Componente Toast de Notificaciones
  */
 
+import { esc } from '../utils/formatters.js';
+
 class ToastManager {
   constructor() {
     this.container = null;
@@ -32,8 +34,8 @@ class ToastManager {
     toast.innerHTML = `
       <div style="font-weight: bold; font-size: 16px; line-height: 1;">${iconMap[type] || 'ℹ'}</div>
       <div class="toast-content">
-        ${title ? `<div class="toast-title">${title}</div>` : ''}
-        <div class="toast-message">${message}</div>
+        ${title ? `<div class="toast-title">${esc(title)}</div>` : ''}
+        <div class="toast-message">${esc(message)}</div>
       </div>
       <button style="background: none; border: none; font-size: 16px; color: #94a3b8; cursor: pointer;">&times;</button>
     `;

@@ -1,69 +1,61 @@
 /**
- * Nexa ERP - Módulo 13: Usuarios y Permisos Granulares (RBAC)
- * Roles (Administrador, Gerente, Vendedor, Bodega, Producción, Caja) y cambio de sesión
+ * Nexa ERP - Módulo 13: Usuarios y Permisos (RBAC)
+ * - Solo el rol Desarrollador crea, edita, desactiva o elimina usuarios.
+ * - Las contraseñas se guardan con hash PBKDF2; nunca se muestran.
+ * - Código de recuperación de acceso (se muestra una sola vez al generarlo).
  */
 
 import { DB, STORES } from '../services/db-service.js';
 import { AuthServiceInstance, ROLES, PERMISSIONS } from '../services/auth-service.js';
+import { CryptoUtil } from '../utils/crypto.js';
+import { AuditService } from '../services/audit-service.js';
+import { esc } from '../utils/formatters.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
 
+const ROLE_LIST = [ROLES.DEV, ROLES.GERENTE, ROLES.VENDEDOR, ROLES.BODEGA, ROLES.PRODUCCION, ROLES.CAJA];
+
+const DEFAULT_PERMS = {
+  [ROLES.DEV]: Object.values(PERMISSIONS),
+  [ROLES.GERENTE]: ['VER', 'CREAR', 'EDITAR', 'ELIMINAR', 'AUTORIZAR', 'EXPORTAR', 'FINANCIERO'],
+  [ROLES.VENDEDOR]: ['VER', 'CREAR'],
+  [ROLES.BODEGA]: ['VER', 'CREAR', 'EDITAR'],
+  [ROLES.PRODUCCION]: ['VER', 'CREAR', 'EDITAR'],
+  [ROLES.CAJA]: ['VER', 'CREAR']
+};
+
 export const UsersModule = {
   async render(container) {
     const tenant = TenantServiceInstance.getActiveTenant();
-    const tenantId = tenant ? tenant.id : 'tenant_rayopro';
-
-    const users = await DB.getAll(STORES.USERS, tenantId);
+    const tenantId = tenant.id;
+    const allUsers = await DB.getAll(STORES.USERS);
+    // Usuarios de esta empresa + desarrolladores (globales)
+    const users = allUsers.filter(u => u.tenantId === tenantId || u.rol === ROLES.DEV);
     const currentUser = AuthServiceInstance.getCurrentUser();
     const isDev = AuthServiceInstance.isDeveloper();
+    const hasRecovery = await AuthServiceInstance.hasRecoveryCode();
 
     container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
-          <h1>Gestión de Usuarios & Control de Accesos (RBAC)</h1>
-          <p>Administración de credenciales, roles operativos y matriz de permisos granulares</p>
+          <h1>Usuarios y Control de Accesos</h1>
+          <p>Cuentas, roles y permisos. Las contraseñas se almacenan cifradas (hash) y nunca se muestran.</p>
         </div>
         <div class="view-actions">
           ${isDev ? `
-            <button class="btn btn-primary btn-sm" id="btn-new-user">👤 Crear Usuario</button>
-          ` : `
-            <span class="badge badge-warning" style="font-size: 11px; padding: 6px 12px;">🔒 Edición reservada a Desarrollador</span>
-          `}
+            <button class="btn btn-secondary btn-sm" id="btn-recovery-code">🔑 ${hasRecovery ? 'Regenerar' : 'Generar'} código de recuperación</button>
+            <button class="btn btn-primary btn-sm" id="btn-new-user">👤 Crear usuario</button>
+          ` : '<span class="badge badge-warning" style="font-size: 11px; padding: 6px 12px;">🔒 Edición reservada al rol Desarrollador</span>'}
         </div>
       </div>
 
-      <!-- ALERTA DE SEGURIDAD Y PROTECCIÓN DE AUTORÍA INTELECTUAL -->
-      ${!isDev ? `
-        <div class="alert alert-warning mb-4" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 14px 18px;">
-          <div style="font-size: 13.5px; font-weight: 800; color: #b45309; margin-bottom: 4px;">
-            🛡️ Módulo Protegido — Propiedad Intelectual & Licenciamiento Nexa ERP
-          </div>
-          <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
-            La creación de usuarios del sistema y la alteración de roles y permisos RBAC están reservadas exclusivamente al <strong>Desarrollador / Autor del Software</strong> con contraseña maestra. El perfil <strong>Gerente (Juan Pablo)</strong> cuenta con control total de las operaciones comerciales, inventarios y finanzas, pero la matriz de usuarios está blindada para proteger la autoría intelectual del software.
-          </div>
-        </div>
-      ` : ''}
+      ${isDev && !hasRecovery ? `<div class="alert alert-warning mb-3 text-xs">⚠️ No hay código de recuperación configurado. Si olvida su contraseña no podrá recuperar el acceso. Genérelo y guárdelo en papel.</div>` : ''}
 
-      <div class="card mb-4" style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 14px 20px;">
-        <div class="d-flex justify-between items-center flex-wrap gap-2">
-          <div>
-            <span class="text-xs text-muted">Sesión Activa Actual:</span>
-            <div style="font-size: 15px; font-weight: 700;">
-              ${currentUser.nombre} 
-              <span class="badge ${isDev ? 'badge-primary' : 'badge-info'}" style="font-size: 11px;">${currentUser.rol}</span>
-            </div>
-          </div>
-          <div class="d-flex items-center gap-2">
-            <span class="text-xs font-bold text-muted">CONMUTAR PERFIL:</span>
-            <select class="form-select" id="sel-switch-user" style="width: auto; font-size: 12px;">
-              ${users.map(u => `
-                <option value="${u.id}" ${u.id === currentUser.id ? 'selected' : ''}>${u.nombre} - ${u.rol}</option>
-              `).join('')}
-            </select>
-          </div>
-        </div>
+      <div class="card mb-3" style="padding: 12px 18px;">
+        <span class="text-xs text-muted">Sesión activa:</span>
+        <strong>${esc(currentUser.nombre)}</strong> <span class="badge badge-info">${esc(currentUser.rol)}</span>
       </div>
 
       <div id="users-table-container"></div>
@@ -73,241 +65,195 @@ export const UsersModule = {
       containerId: 'users-table-container',
       data: users,
       columns: [
+        { key: 'nombre', title: 'Usuario', render: (val, row) => `<div><strong>${esc(val)}</strong><div class="text-xs text-muted">@${esc(row.usuario)}${row.email ? ' • ' + esc(row.email) : ''}</div></div>` },
+        { key: 'rol', title: 'Rol', render: val => `<span class="badge ${val === ROLES.DEV ? 'badge-primary' : 'badge-info'} font-bold">${esc(val)}</span>` },
+        { key: 'permisos', title: 'Permisos', render: val => (Array.isArray(val) ? val : []).map(p => `<span class="badge badge-neutral" style="font-size: 10px; margin: 1px;">${esc(p)}</span>`).join(' ') },
         {
-          key: 'nombre',
-          title: 'Nombre de Usuario',
-          render: (val, row) => `
-            <div>
-              <strong>${val}</strong>
-              <div class="text-xs text-muted">@${row.usuario} • ${row.email}</div>
-            </div>
-          `
-        },
-        {
-          key: 'rol',
-          title: 'Rol Asignado',
-          render: val => `<span class="badge ${val === 'Desarrollador' ? 'badge-primary font-bold' : 'badge-info font-bold'}">${val}</span>`
-        },
-        {
-          key: 'permisos',
-          title: 'Permisos Granulares',
-          render: val => {
-            const list = Array.isArray(val) ? val : [];
-            return list.map(p => `<span class="badge badge-neutral" style="font-size: 10px; margin: 1px;">${p}</span>`).join(' ');
-          }
-        },
-        {
-          key: 'estado',
-          title: 'Estado',
-          render: val => `<span class="badge ${val === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">${val}</span>`
+          key: 'estado', title: 'Estado', render: (val, row) => `
+            <span class="badge ${val === 'INACTIVO' ? 'badge-danger' : 'badge-success'}">${esc(val || 'ACTIVO')}</span>
+            ${row.sinClave || !row.claveHash ? '<span class="badge badge-warning" style="font-size: 10px;">sin contraseña</span>' : ''}
+            ${row.debeCambiarClave ? '<span class="badge badge-warning" style="font-size: 10px;">debe cambiar clave</span>' : ''}`
         }
       ],
       actions: (row) => isDev ? `
-        <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${row.id}">✏️ Editar</button>
-        <button class="btn btn-danger btn-sm btn-delete-user" data-id="${row.id}">🗑️ Eliminar</button>
-      ` : `
-        <span class="badge badge-neutral" style="font-size: 10px;">🔒 Protegido</span>
-      `
+        <button class="btn btn-secondary btn-sm btn-edit-user" data-id="${esc(row.id)}">✏️ Editar</button>
+        ${row.id !== currentUser.id ? `<button class="btn btn-danger btn-sm btn-delete-user" data-id="${esc(row.id)}">🗑️</button>` : ''}
+      ` : '<span class="badge badge-neutral" style="font-size: 10px;">🔒</span>'
     });
 
-    // Conmutador de perfil con contraseña si es Desarrollador
-    container.querySelector('#sel-switch-user').addEventListener('change', async (e) => {
-      const targetUserId = e.target.value;
-      const targetUser = users.find(u => u.id === targetUserId);
-      if (!targetUser) return;
+    if (!isDev) return;
 
-      if (targetUser.rol === 'Desarrollador' || targetUser.rol === ROLES.DEV) {
-        const pass = prompt('🔐 Ingrese la contraseña de DESARROLLADOR para autenticar el perfil de autor:');
-        if (!pass) {
-          Toast.warning('Acceso de desarrollador cancelado.');
-          this.render(container);
-          return;
-        }
-        try {
-          await AuthServiceInstance.switchUser(targetUserId, pass);
-          Toast.success('Sesión cambiada a Desarrollador.');
-          this.render(container);
-        } catch (err) {
-          Toast.error(err.message || 'Contraseña incorrecta.');
-          this.render(container);
-        }
-        return;
-      }
+    container.querySelector('#btn-new-user').addEventListener('click', () => this.openUserModal(null, tenantId, users, () => this.render(container)));
 
-      await AuthServiceInstance.switchUser(targetUserId);
-      Toast.success('Sesión cambiada. Permisos actualizados.');
-      this.render(container);
-    });
-
-    // Nuevo usuario (solo Desarrollador)
-    const btnNewUser = container.querySelector('#btn-new-user');
-    if (btnNewUser) {
-      btnNewUser.addEventListener('click', () => {
-        if (!AuthServiceInstance.isDeveloper()) {
-          Toast.error('Acción reservada al Desarrollador del software.');
-          return;
+    container.querySelector('#btn-recovery-code').addEventListener('click', () => {
+      Modal.confirm({
+        title: 'Código de recuperación',
+        message: 'Se generará un código nuevo y el anterior dejará de funcionar. ¿Continuar?',
+        confirmText: 'Generar',
+        onConfirm: async () => {
+          try {
+            const code = await AuthServiceInstance.regenerateRecoveryCode();
+            await AuditService.log({ modulo: 'Seguridad', accion: 'MODIFICAR', registroId: 'recuperacion', campoModificado: 'Código de recuperación', valorNuevo: 'Regenerado' });
+            Modal.show({
+              title: 'Nuevo código de recuperación',
+              size: 'sm',
+              content: `<p class="text-xs mb-2">Anótelo en papel y guárdelo fuera del computador. No se volverá a mostrar.</p><div class="recovery-code">${esc(code)}</div>`,
+              footerButtons: [{ label: 'Ya lo anoté', class: 'btn-primary', onClick: () => { Modal.close(); this.render(container); } }]
+            });
+          } catch (err) {
+            Toast.error(err.message);
+          }
         }
-        this.openUserModal(null, tenantId, () => this.render(container));
       });
-    }
+    });
 
-    container.addEventListener('click', (e) => {
+    container.querySelector('#users-table-container').addEventListener('click', (e) => {
       const editBtn = e.target.closest('.btn-edit-user');
-      const deleteBtn = e.target.closest('.btn-delete-user');
-      
+      const delBtn = e.target.closest('.btn-delete-user');
       if (editBtn) {
-        if (!AuthServiceInstance.isDeveloper()) {
-          Toast.error('Edición reservada al Desarrollador del software.');
-          return;
-        }
-        const id = editBtn.getAttribute('data-id');
-        const user = users.find(u => u.id === id);
-        this.openUserModal(user, tenantId, () => this.render(container));
+        const user = users.find(u => u.id === editBtn.getAttribute('data-id'));
+        this.openUserModal(user, tenantId, users, () => this.render(container));
       }
-
-      if (deleteBtn) {
-        if (!AuthServiceInstance.isDeveloper()) {
-          Toast.error('Acción reservada al Desarrollador del software.');
+      if (delBtn) {
+        const user = users.find(u => u.id === delBtn.getAttribute('data-id'));
+        if (!user || user.id === currentUser.id) return;
+        const devs = allUsers.filter(u => u.rol === ROLES.DEV && u.estado !== 'INACTIVO');
+        if (user.rol === ROLES.DEV && devs.length <= 1) {
+          Toast.error('No se puede eliminar el único Desarrollador activo.');
           return;
         }
-        const id = deleteBtn.getAttribute('data-id');
-        const user = users.find(u => u.id === id);
-        
-        if (user.id === currentUser.id) {
-          Toast.error('No puedes eliminar tu propio usuario mientras tienes la sesión iniciada.');
-          return;
-        }
-
         Modal.confirm({
-          title: 'Confirmar Eliminación',
-          message: `¿Estás seguro de que deseas eliminar permanentemente al usuario <strong>${user.nombre}</strong>?`,
-          confirmText: 'Sí, Eliminar',
-          cancelText: 'Cancelar',
+          title: 'Eliminar usuario',
+          message: `¿Eliminar permanentemente a <strong>${esc(user.nombre)}</strong>? Su historial en auditoría se conserva. Si solo quiere bloquear el acceso, edítelo y márquelo INACTIVO.`,
+          confirmText: 'Sí, eliminar',
+          isDanger: true,
           onConfirm: async () => {
-            try {
-              await DB.delete(STORES.USERS, id);
-              Toast.success('Usuario eliminado exitosamente.');
-              this.render(container);
-            } catch (err) {
-              Toast.error('Error al eliminar usuario: ' + err.message);
-            }
+            await DB.delete(STORES.USERS, user.id);
+            await AuditService.log({ modulo: 'Seguridad', accion: 'ELIMINAR', registroId: user.id, campoModificado: 'Usuario', valorAnterior: user.usuario });
+            Toast.success('Usuario eliminado.');
+            this.render(container);
           }
         });
       }
     });
   },
 
-  openUserModal(user = null, tenantId, onSaved) {
+  openUserModal(user, tenantId, users, onSaved) {
     const isEdit = !!user;
     const allPerms = Object.values(PERMISSIONS);
-    const userPerms = user ? (user.permisos || []) : ['VER', 'CREAR', 'EDITAR'];
-
-    const content = `
-      <form id="user-form">
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Nombre Completo</label>
-            <input type="text" class="form-control" name="nombre" required value="${user ? user.nombre : ''}" placeholder="Ej: Valentina Restrepo">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Nombre de Usuario (Login)</label>
-            <input type="text" class="form-control" name="usuario" required value="${user ? user.usuario : ''}" placeholder="Ej: valentina.ventas">
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Correo Electrónico</label>
-            <input type="email" class="form-control" name="email" required value="${user ? user.email : ''}" placeholder="usuario@rayopro.com.co">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Rol del Sistema</label>
-            <select class="form-select" name="rol" id="user-role-sel">
-              ${Object.values(ROLES).map(r => `
-                <option value="${r}" ${user && user.rol === r ? 'selected' : ''}>${r}</option>
-              `).join('')}
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Contraseña de Acceso</label>
-            <input type="text" class="form-control" name="clave" value="${user ? (user.clave || '') : ''}" placeholder="Ej: Admin.2026">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Estado de la Cuenta</label>
-            <select class="form-select" name="estado">
-              <option value="ACTIVO" ${!user || user.estado === 'ACTIVO' ? 'selected' : ''}>ACTIVO</option>
-              <option value="INACTIVO" ${user && user.estado === 'INACTIVO' ? 'selected' : ''}>INACTIVO</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="card mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color);">
-          <div class="card-header" style="padding: 10px 14px;">
-            <div class="card-title" style="font-size: 13px;">🛡️ Permisos Granulares de Acceso</div>
-          </div>
-          <div class="card-body" style="padding: 12px;">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-              ${allPerms.map(p => `
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
-                  <input type="checkbox" name="permiso_${p}" value="${p}" ${userPerms.includes(p) ? 'checked' : ''}>
-                  <span>${p === 'FINANCIERO' ? 'VER INFORMACIÓN FINANCIERA' : p}</span>
-                </label>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-      </form>
-    `;
+    const userPerms = user ? (user.permisos || []) : DEFAULT_PERMS[ROLES.VENDEDOR];
 
     const dialog = Modal.show({
-      title: isEdit ? `Editar Usuario: ${user.nombre}` : 'Crear Nuevo Usuario',
-      content,
+      title: isEdit ? `Editar usuario: ${user.nombre}` : 'Crear usuario',
+      content: `
+        <form id="user-form" autocomplete="off">
+          <div class="form-row mb-3">
+            <div class="form-group"><label class="form-label">Nombre completo</label>
+              <input type="text" class="form-control" name="nombre" required value="${esc(user ? user.nombre : '')}"></div>
+            <div class="form-group"><label class="form-label">Usuario (login)</label>
+              <input type="text" class="form-control" name="usuario" required value="${esc(user ? user.usuario : '')}" autocomplete="off"></div>
+          </div>
+          <div class="form-row mb-3">
+            <div class="form-group"><label class="form-label">Correo (opcional)</label>
+              <input type="email" class="form-control" name="email" value="${esc(user ? (user.email || '') : '')}"></div>
+            <div class="form-group"><label class="form-label">Rol</label>
+              <select class="form-select" name="rol" id="user-role-sel">
+                ${ROLE_LIST.map(r => `<option value="${esc(r)}" ${user && user.rol === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}
+              </select></div>
+          </div>
+          <div class="form-row mb-3">
+            <div class="form-group"><label class="form-label">${isEdit ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña inicial'}</label>
+              <input type="password" class="form-control" name="clave" ${isEdit ? '' : 'required'} autocomplete="new-password">
+              <div class="form-help">${esc(AuthServiceInstance.passwordRules())}</div></div>
+            <div class="form-group"><label class="form-label">Estado</label>
+              <select class="form-select" name="estado">
+                <option value="ACTIVO" ${!user || user.estado !== 'INACTIVO' ? 'selected' : ''}>ACTIVO</option>
+                <option value="INACTIVO" ${user && user.estado === 'INACTIVO' ? 'selected' : ''}>INACTIVO (sin acceso)</option>
+              </select></div>
+          </div>
+          <label class="d-flex items-center gap-2 text-xs mb-3"><input type="checkbox" name="forzarCambio" ${!isEdit ? 'checked' : ''}> Pedir que cambie la contraseña en el próximo ingreso</label>
+          <div class="card mb-0" style="border: 1px solid var(--border-color);">
+            <div class="card-header" style="padding: 10px 14px;"><div class="card-title" style="font-size: 13px;">Permisos</div></div>
+            <div class="card-body" style="padding: 12px;">
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;" id="perm-grid">
+                ${allPerms.map(p => `
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" name="permiso_${p}" value="${p}" ${userPerms.includes(p) ? 'checked' : ''}>
+                    <span>${p === 'FINANCIERO' ? 'VER INFORMACIÓN FINANCIERA' : (p === 'AUTORIZAR' ? 'AUTORIZAR (anular ventas)' : p)}</span>
+                  </label>`).join('')}
+              </div>
+            </div>
+          </div>
+        </form>`,
       footerButtons: [
         { label: 'Cancelar', class: 'btn-secondary', onClick: () => Modal.close() },
         {
-          label: isEdit ? 'Guardar Cambios' : 'Crear Usuario',
+          label: isEdit ? 'Guardar cambios' : 'Crear usuario',
           class: 'btn-primary',
           onClick: async () => {
             const form = dialog.querySelector('#user-form');
-            if (!form.checkValidity()) {
-              form.reportValidity();
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+            const fd = new FormData(form);
+            const usuario = String(fd.get('usuario')).trim().toLowerCase();
+            if (!/^[a-z0-9._-]{3,30}$/.test(usuario)) {
+              Toast.warning('El usuario debe tener 3-30 caracteres: letras, números, punto, guion o guion bajo.');
+              return;
+            }
+            const all = await DB.getAll(STORES.USERS);
+            if (all.some(u => String(u.usuario).toLowerCase() === usuario && (!user || u.id !== user.id))) {
+              Toast.warning('Ya existe un usuario con ese nombre de acceso.');
+              return;
+            }
+            const clave = String(fd.get('clave') || '');
+            if (clave && !AuthServiceInstance.isStrongPassword(clave)) {
+              Toast.warning(AuthServiceInstance.passwordRules());
+              return;
+            }
+            const rol = fd.get('rol');
+            const estado = fd.get('estado');
+            if (isEdit && user.id === AuthServiceInstance.getCurrentUser().id && (estado === 'INACTIVO' || rol !== user.rol)) {
+              Toast.warning('No puede cambiar su propio rol ni desactivarse.');
               return;
             }
 
-            const formData = new FormData(form);
-            const permisos = [];
-            allPerms.forEach(p => {
-              if (formData.get(`permiso_${p}`)) permisos.push(p);
-            });
-
             const payload = {
-              tenantId,
-              nombre: formData.get('nombre'),
-              usuario: formData.get('usuario'),
-              email: formData.get('email'),
-              rol: formData.get('rol'),
-              clave: formData.get('clave') || (user ? user.clave : ''),
-              estado: formData.get('estado') || 'ACTIVO',
-              permisos
+              ...(user || {}),
+              tenantId: user ? user.tenantId : tenantId,
+              nombre: String(fd.get('nombre')).trim(),
+              usuario,
+              email: String(fd.get('email') || '').trim(),
+              rol,
+              estado,
+              permisos: allPerms.filter(p => fd.get(`permiso_${p}`)),
+              debeCambiarClave: !!fd.get('forzarCambio') || (user ? !!user.debeCambiarClave && !clave : false)
             };
-
-            if (isEdit) {
-              payload.id = user.id;
-              await DB.update(STORES.USERS, payload);
-              Toast.success('Usuario actualizado.');
-            } else {
-              await DB.add(STORES.USERS, payload);
-              Toast.success('Usuario registrado.');
+            delete payload.clave;
+            if (clave) {
+              payload.claveHash = await CryptoUtil.hashPassword(clave);
+              delete payload.sinClave;
             }
 
+            if (isEdit) {
+              await DB.update(STORES.USERS, payload);
+            } else {
+              await DB.add(STORES.USERS, payload);
+            }
+            await AuditService.log({
+              modulo: 'Seguridad', accion: isEdit ? 'MODIFICAR' : 'CREAR', registroId: payload.id,
+              campoModificado: 'Usuario', valorNuevo: `${payload.usuario} (${payload.rol}, ${payload.estado})${clave ? ' + clave' : ''}`
+            });
+            Toast.success(isEdit ? 'Usuario actualizado.' : 'Usuario creado.');
             Modal.close();
             if (onSaved) onSaved();
           }
         }
       ]
+    });
+
+    const roleSel = dialog.querySelector('#user-role-sel');
+    roleSel.addEventListener('change', () => {
+      const perms = DEFAULT_PERMS[roleSel.value] || [];
+      dialog.querySelectorAll('#perm-grid input[type=checkbox]').forEach(chk => { chk.checked = perms.includes(chk.value); });
     });
   }
 };

@@ -4,7 +4,8 @@
  */
 
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
+import { ExpenseService, CASH_EXPENSE_METHOD } from '../services/expense-service.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
@@ -68,15 +69,15 @@ export const ExpensesModule = {
         {
           key: 'categoria',
           title: 'Categoría',
-          render: val => `<span class="badge badge-neutral font-bold">${val}</span>`
+          render: val => `<span class="badge badge-neutral font-bold">${esc(val)}</span>`
         },
         {
           key: 'concepto',
           title: 'Concepto / Detalle',
           render: (val, row) => `
             <div>
-              <strong>${val}</strong>
-              <div class="text-xs text-muted">Beneficiario: ${row.proveedor || '-'}</div>
+              <strong>${esc(val)}</strong>
+              <div class="text-xs text-muted">Beneficiario: ${esc(row.proveedor || '-')}</div>
             </div>
           `
         },
@@ -88,12 +89,12 @@ export const ExpensesModule = {
         {
           key: 'formaPago',
           title: 'Medio de Pago',
-          render: val => `<span class="badge badge-info">${val || 'Efectivo'}</span>`
+          render: val => `<span class="badge badge-info">${esc(val || '-')}</span>`
         },
         {
           key: 'responsableNombre',
           title: 'Responsable',
-          render: val => val || 'Administración'
+          render: val => esc(val || '-')
         }
       ]
     });
@@ -115,7 +116,7 @@ export const ExpensesModule = {
           </div>
           <div class="form-group">
             <label class="form-label">Valor del Gasto ($ COP)</label>
-            <input type="number" class="form-control" name="valor" required placeholder="Ej: 85000">
+            <input type="number" class="form-control" name="valor" required min="1" step="any" placeholder="Ej: 85000">
           </div>
         </div>
 
@@ -132,7 +133,7 @@ export const ExpensesModule = {
           <div class="form-group">
             <label class="form-label">Forma de Pago</label>
             <select class="form-select" name="formaPago">
-              <option value="Efectivo Caja Menor">Efectivo Caja Menor</option>
+              <option value="${CASH_EXPENSE_METHOD}">Efectivo de caja (descuenta la caja abierta)</option>
               <option value="Transferencia Bancolombia">Transferencia Bancolombia</option>
               <option value="Nequi / Daviplata">Nequi / Daviplata</option>
               <option value="Tarjeta Corporativa">Tarjeta Corporativa</option>
@@ -163,19 +164,20 @@ export const ExpensesModule = {
             }
 
             const formData = new FormData(form);
-            const payload = {
-              tenantId,
-              fecha: new Date().toISOString(),
-              categoria: formData.get('categoria'),
-              valor: Number(formData.get('valor')),
-              concepto: formData.get('concepto'),
-              proveedor: formData.get('proveedor'),
-              formaPago: formData.get('formaPago'),
-              responsableNombre: 'Carlos Mario Arango',
-              observacion: formData.get('observacion')
-            };
-
-            await DB.add(STORES.EXPENSES, payload);
+            try {
+              await ExpenseService.registerExpense({
+                tenantId,
+                categoria: formData.get('categoria'),
+                valor: Number(formData.get('valor')),
+                concepto: formData.get('concepto'),
+                proveedor: formData.get('proveedor'),
+                formaPago: formData.get('formaPago'),
+                observacion: formData.get('observacion')
+              });
+            } catch (err) {
+              Toast.error(err.message);
+              return;
+            }
             Toast.success('Gasto registrado exitosamente.');
             Modal.close();
             if (onSaved) onSaved();

@@ -9,6 +9,8 @@ import { CashService } from '../services/cash-service.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
+import { ExpenseService } from '../services/expense-service.js';
+import { esc } from '../utils/formatters.js';
 
 export const CashModule = {
   async render(container) {
@@ -45,7 +47,7 @@ export const CashModule = {
           <div class="card-header">
             <div>
               <div class="card-title">Turno de Caja Activo</div>
-              <div class="card-subtitle">Aperturado el ${Formatters.dateTime(currentShift.fechaApertura)} por <strong>${currentShift.usuarioNombre || 'Cajero'}</strong></div>
+              <div class="card-subtitle">Aperturado el ${Formatters.dateTime(currentShift.fechaApertura)} por <strong>${esc(currentShift.usuarioNombre || 'Cajero')}</strong></div>
             </div>
             <span class="badge badge-success">● TURNO ABIERTO</span>
           </div>
@@ -115,8 +117,8 @@ export const CashModule = {
                       <td>
                         <span class="badge ${m.tipo === 'INGRESO' ? 'badge-success' : 'badge-danger'}">${m.tipo}</span>
                       </td>
-                      <td><strong>${m.concepto}</strong></td>
-                      <td>${m.tercero}</td>
+                      <td><strong>${esc(m.concepto)}</strong></td>
+                      <td>${esc(m.tercero)}</td>
                       <td class="text-right font-bold ${m.tipo === 'INGRESO' ? 'text-success' : 'text-danger'}">
                         ${m.tipo === 'INGRESO' ? '+' : '-'}${Formatters.currency(m.monto)}
                       </td>
@@ -169,7 +171,7 @@ export const CashModule = {
                     <tr>
                       <td>${Formatters.dateTime(s.fechaApertura)}</td>
                       <td>${Formatters.dateTime(s.fechaCierre)}</td>
-                      <td><strong>${s.usuarioNombre || 'Cajero'}</strong></td>
+                      <td><strong>${esc(s.usuarioNombre || 'Cajero')}</strong></td>
                       <td class="text-right">${Formatters.currency(s.montoApertura)}</td>
                       <td class="text-right">${Formatters.currency(s.totalVentasEfectivo)}</td>
                       <td class="text-right">${Formatters.currency(s.saldoEsperado)}</td>
@@ -246,13 +248,7 @@ export const CashModule = {
             const observaciones = formData.get('observaciones');
 
             try {
-              await CashService.openShift({
-                tenantId,
-                usuarioId: 'usr_admin',
-                usuarioNombre: 'Carlos Mario Arango',
-                montoApertura,
-                observaciones
-              });
+              await CashService.openShift({ tenantId, montoApertura, observaciones });
               Toast.success('Turno de caja aperturado correctamente.');
               Modal.close();
               if (onComplete) onComplete();
@@ -280,7 +276,7 @@ export const CashModule = {
           </div>
           <div class="form-group">
             <label class="form-label">Monto ($ COP)</label>
-            <input type="number" class="form-control" name="monto" required placeholder="Ej: 50000">
+            <input type="number" class="form-control" name="monto" required min="1" step="any" placeholder="Ej: 50000">
           </div>
         </div>
 
@@ -289,6 +285,12 @@ export const CashModule = {
           <input type="text" class="form-control" name="concepto" required placeholder="Ej: Pago de almuerzo personal o recarga de botellón de agua">
         </div>
 
+        <div class="form-group mb-3" id="mov-cat-wrap" style="display: none;">
+          <label class="form-label">Categoría del gasto</label>
+          <select class="form-select" name="categoria">
+            ${['Gastos Varios', 'Combustible y Vehículos', 'Transporte y Domicilios', 'Aseo y Cafetería', 'Papelería', 'Mantenimiento', 'Servicios Públicos'].map(c => `<option>${c}</option>`).join('')}
+          </select>
+        </div>
         <div class="form-group mb-3">
           <label class="form-label">Tercero / Proveedor / Beneficiario</label>
           <input type="text" class="form-control" name="tercero" placeholder="Ej: Domicilios El Poblado">
@@ -297,7 +299,7 @@ export const CashModule = {
     `;
 
     const dialog = Modal.show({
-      title: 'Registrar Movimiento en Caja',
+      title: 'Registrar movimiento en caja',
       content,
       footerButtons: [
         { label: 'Cancelar', class: 'btn-secondary', onClick: () => Modal.close() },
@@ -328,6 +330,9 @@ export const CashModule = {
         }
       ]
     });
+    const tipoSel = dialog.querySelector('select[name=tipo]');
+    const catWrap = dialog.querySelector('#mov-cat-wrap');
+    tipoSel.addEventListener('change', () => { catWrap.style.display = tipoSel.value === 'GASTO' ? '' : 'none'; });
   },
 
   openCloseShiftModal(shift, onComplete) {
@@ -430,14 +435,15 @@ export const CashModule = {
     const defaultMsg = `📊 *REPORTE DE CIERRE DE CAJA*\n` +
       `📅 *Fecha:* ${dateStr}\n` +
       `⏰ *Hora:* ${timeStr}\n` +
-      `👤 *Cajero Responsable:* ${shift.cajero || 'Cajero'}\n` +
+      `👤 *Cajero:* ${shift.usuarioNombre || '-'}${shift.cerradoPorNombre && shift.cerradoPorNombre !== shift.usuarioNombre ? ' (cerró: ' + shift.cerradoPorNombre + ')' : ''}\n` +
       `----------------------------------------\n` +
-      `💵 *Base Inicial de Gaveta:* ${Formatters.currency(shift.montoInicial || 0)}\n` +
-      `💰 *Ventas Efectivo:* ${Formatters.currency(shift.ventasEfectivo || 0)}\n` +
-      `💳 *Ventas Tarjeta / Datáfono:* ${Formatters.currency(shift.ventasTarjeta || 0)}\n` +
-      `📲 *Ventas Transferencias:* ${Formatters.currency(shift.ventasTransferencia || 0)}\n` +
-      `➕ *Entradas manuales:* ${Formatters.currency(shift.totalEntradas || 0)}\n` +
-      `➖ *Salidas / Gastos menores:* ${Formatters.currency(shift.totalSalidas || 0)}\n` +
+      `💵 *Base inicial:* ${Formatters.currency(shift.montoApertura || 0)}\n` +
+      `💰 *Ventas efectivo:* ${Formatters.currency(shift.totalVentasEfectivo || 0)}\n` +
+      `💳 *Ventas tarjeta:* ${Formatters.currency(shift.totalVentasTarjeta || 0)}\n` +
+      `📲 *Ventas transferencia:* ${Formatters.currency(shift.totalVentasTransferencia || 0)}\n` +
+      `📱 *Ventas Nequi/Daviplata:* ${Formatters.currency(shift.totalVentasNequiDaviplata || 0)}\n` +
+      `➕ *Ingresos manuales:* ${Formatters.currency(shift.totalIngresos || 0)}\n` +
+      `➖ *Gastos, egresos y retiros:* ${Formatters.currency((shift.totalGastos || 0) + (shift.totalEgresos || 0) + (shift.totalRetiros || 0))}\n` +
       `----------------------------------------\n` +
       `🎯 *Total Teórico Esperado en Gaveta:* ${Formatters.currency(shift.saldoEsperado || 0)}\n` +
       `💵 *Total Real Físico Contado:* ${Formatters.currency(saldoContado)}\n` +
@@ -454,13 +460,13 @@ export const CashModule = {
 
         <div class="form-group mb-3">
           <label class="form-label font-bold">Número de WhatsApp del Socio / Gerente:</label>
-          <input type="text" class="form-control" id="inp-shift-wa-phone" placeholder="Ej: 3001234567" value="3001234567">
+          <input type="text" class="form-control" id="inp-shift-wa-phone" placeholder="Ej: 3001234567" value="${esc(String((TenantServiceInstance.getActiveTenant() || {}).whatsappGerencia || '').replace(/\D/g, ''))}">
           <span class="text-xs text-muted">Prefijo +57 Colombia se aplicará automáticamente.</span>
         </div>
 
         <div class="form-group mb-3">
           <label class="form-label font-bold">Mensaje Pre-redactado:</label>
-          <textarea class="form-control" id="txt-shift-wa-msg" rows="9" style="font-family: monospace; font-size: 11px; white-space: pre-wrap;">${defaultMsg}</textarea>
+          <textarea class="form-control" id="txt-shift-wa-msg" rows="9" style="font-family: monospace; font-size: 11px; white-space: pre-wrap;">${esc(defaultMsg)}</textarea>
         </div>
       </div>
     `;
