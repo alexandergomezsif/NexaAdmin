@@ -11,3 +11,16 @@ desktop.ini
 
 # Credenciales y seguridad privada local
 CREDENCIALES.md
+
+# Datos reales del negocio: NUNCA versionar (respaldos, firmas, hojas de clientes)
+datos/Backup json/
+datos/*.json
+datos/*.xlsx
+datos/*.xls
+datos/*.csv
+datos/firma*
+NexaERP_*.json
+
+# Herramientas de prueba locales
+node_modules/
+tests/.out/
