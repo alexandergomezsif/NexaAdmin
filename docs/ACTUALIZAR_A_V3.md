@@ -11,7 +11,7 @@
 3. Copie desde `NexaAdmin_ANTERIOR\datos\` lo que necesite conservar en su equipo (por ejemplo la firma o los respaldos). Esos archivos **ya no se suben a GitHub**.
 
 ## 3. Primer ingreso
-- Abra `index.html` en el **mismo navegador** que usaba: los datos viven en ese navegador y se migran solos.
+- Abra la app en el **mismo navegador y de la misma forma** que antes (archivo `index.html` local, o la dirección de GitHub Pages si la usaba): los datos viven en ese navegador para esa dirección y se migran solos.
 - Ingrese con su usuario y clave actuales. Si la clave es débil (por ejemplo `1234`), el sistema le pedirá una nueva.
 - Al cambiar la clave del Desarrollador verá un **código de recuperación**: anótelo en papel.
 - En **Configuración** revise qué listas de precios incluyen IVA (por defecto: P1 sí; P2 a P5 no).
