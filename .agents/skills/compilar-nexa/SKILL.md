@@ -18,18 +18,20 @@ Como agente de IA, **NUNCA** debes modificar el archivo `js/bundle.js` directame
    Ejecuta el script de construcción local mediante el archivo batch (ya que hay políticas de restricción de PowerShell).
    Usa la herramienta de ejecución de comandos para correr:
    `.\build.bat`
-   *(Alternativamente, puedes usar: `powershell -ExecutionPolicy Bypass -File build.ps1`)*
+   *(Si falta `build_tools\esbuild.exe`: `powershell -ExecutionPolicy Bypass -File build_tools\build.ps1` lo descarga.)*
 
 2. **Verificar el Bundle:**
    Asegúrate de que la consola reporte que `js/bundle.js` fue generado o actualizado correctamente sin errores.
 
-3. **Registrar en Git (Commit):**
+3. **Probar:** si hay Python con Playwright, ejecutar `python tests/e2e_nexa.py` con el servidor local activo; todas las pruebas deben pasar.
+
+4. **Registrar en Git (Commit):**
    Haz un `git status` para ver los cambios. 
    Usa `git add .` y luego haz un commit explicando claramente los cambios realizados (usa formato de conventional commits, ej: `feat: ...`, `fix: ...`).
 
-4. **Sincronizar con GitHub (Push):**
-   Ejecuta `git push origin main`.
+5. **Sincronizar con GitHub:**
+   Ejecuta `git pull --rebase origin main` y luego `git push origin main`. **NUNCA** uses `git push --force`.
    *Nota:* Si el push se queda bloqueado esperando credenciales interactivas, cancela la tarea e infórmale al usuario que debe ejecutar el comando `git push` manualmente en su terminal.
 
-5. **Notificar al Usuario:**
+6. **Notificar al Usuario:**
    Infórmale al usuario que el empaquetado y la sincronización con el repositorio han terminado con éxito, y que su archivo `index.html` ya tiene la versión más reciente inyectada.

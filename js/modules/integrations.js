@@ -4,6 +4,8 @@
  * Muestra estados reales y transparentes: "Integración pendiente de configuración"
  */
 
+import { Toast } from '../components/toast.js';
+
 export const IntegrationsModule = {
   render(container) {
     container.innerHTML = `
@@ -33,8 +35,8 @@ export const IntegrationsModule = {
             <p class="text-xs text-muted mb-3" style="line-height: 1.5;">
               Permite transmitir las facturas comerciales a los servidores de la DIAN mediante Proveedor Tecnológico autorizado o Software Propio.
             </p>
-            <div class="card mb-3" style="background: #f8fafc; padding: 12px; font-size: 12px; border: 1px solid var(--border-color);">
-              <div><strong>Ambiente Actual:</strong> Producción Interna POS</div>
+            <div class="card mb-3" style="padding: 12px; font-size: 12px; border: 1px solid var(--border-color);">
+              <div><strong>Estado:</strong> No integrado. Los documentos actuales son internos.</div>
               <div class="mt-1"><strong>Estado Habilitación DIAN:</strong> <span class="text-warning font-bold">Pendiente de Configuración</span></div>
               <div class="mt-1 text-muted text-xs">Requiere: Certificado Digital .pfx y Set de Pruebas DIAN.</div>
             </div>
@@ -57,7 +59,7 @@ export const IntegrationsModule = {
             </p>
             <div class="form-group mb-3">
               <label class="form-label text-xs">WhatsApp Business Token / Meta API:</label>
-              <input type="password" class="form-control" placeholder="Token Meta Graph API..." value="">
+              <input type="password" class="form-control" placeholder="Token Meta Graph API..." value="" disabled title="Integración no implementada aún">
             </div>
             <button class="btn btn-secondary btn-sm w-100">🔗 Vincular Número WhatsApp</button>
           </div>
@@ -121,7 +123,7 @@ export const IntegrationsModule = {
             </p>
             <div class="form-group mb-2">
               <label class="form-label text-xs">URL Endpoint Backend Remoto:</label>
-              <input type="text" class="form-control" placeholder="https://api.rayopro.com/v1" readonly style="background: #f1f5f9;">
+              <input type="text" class="form-control" placeholder="https://api.rayopro.com/v1" readonly>
             </div>
             <span class="badge badge-success">Persistencia Local Segura Activa</span>
           </div>
@@ -131,7 +133,7 @@ export const IntegrationsModule = {
     `;
 
     container.querySelector('#btn-config-dian').addEventListener('click', () => {
-      alert('Módulo DIAN: Listo para incorporar credenciales cuando se disponga de Proveedor Tecnológico habilitado en la DIAN.');
+      Toast.info('La facturación electrónica requiere contratar un proveedor tecnológico autorizado por la DIAN. La integración aún no está implementada.');
     });
   }
 };

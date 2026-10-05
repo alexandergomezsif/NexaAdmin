@@ -424,7 +424,7 @@ class NexaApp {
         subnavBar.style.display = 'block';
         subnavBar.innerHTML = `
           <div class="sub-nav-tabs" style="margin-bottom: 0;">
-            ${currentMacro.tabs.map(tab => `
+            ${currentMacro.tabs.filter(tab => AuthServiceInstance.canAccessRoute(tab.route)).map(tab => `
               <a href="#${tab.route}" class="sub-nav-tab ${tab.route === hash ? 'active' : ''}">
                 <span>${tab.icon}</span>
                 <span>${tab.label}</span>
@@ -667,8 +667,12 @@ class NexaApp {
     // 1. Mostrar/Ocultar cada nav-item según permisos
     document.querySelectorAll('.nav-item').forEach(item => {
       const route = item.getAttribute('data-route');
-      if (isSuperAdmin || (route && allowedModules.includes(route))) {
+      const macro = Object.values(MACRO_CATEGORIES).find(m => m.sidebarRoute === route);
+      const candidates = macro ? [route, ...macro.tabs.map(t => t.route)] : [route];
+      const firstAllowed = candidates.find(r => isSuperAdmin || allowedModules.includes(r));
+      if (firstAllowed) {
         item.style.display = 'flex';
+        item.setAttribute('href', `#${firstAllowed}`);
       } else {
         item.style.display = 'none';
       }

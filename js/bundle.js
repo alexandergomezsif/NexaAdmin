@@ -123,14 +123,85 @@
     };
   });
 
+  // js/components/toast.js
+  class ToastManager {
+    constructor() {
+      this.container = null;
+      this.init();
+    }
+    init() {
+      if (!this.container || !document.body.contains(this.container)) {
+        this.container = document.createElement("div");
+        this.container.className = "toast-container";
+        document.body.appendChild(this.container);
+      }
+    }
+    show({ title, message, type = "info", duration = 3500 }) {
+      this.init();
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+      const iconMap = {
+        success: "✓",
+        danger: "✕",
+        warning: "⚠",
+        info: "ℹ"
+      };
+      toast.innerHTML = `
+      <div style="font-weight: bold; font-size: 16px; line-height: 1;">${iconMap[type] || "ℹ"}</div>
+      <div class="toast-content">
+        ${title ? `<div class="toast-title">${esc(title)}</div>` : ""}
+        <div class="toast-message">${esc(message)}</div>
+      </div>
+      <button style="background: none; border: none; font-size: 16px; color: #94a3b8; cursor: pointer;">&times;</button>
+    `;
+      toast.querySelector("button").addEventListener("click", () => {
+        this.remove(toast);
+      });
+      this.container.appendChild(toast);
+      if (duration > 0) {
+        setTimeout(() => {
+          this.remove(toast);
+        }, duration);
+      }
+    }
+    remove(toast) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateX(100%)";
+      toast.style.transition = "all 0.2s ease-out";
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.parentElement.removeChild(toast);
+        }
+      }, 200);
+    }
+    success(message, title = "Operación Exitosa") {
+      this.show({ title, message, type: "success" });
+    }
+    error(message, title = "Error") {
+      this.show({ title, message, type: "danger", duration: 5000 });
+    }
+    warning(message, title = "Atención") {
+      this.show({ title, message, type: "warning" });
+    }
+    info(message, title = "Información") {
+      this.show({ title, message, type: "info" });
+    }
+  }
+  var Toast;
+  var init_toast = __esm(() => {
+    init_formatters();
+    Toast = new ToastManager;
+  });
+
   // js/services/export-service.js
   var ExportService;
   var init_export_service = __esm(() => {
     init_formatters();
+    init_toast();
     ExportService = {
       exportToCSV(data, filename = "reporte", headers = null) {
         if (!data || !data.length) {
-          alert("No hay datos disponibles para exportar.");
+          Toast.warning("No hay datos disponibles para exportar.");
           return;
         }
         const keys = headers ? Object.keys(headers) : Object.keys(data[0]);
@@ -730,7 +801,7 @@
           secondary: "#f59e0b",
           accent: "#0071e3"
         },
-        resolucionFacturacion: "Resolución DIAN No. 18764000123456 de 2026-01-15 (Prefijo RP del 1 al 10000)",
+        resolucionFacturacion: "",
         moneda: "COP",
         esDemo: false
       },
@@ -757,7 +828,7 @@
           secondary: "#ff9500",
           accent: "#34c759"
         },
-        resolucionFacturacion: "Resolución DIAN No. 18764000987654 (Prefijo AB)",
+        resolucionFacturacion: "",
         moneda: "COP",
         esDemo: true
       }
@@ -2826,73 +2897,8 @@
     }
   };
 
-  // js/components/toast.js
-  init_formatters();
-
-  class ToastManager {
-    constructor() {
-      this.container = null;
-      this.init();
-    }
-    init() {
-      if (!this.container || !document.body.contains(this.container)) {
-        this.container = document.createElement("div");
-        this.container.className = "toast-container";
-        document.body.appendChild(this.container);
-      }
-    }
-    show({ title, message, type = "info", duration = 3500 }) {
-      this.init();
-      const toast = document.createElement("div");
-      toast.className = `toast toast-${type}`;
-      const iconMap = {
-        success: "✓",
-        danger: "✕",
-        warning: "⚠",
-        info: "ℹ"
-      };
-      toast.innerHTML = `
-      <div style="font-weight: bold; font-size: 16px; line-height: 1;">${iconMap[type] || "ℹ"}</div>
-      <div class="toast-content">
-        ${title ? `<div class="toast-title">${esc(title)}</div>` : ""}
-        <div class="toast-message">${esc(message)}</div>
-      </div>
-      <button style="background: none; border: none; font-size: 16px; color: #94a3b8; cursor: pointer;">&times;</button>
-    `;
-      toast.querySelector("button").addEventListener("click", () => {
-        this.remove(toast);
-      });
-      this.container.appendChild(toast);
-      if (duration > 0) {
-        setTimeout(() => {
-          this.remove(toast);
-        }, duration);
-      }
-    }
-    remove(toast) {
-      toast.style.opacity = "0";
-      toast.style.transform = "translateX(100%)";
-      toast.style.transition = "all 0.2s ease-out";
-      setTimeout(() => {
-        if (toast.parentElement) {
-          toast.parentElement.removeChild(toast);
-        }
-      }, 200);
-    }
-    success(message, title = "Operación Exitosa") {
-      this.show({ title, message, type: "success" });
-    }
-    error(message, title = "Error") {
-      this.show({ title, message, type: "danger", duration: 5000 });
-    }
-    warning(message, title = "Atención") {
-      this.show({ title, message, type: "warning" });
-    }
-    info(message, title = "Información") {
-      this.show({ title, message, type: "info" });
-    }
-  }
-  var Toast = new ToastManager;
+  // js/app.js
+  init_toast();
 
   // js/components/modal.js
   init_formatters();
@@ -3768,6 +3774,7 @@
   }
 
   // js/modules/dashboard.js
+  init_toast();
   var DashboardModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -3804,7 +3811,7 @@
         <div class="view-title-wrap">
           <div class="d-flex items-center gap-2">
             <h1>Dashboard Ejecutivo</h1>
-            <span class="badge-demo">DEMO RAYO PRO</span>
+
           </div>
           <p>Visión general de ventas, cartera, inventario y alertas operativas de <strong>${esc(tenant.nombreComercial)}</strong></p>
         </div>
@@ -3867,9 +3874,7 @@
         icon: "\uD83D\uDCB0",
         iconBg: "var(--color-success-bg)",
         iconColor: "var(--color-success)",
-        trend: "+12%",
-        trendPositive: true,
-        footerText: "vs. día anterior"
+        footerText: `${resDia.n} ventas hoy · sin IVA`
       })}
 
         ${renderKpiCard({
@@ -3878,9 +3883,7 @@
         icon: "\uD83D\uDCC8",
         iconBg: "var(--brand-primary-light)",
         iconColor: "var(--brand-primary)",
-        trend: "+8.4%",
-        trendPositive: true,
-        footerText: "meta mensual 85%"
+        footerText: `${resMes.n} ventas · bruto con IVA ${Formatters.currency(resMes.ventasBrutas)}`
       })}
 
         ${renderKpiCard({
@@ -3920,12 +3923,12 @@
       })}
 
         ${renderKpiCard({
-        label: "Gastos Registrados",
-        value: Formatters.currency(totalGastos),
+        label: "Gastos del mes",
+        value: Formatters.currency(resMes.gastos),
         icon: "\uD83C\uDFF7️",
         iconBg: "#fff1f2",
         iconColor: "#e11d48",
-        footerText: "Gastos operativos mes"
+        footerText: `Total histórico: ${Formatters.currency(totalGastos)}`
       })}
 
         ${renderKpiCard({
@@ -4449,6 +4452,7 @@ Generado por Nexa ERP.`;
   }
 
   // js/modules/clients.js
+  init_toast();
   var CLIENT_SEGMENTS = {
     "Consumidor Final": {
       priceListOrder: 1,
@@ -4591,7 +4595,7 @@ Generado por Nexa ERP.`;
               return `
               <div>
                 <span class="badge ${esFE ? "badge-success" : "badge-neutral"}" style="font-size: 11px;">
-                  ${esFE ? "⚡ Factura Electrónica" : "\uD83D\uDCC4 Remisión / POS Sin FE"}
+                  ${esFE ? "⚡ Requiere factura electrónica" : "\uD83D\uDCC4 Sin factura electrónica"}
                 </span>
                 <div class="text-xs" style="margin-top: 2px; color: ${aplicaIva ? "var(--text-muted)" : "var(--color-warning)"}; font-weight: ${aplicaIva ? "normal" : "bold"};">
                   ${aplicaIva ? "✓ Con IVA (19%)" : "✕ Exento / Sin IVA (0%)"}
@@ -4683,7 +4687,7 @@ Generado por Nexa ERP.`;
           </div>
           <div class="form-group">
             <label class="form-label">DV (Cálculo DIAN)</label>
-            <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : "-"}" style="background: #f1f5f9; font-weight: bold;">
+            <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : "-"}" style=" font-weight: bold;">
           </div>
         </div>
 
@@ -4776,7 +4780,7 @@ Generado por Nexa ERP.`;
             <div class="form-group mb-0">
               <label class="form-label font-bold">¿Facturar Electrónicamente?</label>
               <select class="form-select" name="facturaElectronica" id="modal-client-fe">
-                <option value="SI" ${!client || client.facturaElectronica !== false ? "selected" : ""}>⚡ Sí - Factura Electrónica DIAN</option>
+                <option value="SI" ${!client || client.facturaElectronica !== false ? "selected" : ""}>⚡ Sí - Requiere factura electrónica (pendiente de integración DIAN)</option>
                 <option value="NO" ${client && client.facturaElectronica === false ? "selected" : ""}>\uD83D\uDCC4 No - Remisión / Venta Interna (Sin FE)</option>
               </select>
               <span class="form-help">Para clientes que aún no requieren o no reciben FE formal.</span>
@@ -5103,6 +5107,7 @@ Generado por Nexa ERP.`;
 
   // js/modules/products.js
   init_formatters();
+  init_toast();
   var ProductsModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -5429,6 +5434,7 @@ Generado por Nexa ERP.`;
 
   // js/modules/inventory.js
   init_formatters();
+  init_toast();
   var InventoryModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -6202,6 +6208,7 @@ Generado por Nexa ERP.`;
   };
 
   // js/modules/production.js
+  init_toast();
   var ProductionModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -6434,7 +6441,7 @@ Generado por Nexa ERP.`;
         </div>
 
         <!-- EXPLOSIÓN DINÁMICA DE INSUMOS -->
-        <div class="card mb-3" style="background: #f8fafc; border: 1px solid var(--border-color);">
+        <div class="card mb-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color);">
           <div class="card-header" style="padding: 10px 14px;">
             <div class="card-title" style="font-size: 13px;">\uD83D\uDCA5 Explosión de Insumos & Verificación de Stock</div>
           </div>
@@ -6690,6 +6697,7 @@ Generado por Nexa ERP.`;
   };
 
   // js/modules/purchases.js
+  init_toast();
   var PurchasesModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -7080,6 +7088,7 @@ Generado por Nexa ERP.`;
   // js/modules/sales-pos.js
   init_formatters();
   init_export_service();
+  init_toast();
   var MOSTRADOR_NIT = "222222222222";
   var SalesPosModule = {
     cart: [],
@@ -8044,6 +8053,7 @@ Generado por Nexa ERP.`;
 
   // js/modules/shipping.js
   init_formatters();
+  init_toast();
   init_export_service();
   var SHIPPING_STATUSES = {
     RECIBIDO: { label: "Pedido Recibido", class: "badge-info", icon: "\uD83D\uDCE5" },
@@ -8353,6 +8363,7 @@ Generado por Nexa ERP.`;
 
   // js/modules/cash.js
   init_formatters();
+  init_toast();
 
   // js/services/expense-service.js
   var CASH_EXPENSE_METHOD = "Efectivo Caja Menor";
@@ -8477,7 +8488,7 @@ Generado por Nexa ERP.`;
               </div>
             </div>
 
-            <div class="card" style="background: #f8fafc; border: 1px solid var(--border-color); margin-bottom: 0;">
+            <div class="card" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); margin-bottom: 0;">
               <div class="card-body d-flex justify-between items-center" style="padding: 14px 20px;">
                 <div>
                   <div class="text-xs font-bold text-muted">SALDO ESTIMADO EN EFECTIVO (ESPERADO EN GAVETA):</div>
@@ -8877,6 +8888,7 @@ Generado por Nexa ERP.`;
 
   // js/modules/expenses.js
   init_formatters();
+  init_toast();
   var EXPENSE_CATEGORIES = [
     "Transporte y Fletes",
     "Combustible y Vehículos",
@@ -9236,6 +9248,7 @@ Generado por Nexa ERP.`;
   };
 
   // js/modules/cxc.js
+  init_toast();
   var CxcModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -9547,6 +9560,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
 
   // js/modules/cxp.js
   init_formatters();
+  init_toast();
   var CxpModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -9744,6 +9758,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
 
   // js/modules/users.js
   init_formatters();
+  init_toast();
   var ROLE_LIST = [ROLES.DEV, ROLES.GERENTE, ROLES.VENDEDOR, ROLES.BODEGA, ROLES.PRODUCCION, ROLES.CAJA];
   var DEFAULT_PERMS = {
     [ROLES.DEV]: Object.values(PERMISSIONS),
@@ -10008,7 +10023,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         </div>
       </div>
 
-      <div class="card mb-4" style="background: #f8fafc; padding: 12px 16px; border: 1px solid var(--border-color);">
+      <div class="card mb-4" style="background: var(--bg-surface-solid); padding: 12px 16px; border: 1px solid var(--border-color);">
         <div class="text-xs text-muted">
           ℹ️ Todos los eventos son registrados de forma automática con marca de tiempo, usuario autenticado, valores anteriores y nuevos para cumplimiento normativo.
         </div>
@@ -10392,6 +10407,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
 
   // js/modules/settings.js
   init_formatters();
+  init_toast();
   var SettingsModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -10488,7 +10504,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   </div>
                   <div class="form-group">
                     <label class="form-label">Moneda Principal</label>
-                    <input type="text" class="form-control" readonly value="COP (Peso Colombiano)" style="background: #f1f5f9;">
+                    <input type="text" class="form-control" readonly value="COP (Peso Colombiano)" style="">
                   </div>
                 </div>
 
@@ -11006,6 +11022,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   };
 
   // js/modules/backup.js
+  init_toast();
   init_formatters();
   var BackupModule = {
     async render(container) {
@@ -11217,6 +11234,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   }
 
   // js/modules/importer.js
+  init_toast();
   var ImporterModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -11499,6 +11517,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   };
 
   // js/modules/integrations.js
+  init_toast();
   var IntegrationsModule = {
     render(container) {
       container.innerHTML = `
@@ -11528,8 +11547,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             <p class="text-xs text-muted mb-3" style="line-height: 1.5;">
               Permite transmitir las facturas comerciales a los servidores de la DIAN mediante Proveedor Tecnológico autorizado o Software Propio.
             </p>
-            <div class="card mb-3" style="background: #f8fafc; padding: 12px; font-size: 12px; border: 1px solid var(--border-color);">
-              <div><strong>Ambiente Actual:</strong> Producción Interna POS</div>
+            <div class="card mb-3" style="padding: 12px; font-size: 12px; border: 1px solid var(--border-color);">
+              <div><strong>Estado:</strong> No integrado. Los documentos actuales son internos.</div>
               <div class="mt-1"><strong>Estado Habilitación DIAN:</strong> <span class="text-warning font-bold">Pendiente de Configuración</span></div>
               <div class="mt-1 text-muted text-xs">Requiere: Certificado Digital .pfx y Set de Pruebas DIAN.</div>
             </div>
@@ -11552,7 +11571,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             </p>
             <div class="form-group mb-3">
               <label class="form-label text-xs">WhatsApp Business Token / Meta API:</label>
-              <input type="password" class="form-control" placeholder="Token Meta Graph API..." value="">
+              <input type="password" class="form-control" placeholder="Token Meta Graph API..." value="" disabled title="Integración no implementada aún">
             </div>
             <button class="btn btn-secondary btn-sm w-100">\uD83D\uDD17 Vincular Número WhatsApp</button>
           </div>
@@ -11616,7 +11635,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             </p>
             <div class="form-group mb-2">
               <label class="form-label text-xs">URL Endpoint Backend Remoto:</label>
-              <input type="text" class="form-control" placeholder="https://api.rayopro.com/v1" readonly style="background: #f1f5f9;">
+              <input type="text" class="form-control" placeholder="https://api.rayopro.com/v1" readonly>
             </div>
             <span class="badge badge-success">Persistencia Local Segura Activa</span>
           </div>
@@ -11625,7 +11644,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       </div>
     `;
       container.querySelector("#btn-config-dian").addEventListener("click", () => {
-        alert("Módulo DIAN: Listo para incorporar credenciales cuando se disponga de Proveedor Tecnológico habilitado en la DIAN.");
+        Toast.info("La facturación electrónica requiere contratar un proveedor tecnológico autorizado por la DIAN. La integración aún no está implementada.");
       });
     }
   };
@@ -11753,6 +11772,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
 
   // js/modules/formulas-vault.js
   init_formatters();
+  init_toast();
   var FormulasVaultModule = {
     _pin: null,
     async render(container) {
@@ -12550,6 +12570,7 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
 
   // js/modules/pricing-calculator.js
   init_formatters();
+  init_toast();
   var PricingCalculatorModule = {
     products: [],
     recipes: [],
@@ -13447,6 +13468,7 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
 
   // js/modules/freelancers.js
   init_formatters();
+  init_toast();
   var FreelancersModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -14295,7 +14317,7 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
           subnavBar.style.display = "block";
           subnavBar.innerHTML = `
           <div class="sub-nav-tabs" style="margin-bottom: 0;">
-            ${currentMacro.tabs.map((tab) => `
+            ${currentMacro.tabs.filter((tab) => AuthServiceInstance.canAccessRoute(tab.route)).map((tab) => `
               <a href="#${tab.route}" class="sub-nav-tab ${tab.route === hash ? "active" : ""}">
                 <span>${tab.icon}</span>
                 <span>${tab.label}</span>
@@ -14512,8 +14534,12 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
       const isSuperAdmin = AuthServiceInstance.isDeveloper();
       document.querySelectorAll(".nav-item").forEach((item) => {
         const route = item.getAttribute("data-route");
-        if (isSuperAdmin || route && allowedModules.includes(route)) {
+        const macro = Object.values(MACRO_CATEGORIES).find((m) => m.sidebarRoute === route);
+        const candidates = macro ? [route, ...macro.tabs.map((t) => t.route)] : [route];
+        const firstAllowed = candidates.find((r) => isSuperAdmin || allowedModules.includes(r));
+        if (firstAllowed) {
           item.style.display = "flex";
+          item.setAttribute("href", `#${firstAllowed}`);
         } else {
           item.style.display = "none";
         }

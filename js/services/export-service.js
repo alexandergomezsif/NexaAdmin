@@ -4,6 +4,7 @@
  */
 
 import { Formatters } from '../utils/formatters.js';
+import { Toast } from '../components/toast.js';
 
 export const ExportService = {
   /**
@@ -14,7 +15,7 @@ export const ExportService = {
    */
   exportToCSV(data, filename = 'reporte', headers = null) {
     if (!data || !data.length) {
-      alert('No hay datos disponibles para exportar.');
+      Toast.warning('No hay datos disponibles para exportar.');
       return;
     }
 

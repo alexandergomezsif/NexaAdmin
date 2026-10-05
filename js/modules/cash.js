@@ -75,7 +75,7 @@ export const CashModule = {
               </div>
             </div>
 
-            <div class="card" style="background: #f8fafc; border: 1px solid var(--border-color); margin-bottom: 0;">
+            <div class="card" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); margin-bottom: 0;">
               <div class="card-body d-flex justify-between items-center" style="padding: 14px 20px;">
                 <div>
                   <div class="text-xs font-bold text-muted">SALDO ESTIMADO EN EFECTIVO (ESPERADO EN GAVETA):</div>

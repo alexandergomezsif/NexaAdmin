@@ -27,7 +27,7 @@ export const AuditModule = {
         </div>
       </div>
 
-      <div class="card mb-4" style="background: #f8fafc; padding: 12px 16px; border: 1px solid var(--border-color);">
+      <div class="card mb-4" style="background: var(--bg-surface-solid); padding: 12px 16px; border: 1px solid var(--border-color);">
         <div class="text-xs text-muted">
           ℹ️ Todos los eventos son registrados de forma automática con marca de tiempo, usuario autenticado, valores anteriores y nuevos para cumplimiento normativo.
         </div>

@@ -38,7 +38,7 @@ export const SeedData = {
         secondary: '#f59e0b',
         accent: '#0071e3'
       },
-      resolucionFacturacion: 'Resolución DIAN No. 18764000123456 de 2026-01-15 (Prefijo RP del 1 al 10000)',
+      resolucionFacturacion: '',
       moneda: 'COP',
       esDemo: false
     },
@@ -65,7 +65,7 @@ export const SeedData = {
         secondary: '#ff9500',
         accent: '#34c759'
       },
-      resolucionFacturacion: 'Resolución DIAN No. 18764000987654 (Prefijo AB)',
+      resolucionFacturacion: '',
       moneda: 'COP',
       esDemo: true
     }

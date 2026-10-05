@@ -163,7 +163,7 @@ export const ClientsModule = {
             return `
               <div>
                 <span class="badge ${esFE ? 'badge-success' : 'badge-neutral'}" style="font-size: 11px;">
-                  ${esFE ? '⚡ Factura Electrónica' : '📄 Remisión / POS Sin FE'}
+                  ${esFE ? '⚡ Requiere factura electrónica' : '📄 Sin factura electrónica'}
                 </span>
                 <div class="text-xs" style="margin-top: 2px; color: ${aplicaIva ? 'var(--text-muted)' : 'var(--color-warning)'}; font-weight: ${aplicaIva ? 'normal' : 'bold'};">
                   ${aplicaIva ? '✓ Con IVA (19%)' : '✕ Exento / Sin IVA (0%)'}
@@ -265,7 +265,7 @@ export const ClientsModule = {
           </div>
           <div class="form-group">
             <label class="form-label">DV (Cálculo DIAN)</label>
-            <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : '-'}" style="background: #f1f5f9; font-weight: bold;">
+            <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : '-'}" style=" font-weight: bold;">
           </div>
         </div>
 
@@ -358,7 +358,7 @@ export const ClientsModule = {
             <div class="form-group mb-0">
               <label class="form-label font-bold">¿Facturar Electrónicamente?</label>
               <select class="form-select" name="facturaElectronica" id="modal-client-fe">
-                <option value="SI" ${!client || client.facturaElectronica !== false ? 'selected' : ''}>⚡ Sí - Factura Electrónica DIAN</option>
+                <option value="SI" ${!client || client.facturaElectronica !== false ? 'selected' : ''}>⚡ Sí - Requiere factura electrónica (pendiente de integración DIAN)</option>
                 <option value="NO" ${client && client.facturaElectronica === false ? 'selected' : ''}>📄 No - Remisión / Venta Interna (Sin FE)</option>
               </select>
               <span class="form-help">Para clientes que aún no requieren o no reciben FE formal.</span>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Nexa ERP - Sistema Administrativo Integral Multiempresa para Pymes Colombianas">
-  <title>Nexa ERP | Rayo Pro Colombia</title>
+  <title>NexaAdmin ERP</title>
 
   <!-- PWA: Manifiesto e Iconos -->
   <link rel="manifest" href="manifest.json">
@@ -85,9 +85,9 @@
         <div class="d-flex items-center justify-between">
           <div class="d-flex items-center gap-2">
             <div style="width: 8px; height: 8px; border-radius: 50%; background: #4FC58A; box-shadow: 0 0 8px #4FC58A;"></div>
-            <span style="font-size: 11px; color: #929BAA; font-weight: 600;">Cloud Ready</span>
+            <span style="font-size: 11px; color: #929BAA; font-weight: 600;" title="La información se guarda solo en este navegador">Datos locales</span>
           </div>
-          <span style="font-size: 10px; color: #64748B; font-family: monospace;">v2.6.2-pwa</span>
+          <span style="font-size: 10px; color: #64748B; font-family: monospace;">v3.0.0</span>
         </div>
       </div>
     </aside>
@@ -128,7 +128,7 @@
           </button>
 
           <!-- Indicador de Turno de Caja -->
-          <span class="badge badge-success hide-on-mobile" id="topbar-cash-badge">● Caja Abierta</span>
+          <span class="badge badge-neutral hide-on-mobile" id="topbar-cash-badge">…</span>
 
           <!-- Botón de Acción Rápida POS -->
           <button class="quick-action-btn" id="btn-topbar-quick-sale">
@@ -138,10 +138,10 @@
 
           <!-- Conmutador Rápido de Rol / Usuario Activo (Anti-Saturación RBAC) -->
           <div class="user-profile-badge" id="topbar-user-menu-btn" title="Clic para alternar rol o perfil de usuario">
-            <div class="user-avatar" id="topbar-user-avatar">J</div>
+            <div class="user-avatar" id="topbar-user-avatar"></div>
             <div class="user-details hide-on-mobile">
-              <span class="user-name" id="topbar-user-name">Juan Pablo (Superusuario)</span>
-              <span class="user-role" id="topbar-user-role">Administrador ▾</span>
+              <span class="user-name" id="topbar-user-name"></span>
+              <span class="user-role" id="topbar-user-role"></span>
             </div>
           </div>
 
@@ -161,8 +161,7 @@
 
   </div>
 
-  <!-- <script src="js/bundle.js"></script> -->
-  <script src="js/bundle.js"></script>
+  <script src="js/bundle.js?v=3.0.0"></script>
 
   <!-- PWA: Registro del Service Worker -->
   <script>
@@ -175,7 +174,7 @@
               var sw = reg.installing;
               sw.onstatechange = function() {
                 if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[NexaAdmin] Nueva version disponible. Recarga para actualizar.');
+                  console.log('[NexaAdmin] Nueva versión instalada; se aplicará al recargar.');
                 }
               };
             };

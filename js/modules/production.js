@@ -262,7 +262,7 @@ export const ProductionModule = {
         </div>
 
         <!-- EXPLOSIÓN DINÁMICA DE INSUMOS -->
-        <div class="card mb-3" style="background: #f8fafc; border: 1px solid var(--border-color);">
+        <div class="card mb-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color);">
           <div class="card-header" style="padding: 10px 14px;">
             <div class="card-title" style="font-size: 13px;">💥 Explosión de Insumos & Verificación de Stock</div>
           </div>

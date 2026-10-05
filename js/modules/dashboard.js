@@ -58,7 +58,7 @@ export const DashboardModule = {
         <div class="view-title-wrap">
           <div class="d-flex items-center gap-2">
             <h1>Dashboard Ejecutivo</h1>
-            <span class="badge-demo">DEMO RAYO PRO</span>
+
           </div>
           <p>Visión general de ventas, cartera, inventario y alertas operativas de <strong>${esc(tenant.nombreComercial)}</strong></p>
         </div>
@@ -121,9 +121,7 @@ export const DashboardModule = {
           icon: '💰',
           iconBg: 'var(--color-success-bg)',
           iconColor: 'var(--color-success)',
-          trend: '+12%',
-          trendPositive: true,
-          footerText: 'vs. día anterior'
+          footerText: `${resDia.n} ventas hoy · sin IVA`
         })}
 
         ${renderKpiCard({
@@ -132,9 +130,7 @@ export const DashboardModule = {
           icon: '📈',
           iconBg: 'var(--brand-primary-light)',
           iconColor: 'var(--brand-primary)',
-          trend: '+8.4%',
-          trendPositive: true,
-          footerText: 'meta mensual 85%'
+          footerText: `${resMes.n} ventas · bruto con IVA ${Formatters.currency(resMes.ventasBrutas)}`
         })}
 
         ${renderKpiCard({
@@ -174,12 +170,12 @@ export const DashboardModule = {
         })}
 
         ${renderKpiCard({
-          label: 'Gastos Registrados',
-          value: Formatters.currency(totalGastos),
+          label: 'Gastos del mes',
+          value: Formatters.currency(resMes.gastos),
           icon: '🏷️',
           iconBg: '#fff1f2',
           iconColor: '#e11d48',
-          footerText: 'Gastos operativos mes'
+          footerText: `Total histórico: ${Formatters.currency(totalGastos)}`
         })}
 
         ${renderKpiCard({

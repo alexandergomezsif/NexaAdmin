@@ -110,7 +110,7 @@ export const SettingsModule = {
                   </div>
                   <div class="form-group">
                     <label class="form-label">Moneda Principal</label>
-                    <input type="text" class="form-control" readonly value="COP (Peso Colombiano)" style="background: #f1f5f9;">
+                    <input type="text" class="form-control" readonly value="COP (Peso Colombiano)" style="">
                   </div>
                 </div>
 

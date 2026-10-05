@@ -1059,3 +1059,11 @@
 .auth-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 18px 0; line-height: 1.45; }
 .auth-btn { padding: 12px; font-weight: 700; font-size: 15px; }
 .recovery-code { font-family: ui-monospace, Consolas, monospace; font-size: 22px; font-weight: 800; letter-spacing: 2px; text-align: center; padding: 16px; margin-bottom: 12px; border-radius: 10px; border: 2px dashed var(--brand-primary); color: var(--text-main); background: var(--bg-surface); user-select: all; }
+
+/* Tablas simples (.table) usadas en modales e historial */
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; font-weight: 700; color: var(--text-secondary); padding: 8px 10px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+.table td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: middle; color: var(--text-main); }
+.table.table-sm th, .table.table-sm td { padding: 6px 8px; }
+.table .text-right { text-align: right; }
+.table .text-center { text-align: center; }

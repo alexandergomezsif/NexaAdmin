@@ -1,4 +1,6 @@
-﻿================================================================================
+NOTA (2026-10-05): este archivo queda como registro historico. Los cambios nuevos se registran en CHANGELOG.md.
+
+================================================================================
                     NEXA ERP - HISTORIAL DE CAMBIOS Y SINCRONIZACION
 ================================================================================
 Repositorio GitHub: https://github.com/alexandergomezsif/NexaAdmin
