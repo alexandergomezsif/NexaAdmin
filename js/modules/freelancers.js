@@ -3,8 +3,9 @@
  * Gestión de vendedores independientes, comisiones y liquidaciones
  */
 
+import { PaymentsService, PAYOUT_METHODS } from '../services/payments-service.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
@@ -121,10 +122,10 @@ export const FreelancersModule = {
                     return `
                       <tr>
                         <td>
-                          <div class="font-bold">${f.nombre}</div>
+                          <div class="font-bold">${esc(f.nombre)}</div>
                           <div class="text-xs text-muted">${f.nitCc ? 'CC: ' + f.nitCc : ''} ${f.telefono ? '· ' + f.telefono : ''}</div>
                         </td>
-                        <td><span class="badge badge-neutral" style="font-size: 10px;">${f.zona || '—'}</span></td>
+                        <td><span class="badge badge-neutral" style="font-size: 10px;">${esc(f.zona || '—')}</span></td>
                         <td>
                           <span class="badge badge-info" style="font-size: 10.5px; font-weight: 700;">
                             ${f.precioBaseId === 'plist_2' ? 'P2 - Taller' : (f.precioBaseId === 'plist_4' ? 'P4 - Distribuidor' : 'P3 - Mayorista')}
@@ -142,14 +143,14 @@ export const FreelancersModule = {
                         </td>
                         <td>
                           <span class="badge ${f.estado === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">
-                            ${f.estado || 'ACTIVO'}
+                            ${esc(f.estado || 'ACTIVO')}
                           </span>
                         </td>
                         <td>
                           <div class="d-flex gap-2">
                             <button class="btn btn-secondary btn-sm btn-ver-freelancer" data-id="${f.id}" title="Ver Ficha">👁️ Ver</button>
                             <button class="btn btn-secondary btn-sm btn-edit-freelancer" data-id="${f.id}" title="Editar Datos">✏️ Editar</button>
-                            ${pendiente > 0 ? `<button class="btn btn-primary btn-sm btn-liquidar-freelancer" data-id="${f.id}" data-nombre="${f.nombre}" data-pendiente="${pendiente}">💸 Liquidar</button>` : ''}
+                            ${pendiente > 0 ? `<button class="btn btn-primary btn-sm btn-liquidar-freelancer" data-id="${f.id}" data-nombre="${esc(f.nombre)}" data-pendiente="${pendiente}">💸 Liquidar</button>` : ''}
                           </div>
                         </td>
                       </tr>
@@ -210,27 +211,27 @@ export const FreelancersModule = {
             <div class="form-row" style="gap: 12px;">
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Nombre Completo *</label>
-                <input type="text" class="form-control" id="fl-nombre" value="${f.nombre || ''}" placeholder="Ej: Carlos Mendoza" required>
+                <input type="text" class="form-control" id="fl-nombre" value="${esc(f.nombre || '')}" placeholder="Ej: Carlos Mendoza" required>
               </div>
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Cédula / NIT</label>
-                <input type="text" class="form-control" id="fl-cedula" value="${f.nitCc || ''}" placeholder="Ej: 1234567890">
+                <input type="text" class="form-control" id="fl-cedula" value="${esc(f.nitCc || '')}" placeholder="Ej: 1234567890">
               </div>
             </div>
             <div class="form-row" style="gap: 12px;">
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Teléfono / WhatsApp</label>
-                <input type="text" class="form-control" id="fl-telefono" value="${f.telefono || ''}" placeholder="3001234567">
+                <input type="text" class="form-control" id="fl-telefono" value="${esc(f.telefono || '')}" placeholder="3001234567">
               </div>
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="fl-email" value="${f.email || ''}" placeholder="correo@gmail.com">
+                <input type="email" class="form-control" id="fl-email" value="${esc(f.email || '')}" placeholder="correo@gmail.com">
               </div>
             </div>
             <div class="form-row" style="gap: 12px;">
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Zona de Ventas</label>
-                <input type="text" class="form-control" id="fl-zona" value="${f.zona || ''}" placeholder="Ej: Medellín Norte, Eje Cafetero...">
+                <input type="text" class="form-control" id="fl-zona" value="${esc(f.zona || '')}" placeholder="Ej: Medellín Norte, Eje Cafetero...">
               </div>
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Estado</label>
@@ -374,10 +375,10 @@ export const FreelancersModule = {
         <div style="background: var(--bg-surface-solid); border-radius: 8px; border: 1px solid var(--border-color); padding: 12px;">
           <div class="font-bold text-xs text-muted mb-2" style="text-transform: uppercase;">Datos de Contacto</div>
           <div class="text-xs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-            <div>📱 ${f.telefono || '—'}</div>
-            <div>📧 ${f.email || '—'}</div>
-            <div>🪪 CC: ${f.nitCc || '—'}</div>
-            <div>📍 Zona: ${f.zona || '—'}</div>
+            <div>📱 ${esc(f.telefono || '—')}</div>
+            <div>📧 ${esc(f.email || '—')}</div>
+            <div>🪪 CC: ${esc(f.nitCc || '—')}</div>
+            <div>📍 Zona: ${esc(f.zona || '—')}</div>
             <div>🏦 ${(f.datosBancarios||{}).banco || '—'} ${(f.datosBancarios||{}).tipoCuenta || ''}</div>
             <div>Cta: ${(f.datosBancarios||{}).numeroCuenta || '—'}</div>
           </div>
@@ -391,8 +392,8 @@ export const FreelancersModule = {
               <tbody>
                 ${fSales.slice(-5).reverse().map(s => `
                   <tr>
-                    <td><strong style="color: var(--brand-primary);">${s.consecutivo}</strong></td>
-                    <td>${s.clienteNombre}</td>
+                    <td><strong style="color: var(--brand-primary);">${esc(s.consecutivo)}</strong></td>
+                    <td>${esc(s.clienteNombre)}</td>
                     <td>${Formatters.currency(s.total)}</td>
                     <td class="font-bold text-success">${Formatters.currency(s.comisionFreelance || 0)}</td>
                     <td>${Formatters.date(s.fecha)}</td>
@@ -441,8 +442,8 @@ export const FreelancersModule = {
             <tbody>
               ${cxpItems.map(c => `
                 <tr>
-                  <td><strong>${c.documento}</strong></td>
-                  <td>${c.ventaConsecutivo || '—'}</td>
+                  <td><strong>${esc(c.documento)}</strong></td>
+                  <td>${esc(c.ventaConsecutivo || '—')}</td>
                   <td class="font-bold text-danger">${Formatters.currency(c.saldo)}</td>
                 </tr>
               `).join('')}
@@ -454,15 +455,12 @@ export const FreelancersModule = {
           <div class="form-group mb-3">
             <label class="form-label">Medio de Pago</label>
             <select class="form-select" name="medio">
-              <option value="Bancolombia Cuenta Corriente">Bancolombia Cuenta Corriente</option>
-              <option value="Davivienda Ahorros">Davivienda Ahorros</option>
-              <option value="Transferencia Nequi">Transferencia Nequi</option>
-              <option value="Efectivo Caja">Efectivo Caja</option>
+              ${PAYOUT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('')}
             </select>
           </div>
           <div class="form-group mb-0">
             <label class="form-label">Número de Comprobante</label>
-            <input type="text" class="form-control" name="comprobante" placeholder="Ej: TRANSF-982347" required>
+            <input type="text" class="form-control" name="comprobante" placeholder="Referencia (opcional)">
           </div>
         </form>
       </div>
@@ -481,22 +479,18 @@ export const FreelancersModule = {
             const form = dialog.querySelector('#liquidar-form');
             if (!form.checkValidity()) { form.reportValidity(); return; }
 
-            // Marcar todos los CxP como PAGADA
-            for (const cxpItem of cxpItems) {
-              cxpItem.abonos = (cxpItem.abonos || 0) + cxpItem.saldo;
-              cxpItem.saldo = 0;
-              cxpItem.estado = 'PAGADA';
-              await DB.update(STORES.PAYABLES_CXP, cxpItem);
-            }
-
-            // Actualizar acumulado en proveedor freelancer
+            const fd = new FormData(form);
             const tenant = TenantServiceInstance.getActiveTenant();
-            const tenantId = tenant ? tenant.id : 'tenant_rayopro';
-            const allSuppliers = await DB.getAll(STORES.SUPPLIERS, tenantId);
-            const freelancer = allSuppliers.find(s => s.id === freelancerId);
-            if (freelancer) {
-              freelancer.comisionesTotalesPagadas = (freelancer.comisionesTotalesPagadas || 0) + totalPendiente;
-              await DB.update(STORES.SUPPLIERS, freelancer);
+            try {
+              await PaymentsService.payPayables({
+                tenantId: tenant.id,
+                pagos: cxpItems.map(c => ({ cxpId: c.id, monto: c.saldo })),
+                metodo: fd.get('medio'),
+                referencia: fd.get('comprobante')
+              });
+            } catch (err) {
+              Toast.error(err.message);
+              return;
             }
 
             Toast.success(`Liquidación de ${Formatters.currency(totalPendiente)} a ${nombre} registrada.`);

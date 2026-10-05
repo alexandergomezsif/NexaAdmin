@@ -447,6 +447,10 @@ class NexaApp {
     // Cargar módulo
     const module = MODULES[hash] || DashboardModule;
     if (this.contentContainer) {
+      // Contenedor limpio en cada cambio de ruta: elimina listeners del módulo anterior
+      const fresh = this.contentContainer.cloneNode(false);
+      this.contentContainer.replaceWith(fresh);
+      this.contentContainer = fresh;
       try {
         this.contentContainer.innerHTML = '<div class="text-center text-muted" style="padding: 40px;">Cargando módulo...</div>';
         await module.render(this.contentContainer);
@@ -607,7 +611,7 @@ class NexaApp {
       if (shift) {
         ind.className = 'badge badge-success';
         ind.textContent = '● Caja Abierta';
-        ind.title = `Turno abierto por ${shift.usuarioNombre || '-'}`;
+        ind.title = `Turno abierto por ${esc(shift.usuarioNombre || '-')}`;
       } else {
         ind.className = 'badge badge-warning';
         ind.textContent = '○ Caja Cerrada';
@@ -628,7 +632,7 @@ class NexaApp {
     const topbarBrandIconEl = document.getElementById('topbar-brand-icon');
 
     if (brandNameEl) brandNameEl.textContent = tenant.nombreComercial;
-    if (brandNitEl) brandNitEl.textContent = `NIT: ${tenant.nit}-${tenant.dv}`;
+    if (brandNitEl) brandNitEl.textContent = `NIT: ${esc(tenant.nit)}-${tenant.dv}`;
     if (topbarBrandEl) topbarBrandEl.textContent = tenant.nombreComercial;
 
     if (brandIconEl) {

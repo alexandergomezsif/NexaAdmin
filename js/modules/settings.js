@@ -3,6 +3,9 @@
  * Personalización dinámica de identidad (NIT, DV, Logo, Colores CSS), 5 listas de precios y bodegas
  */
 
+import { AuditService } from '../services/audit-service.js';
+import { PricingService } from '../services/pricing-service.js';
+import { esc } from '../utils/formatters.js';
 import { DB, STORES } from '../services/db-service.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
 import { DianDV } from '../utils/dian-dv.js';
@@ -35,18 +38,20 @@ export const SettingsModule = {
           <div>
             <div class="text-xs font-bold text-muted">EMPRESA ACTIVA ACTUAL:</div>
             <div style="font-size: 16px; font-weight: 800; color: var(--brand-primary); margin-top: 2px;">
-              ${tenant.nombreComercial} (NIT: ${tenant.nit}-${tenant.dv})
+              ${esc(tenant.nombreComercial)} (NIT: ${esc(tenant.nit)}-${tenant.dv})
             </div>
           </div>
           <div class="d-flex items-center gap-2 flex-wrap">
+            ${isDev ? `
             <label class="text-xs font-bold text-muted">CONMUTAR EMPRESA:</label>
             <select class="form-select" id="sel-switch-tenant" style="width: auto; font-size: 13px; font-weight: 600;">
               ${allTenants.map(t => `
                 <option value="${t.id}" ${t.id === tenant.id ? 'selected' : ''}>
-                  ${t.nombreComercial} (${t.ciudad})
+                  ${esc(t.nombreComercial)} (${esc(t.ciudad)})
                 </option>
               `).join('')}
             </select>
+            ` : ''}
             ${isDev ? `
               <button type="button" class="btn btn-secondary btn-sm" id="btn-create-tenant" title="Crear nueva organización">
                 🏢 + Nueva Empresa
@@ -75,22 +80,22 @@ export const SettingsModule = {
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">Nombre Comercial de la Empresa</label>
-                    <input type="text" class="form-control" name="nombreComercial" required value="${tenant.nombreComercial}">
+                    <input type="text" class="form-control" name="nombreComercial" required value="${esc(tenant.nombreComercial)}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Razón Social Legal</label>
-                    <input type="text" class="form-control" name="razonSocial" required value="${tenant.razonSocial}">
+                    <input type="text" class="form-control" name="razonSocial" required value="${esc(tenant.razonSocial)}">
                   </div>
                 </div>
 
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">NIT (Sin dígito de verificación)</label>
-                    <input type="text" class="form-control" id="inp-tenant-nit" name="nit" required value="${tenant.nit}">
+                    <input type="text" class="form-control" id="inp-tenant-nit" name="nit" required value="${esc(tenant.nit)}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Dígito de Verificación (DV DIAN)</label>
-                    <input type="text" class="form-control" id="inp-tenant-dv" name="dv" readonly value="${tenant.dv}" style="background: #f1f5f9; font-weight: bold;">
+                    <input type="text" class="form-control" id="inp-tenant-dv" name="dv" readonly value="${esc(tenant.dv)}" style="font-weight: bold;">
                   </div>
                 </div>
 
@@ -112,39 +117,73 @@ export const SettingsModule = {
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">Dirección Fiscal / Sede Principal</label>
-                    <input type="text" class="form-control" name="direccion" value="${tenant.direccion || ''}">
+                    <input type="text" class="form-control" name="direccion" value="${esc(tenant.direccion || '')}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Ciudad</label>
-                    <input type="text" class="form-control" name="ciudad" value="${tenant.ciudad || ''}">
+                    <input type="text" class="form-control" name="ciudad" value="${esc(tenant.ciudad || '')}">
                   </div>
                 </div>
 
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">Departamento</label>
-                    <input type="text" class="form-control" name="departamento" value="${tenant.departamento || 'Antioquia'}">
+                    <input type="text" class="form-control" name="departamento" value="${esc(tenant.departamento || 'Antioquia')}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Teléfono Fijo / PBX</label>
-                    <input type="text" class="form-control" name="telefono" value="${tenant.telefono || ''}">
+                    <input type="text" class="form-control" name="telefono" value="${esc(tenant.telefono || '')}">
                   </div>
                 </div>
 
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">WhatsApp Comercial</label>
-                    <input type="text" class="form-control" name="whatsapp" value="${tenant.whatsapp || ''}">
+                    <input type="text" class="form-control" name="whatsapp" value="${esc(tenant.whatsapp || '')}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Correo Electrónico Oficial</label>
-                    <input type="email" class="form-control" name="email" value="${tenant.email || ''}">
+                    <input type="email" class="form-control" name="email" value="${esc(tenant.email || '')}">
                   </div>
                 </div>
 
-                <div class="form-group mb-0">
-                  <label class="form-label">Texto de Resolución de Facturación (Pie de Documento)</label>
-                  <input type="text" class="form-control" name="resolucionFacturacion" value="${tenant.resolucionFacturacion || ''}">
+                <div class="form-row mb-3">
+                  <div class="form-group">
+                    <label class="form-label">Prefijo de ventas</label>
+                    <input type="text" class="form-control" name="prefijoVenta" maxlength="6" value="${esc(tenant.prefijoVenta || '')}" placeholder="Ej: RP">
+                    <div class="form-help">Numeración: ${esc(tenant.prefijoVenta || 'V')}-000001</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Prefijo de cotizaciones</label>
+                    <input type="text" class="form-control" name="prefijoCotizacion" maxlength="6" value="${esc(tenant.prefijoCotizacion || 'COT')}">
+                  </div>
+                </div>
+                <div class="form-row mb-3">
+                  <div class="form-group">
+                    <label class="form-label">WhatsApp de gerencia (reportes de cierre)</label>
+                    <input type="text" class="form-control" name="whatsappGerencia" value="${esc(tenant.whatsappGerencia || '')}" placeholder="Ej: 3001234567">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Días de validez de cotizaciones</label>
+                    <input type="number" min="1" class="form-control" name="diasValidezCotizacion" value="${esc(tenant.diasValidezCotizacion || 15)}">
+                  </div>
+                </div>
+                <div class="form-row mb-3">
+                  <div class="form-group">
+                    <label class="form-label">Firma en órdenes de producción: nombre</label>
+                    <input type="text" class="form-control" name="firmaNombre" value="${esc(tenant.firmaNombre || '')}">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Cargo</label>
+                    <input type="text" class="form-control" name="firmaCargo" value="${esc(tenant.firmaCargo || '')}">
+                  </div>
+                </div>
+                <div class="form-group mb-3">
+                  <label class="form-label">Pie de página de documentos</label>
+                  <input type="text" class="form-control" name="piePaginaDocumentos" value="${esc(tenant.piePaginaDocumentos || '')}" placeholder="Ej: Gracias por su compra. Garantía de 30 días.">
+                </div>
+                <div class="alert alert-info text-xs mb-0">
+                  Los documentos de venta se imprimen como <strong>documento interno</strong>. La facturación electrónica requiere un proveedor tecnológico autorizado por la DIAN (pendiente de integración); por eso no se configura aquí una resolución de facturación.
                 </div>
               </div>
             </div>
@@ -252,15 +291,16 @@ export const SettingsModule = {
             <!-- NOMBRES CONFIGURABLES DE LAS 5 LISTAS DE PRECIOS -->
             <div class="card" style="margin-bottom: 0;">
               <div class="card-header">
-                <div class="card-title">Personalización de las 5 Listas de Precios</div>
+                <div class="card-title">Listas de precios</div>
               </div>
               <div class="card-body">
-                <p class="text-xs text-muted mb-3">Personalice el nombre comercial de cada una de las 5 listas de precios del sistema según el modelo de negocio.</p>
+                <p class="text-xs text-muted mb-3">Nombre de cada lista y si sus precios <strong>ya incluyen IVA</strong> (el cliente paga el precio de lista y el IVA se discrimina dentro) o si el IVA se <strong>suma</strong> al precio.</p>
                 <div class="d-flex flex-col gap-2">
-                  ${priceLists.map((pl, idx) => `
+                  ${[...priceLists].sort((a, b) => (a.orden || 0) - (b.orden || 0)).map(pl => `
                     <div class="form-row" style="align-items: center;">
-                      <div style="font-weight: 700; font-size: 12px; color: var(--brand-primary); width: 80px;">Lista ${idx + 1}:</div>
-                      <input type="text" class="form-control" name="plist_name_${pl.id}" value="${pl.nombre}" required style="flex: 1;">
+                      <div style="font-weight: 700; font-size: 12px; color: var(--brand-primary); width: 40px;">${esc(PricingService.codeOf(pl) || '-')}</div>
+                      <input type="text" class="form-control" name="plist_name_${esc(pl.id)}" value="${esc(pl.nombre)}" required style="flex: 1;">
+                      <label class="d-flex items-center gap-1 text-xs" style="white-space: nowrap;"><input type="checkbox" name="plist_iva_${esc(pl.id)}" ${pl.incluyeIva ? 'checked' : ''}> IVA incluido</label>
                     </div>
                   `).join('')}
                 </div>
@@ -313,8 +353,8 @@ export const SettingsModule = {
                   ${warehouses.map(w => `
                     <div class="d-flex justify-between items-center text-xs" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
                       <div>
-                        <strong>${w.nombre}</strong>
-                        <div class="text-muted">${w.codigo}</div>
+                        <strong>${esc(w.nombre)}</strong>
+                        <div class="text-muted">${esc(w.codigo)}</div>
                       </div>
                       <span class="badge ${w.esPrincipal ? 'badge-info' : 'badge-neutral'}">${w.esPrincipal ? 'Principal' : 'Secundaria'}</span>
                     </div>
@@ -330,7 +370,8 @@ export const SettingsModule = {
     `;
 
     // Conmutador de empresa multi-tenant
-    container.querySelector('#sel-switch-tenant').addEventListener('change', async (e) => {
+    const selTenant = container.querySelector('#sel-switch-tenant');
+    if (selTenant) selTenant.addEventListener('change', async (e) => {
       await TenantServiceInstance.switchTenant(e.target.value);
       Toast.success('Empresa conmutada con éxito. Tema e identidad actualizados.');
       this.render(container);
@@ -477,7 +518,13 @@ export const SettingsModule = {
         telefono: formData.get('telefono'),
         whatsapp: formData.get('whatsapp'),
         email: formData.get('email'),
-        resolucionFacturacion: formData.get('resolucionFacturacion'),
+        prefijoVenta: String(formData.get('prefijoVenta') || tenant.prefijoVenta || 'V').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || 'V',
+        prefijoCotizacion: String(formData.get('prefijoCotizacion') || 'COT').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || 'COT',
+        whatsappGerencia: String(formData.get('whatsappGerencia') || '').replace(/\D/g, ''),
+        diasValidezCotizacion: Number(formData.get('diasValidezCotizacion')) || 15,
+        firmaNombre: formData.get('firmaNombre'),
+        firmaCargo: formData.get('firmaCargo'),
+        piePaginaDocumentos: formData.get('piePaginaDocumentos'),
         colores: {
           primary: formData.get('colorPrimary'),
           primaryHover: formData.get('colorPrimary'),
@@ -497,9 +544,13 @@ export const SettingsModule = {
       // Guardar nombres de las 5 listas de precios
       for (const pl of priceLists) {
         const newName = formData.get(`plist_name_${pl.id}`);
-        if (newName && newName !== pl.nombre) {
-          pl.nombre = newName;
+        const incl = !!formData.get(`plist_iva_${pl.id}`);
+        if ((newName && newName !== pl.nombre) || incl !== !!pl.incluyeIva) {
+          const antes = `${pl.nombre} (${pl.incluyeIva ? 'IVA incluido' : '+IVA'})`;
+          pl.nombre = newName || pl.nombre;
+          pl.incluyeIva = incl;
           await DB.update(STORES.PRICE_LISTS, pl);
+          await AuditService.log({ modulo: 'Configuración', accion: 'MODIFICAR', registroId: pl.id, campoModificado: 'Lista de precios', valorAnterior: antes, valorNuevo: `${pl.nombre} (${incl ? 'IVA incluido' : '+IVA'})` });
         }
       }
 
@@ -529,7 +580,7 @@ export const SettingsModule = {
           </div>
           <div class="form-group">
             <label class="form-label">DV Calculado</label>
-            <input type="text" class="form-control" id="modal-tenant-dv" name="dv" readonly value="-" style="background: #f1f5f9; font-weight: bold;">
+            <input type="text" class="form-control" id="modal-tenant-dv" name="dv" readonly value="-" style="font-weight: bold;">
           </div>
         </div>
 
@@ -597,14 +648,14 @@ export const SettingsModule = {
               departamento: formData.get('departamento'),
               telefono: formData.get('telefono'),
               whatsapp: formData.get('telefono'),
-              email: `contacto@${formData.get('nombreComercial').toLowerCase().replace(/\s+/g, '')}.com`,
+              email: '',
               colores: {
                 primary: colorPrim,
                 primaryHover: colorPrim,
                 secondary: '#f59e0b',
                 accent: colorPrim
               },
-              resolucionFacturacion: 'Resolución DIAN No. Pendiente por asignar',
+              resolucionFacturacion: '',
               moneda: 'COP',
               esDemo: false
             };

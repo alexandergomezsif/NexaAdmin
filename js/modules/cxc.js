@@ -3,9 +3,10 @@
  * Antigüedad de saldos, estados de mora y recepción de abonos
  */
 
+import { bindOnce } from '../utils/dom.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
-import { CashService } from '../services/cash-service.js';
+import { Formatters, esc } from '../utils/formatters.js';
+import { PaymentsService, RECEIPT_METHODS } from '../services/payments-service.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
@@ -75,12 +76,12 @@ export const CxcModule = {
         {
           key: 'documento',
           title: 'Factura / Documento',
-          render: val => `<strong style="color: var(--brand-primary);">${val}</strong>`
+          render: val => `<strong style="color: var(--brand-primary);">${esc(val)}</strong>`
         },
         {
           key: 'clienteNombre',
           title: 'Cliente Deudor',
-          render: val => `<strong>${val}</strong>`
+          render: val => `<strong>${esc(val)}</strong>`
         },
         {
           key: 'fechaEmision',
@@ -124,14 +125,14 @@ export const CxcModule = {
       ],
       actions: (row) => `
         <div class="d-flex items-center gap-1 flex-wrap">
-          <button class="btn btn-primary btn-sm btn-cxc-payment" data-id="${row.id}" title="Registrar Abono">💵 Abono</button>
-          <button class="btn btn-sm btn-cxc-whatsapp" data-id="${row.id}" style="background: #25d366; border-color: #25d366; color: #ffffff; font-weight: 700; padding: 3px 8px; font-size: 11px;" title="Enviar cobro por WhatsApp">📲 WhatsApp</button>
-          <button class="btn btn-secondary btn-sm btn-cxc-calendar" data-id="${row.id}" title="Programar recordatorio en Google Calendar">📅 Recordatorio</button>
+          <button class="btn btn-primary btn-sm btn-cxc-payment" data-id="${esc(row.id)}" title="Registrar Abono">💵 Abono</button>
+          <button class="btn btn-sm btn-cxc-whatsapp" data-id="${esc(row.id)}" style="background: #25d366; border-color: #25d366; color: #ffffff; font-weight: 700; padding: 3px 8px; font-size: 11px;" title="Enviar cobro por WhatsApp">📲 WhatsApp</button>
+          <button class="btn btn-secondary btn-sm btn-cxc-calendar" data-id="${esc(row.id)}" title="Programar recordatorio en Google Calendar">📅 Recordatorio</button>
         </div>
       `
     });
 
-    container.addEventListener('click', (e) => {
+    bindOnce(container, 'cxc-click', 'click', (e) => {
       const payBtn = e.target.closest('.btn-cxc-payment');
       if (payBtn) {
         const id = payBtn.getAttribute('data-id');
@@ -161,8 +162,8 @@ export const CxcModule = {
   openPaymentModal(cxcItem, tenantId, clients, onSaved) {
     const content = `
       <div class="mb-3" style="background: var(--bg-surface-solid); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-        <div class="text-xs text-muted">Abono a Documento: <strong>${cxcItem.documento}</strong></div>
-        <div style="font-size: 16px; font-weight: 700; color: var(--text-main); margin: 2px 0;">${cxcItem.clienteNombre}</div>
+        <div class="text-xs text-muted">Abono a Documento: <strong>${esc(cxcItem.documento)}</strong></div>
+        <div style="font-size: 16px; font-weight: 700; color: var(--text-main); margin: 2px 0;">${esc(cxcItem.clienteNombre)}</div>
         <div class="d-flex justify-between items-center text-xs mt-2">
           <span>Saldo Actual Pendiente:</span>
           <strong class="text-danger" style="font-size: 15px;">${Formatters.currency(cxcItem.saldo)}</strong>
@@ -172,17 +173,13 @@ export const CxcModule = {
       <form id="cxc-payment-form">
         <div class="form-group mb-3">
           <label class="form-label">Monto del Abono ($ COP)</label>
-          <input type="number" step="any" min="1" max="${cxcItem.saldo}" class="form-control" name="montoAbono" value="${cxcItem.saldo}" required>
+          <input type="number" step="any" min="1" max="${esc(cxcItem.saldo)}" class="form-control" name="montoAbono" value="${esc(cxcItem.saldo)}" required>
         </div>
 
         <div class="form-group mb-3">
           <label class="form-label">Forma de Pago del Recaudo</label>
           <select class="form-select" name="metodoPago">
-            <option value="Efectivo">Efectivo (Ingresa a Caja Abierta)</option>
-            <option value="Transferencia Bancolombia">Transferencia Bancolombia</option>
-            <option value="Nequi">Nequi</option>
-            <option value="Daviplata">Daviplata</option>
-            <option value="Cheque">Cheque</option>
+            ${RECEIPT_METHODS.map(m => `<option value="${m}">${m === 'Efectivo' ? 'Efectivo (ingresa a la caja abierta)' : m}</option>`).join('')}
           </select>
         </div>
 
@@ -210,51 +207,21 @@ export const CxcModule = {
 
             const formData = new FormData(form);
             const abono = Number(formData.get('montoAbono'));
-            const metodo = formData.get('metodoPago');
-            const compB64 = formData.get('comprobanteBase64');
-            const observacion = formData.get('reciboCaja');
-
-              // 1. Actualizar CXC
-              cxcItem.abonos = (cxcItem.abonos || 0) + abono;
-              cxcItem.saldo = Math.max(0, cxcItem.saldo - abono);
-              if (cxcItem.saldo === 0) cxcItem.estado = 'PAGADA';
-              
-              // Historial de pagos para guardar el comprobante
-              cxcItem.historialPagos = cxcItem.historialPagos || [];
-              cxcItem.historialPagos.push({
-                fecha: new Date().toISOString(),
+            let res;
+            try {
+              res = await PaymentsService.receivePayment({
+                tenantId,
+                cxcId: cxcItem.id,
                 monto: abono,
-                metodo,
-                observacion,
-                comprobanteBase64: compB64 || null
+                metodo: formData.get('metodoPago'),
+                referencia: formData.get('reciboCaja'),
+                comprobanteDataUrl: formData.get('comprobanteBase64') || null
               });
-              
-              await DB.update(STORES.RECEIVABLES_CXC, cxcItem);
-
-            // 2. Actualizar cliente
-            const client = clients.find(c => c.id === cxcItem.clienteId);
-            if (client) {
-              client.saldoPendiente = Math.max(0, (client.saldoPendiente || 0) - abono);
-              await DB.update(STORES.CUSTOMERS, client);
+            } catch (err) {
+              Toast.error(err.message);
+              return;
             }
-
-            // 3. Si fue en efectivo y hay caja abierta, registrar ingreso
-            if (metodo === 'Efectivo') {
-              const currentShift = await CashService.getCurrentShift(tenantId);
-              if (currentShift) {
-                await CashService.addMovement({
-                  tenantId,
-                  turnoId: currentShift.id,
-                  tipo: 'INGRESO',
-                  monto: abono,
-                  concepto: `Abono Cartera Doc ${cxcItem.documento} de ${cxcItem.clienteNombre}`,
-                  tercero: cxcItem.clienteNombre,
-                  formaPago: 'Efectivo'
-                });
-              }
-            }
-
-            Toast.success(`Abono por ${Formatters.currency(abono)} registrado con éxito.`);
+            Toast.success(`Abono ${res.recibo} por ${Formatters.currency(abono)} registrado.`);
             Modal.close();
             if (onSaved) onSaved();
           }

@@ -4,7 +4,7 @@
  */
 
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { ExportService } from '../services/export-service.js';
 import { DataTable } from '../components/data-table.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
@@ -46,19 +46,19 @@ export const AuditModule = {
           render: (val, row) => `
             <div>
               <strong>${Formatters.date(val)}</strong>
-              <div class="text-xs text-muted">${row.hora || ''}</div>
+              <div class="text-xs text-muted">${esc(row.hora || '')}</div>
             </div>
           `
         },
         {
           key: 'usuarioNombre',
           title: 'Usuario Operador',
-          render: val => `<strong>${val || 'Sistema'}</strong>`
+          render: val => `<strong>${esc(val || 'Sistema')}</strong>`
         },
         {
           key: 'modulo',
           title: 'Módulo',
-          render: val => `<span class="badge badge-info">${val}</span>`
+          render: val => `<span class="badge badge-info">${esc(val)}</span>`
         },
         {
           key: 'accion',
@@ -71,28 +71,28 @@ export const AuditModule = {
               AUTORIZAR: 'badge-primary',
               LOGIN: 'badge-neutral'
             };
-            return `<span class="badge ${map[val] || 'badge-neutral'}">${val}</span>`;
+            return `<span class="badge ${map[val] || 'badge-neutral'}">${esc(val)}</span>`;
           }
         },
         {
           key: 'registroId',
           title: 'Registro Afectado',
-          render: val => `<code>${val || '-'}</code>`
+          render: val => `<code>${esc(val || '-')}</code>`
         },
         {
           key: 'campoModificado',
           title: 'Detalle / Campo',
-          render: val => `<strong>${val || '-'}</strong>`
+          render: val => `<strong>${esc(val || '-')}</strong>`
         },
         {
           key: 'valorAnterior',
           title: 'Valor Anterior',
-          render: val => `<span class="text-muted" style="text-decoration: line-through;">${val || '-'}</span>`
+          render: val => `<span class="text-muted" style="text-decoration: line-through;">${esc(val || '-')}</span>`
         },
         {
           key: 'valorNuevo',
           title: 'Valor Nuevo',
-          render: val => `<strong class="text-primary">${val || '-'}</strong>`
+          render: val => `<strong class="text-primary">${esc(val || '-')}</strong>`
         }
       ]
     });

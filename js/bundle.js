@@ -2991,1730 +2991,6 @@
   // js/app.js
   init_formatters();
 
-  // js/modules/dashboard.js
-  init_formatters();
-
-  // js/components/kpi-card.js
-  function renderKpiCard({
-    label,
-    value,
-    icon = "\uD83D\uDCCA",
-    iconBg = "var(--brand-primary-light)",
-    iconColor = "var(--brand-primary)",
-    trend = null,
-    trendPositive = true,
-    footerText = ""
-  }) {
-    const trendHtml = trend !== null ? `
-    <span class="kpi-trend ${trendPositive ? "positive" : "negative"}">
-      ${trendPositive ? "↑" : "↓"} ${trend}
-    </span>
-  ` : "";
-    return `
-    <div class="kpi-card">
-      <div class="kpi-card-header">
-        <span class="kpi-label">${label}</span>
-        <div class="kpi-icon-wrap" style="background: ${iconBg}; color: ${iconColor};">
-          ${icon}
-        </div>
-      </div>
-      <div class="kpi-value">${value}</div>
-      <div class="kpi-footer">
-        ${trendHtml}
-        <span>${footerText}</span>
-      </div>
-    </div>
-  `;
-  }
-
-  // js/modules/dashboard.js
-  var DashboardModule = {
-    async render(container) {
-      const tenant = TenantServiceInstance.getActiveTenant();
-      const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [sales, products, expenses, cxc, cxp, shipping, orders] = await Promise.all([
-        DB.getAll(STORES.SALES, tenantId),
-        DB.getAll(STORES.PRODUCTS, tenantId),
-        DB.getAll(STORES.EXPENSES, tenantId),
-        DB.getAll(STORES.RECEIVABLES_CXC, tenantId),
-        DB.getAll(STORES.PAYABLES_CXP, tenantId),
-        DB.getAll(STORES.ORDERS_SHIPPING, tenantId),
-        DB.getAll(STORES.PRODUCTION_ORDERS, tenantId)
-      ]);
-      const todayStr = new Date().toISOString().split("T")[0];
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      let ventasDia = 0;
-      let ventasMes = 0;
-      let ventasAno = 0;
-      let costoTotalVentas = 0;
-      sales.forEach((s) => {
-        const sDate = new Date(s.fecha);
-        const isToday = s.fecha && s.fecha.startsWith(todayStr);
-        const isThisMonth = sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear;
-        const isThisYear = sDate.getFullYear() === currentYear;
-        if (isToday)
-          ventasDia += Number(s.total || 0);
-        if (isThisMonth)
-          ventasMes += Number(s.total || 0);
-        if (isThisYear)
-          ventasAno += Number(s.total || 0);
-      });
-      const totalGastos = expenses.reduce((acc, exp) => acc + Number(exp.valor || 0), 0);
-      const totalCarteraCobrar = cxc.reduce((acc, c) => acc + Number(c.saldo || 0), 0);
-      const totalCuentasPagar = cxp.reduce((acc, p) => acc + Number(p.saldo || 0), 0);
-      const inventarioValorizado = products.reduce((acc, p) => acc + Number(p.stock || 0) * Number(p.costoPromedio || 0), 0);
-      const productosStockBajo = products.filter((p) => p.stock > 0 && p.stock <= (p.stockMinimo || 15));
-      const productosAgotados = products.filter((p) => Number(p.stock || 0) <= 0);
-      const carteraVencida = cxc.filter((c) => c.estado === "VENCIDO" || c.diasMora && c.diasMora > 0);
-      const enviosPendientes = shipping.filter((s) => s.estadoCiclo !== "ENTREGADO");
-      const utilidadEstimada = Math.max(0, ventasAno * 0.45 - totalGastos);
-      container.innerHTML = `
-      <div class="view-header">
-        <div class="view-title-wrap">
-          <div class="d-flex items-center gap-2">
-            <h1>Dashboard Ejecutivo</h1>
-            <span class="badge-demo">DEMO RAYO PRO</span>
-          </div>
-          <p>Visión general de ventas, cartera, inventario y alertas operativas de <strong>${tenant.nombreComercial}</strong></p>
-        </div>
-        <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-refresh-dashboard">\uD83D\uDD04 Actualizar</button>
-          <button class="btn btn-primary btn-sm" id="btn-quick-new-sale">⚡ Nueva Venta POS</button>
-        </div>
-      </div>
-
-      <!-- BOTONES DE ACCIÓN RÁPIDA (COMPACTO) -->
-      <div class="card mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color);">
-        <div class="card-body" style="padding: 10px 14px;">
-          <div class="text-xs font-bold text-muted mb-1" style="letter-spacing: 0.5px; font-size: 10.5px;">ACCIONES RÁPIDAS OPERATIVAS</div>
-          <div class="d-flex flex-wrap gap-1">
-            <button class="btn btn-secondary btn-sm" data-nav-to="sales-pos" style="padding: 4px 10px; font-size: 11.5px;">➕ Venta</button>
-            <button class="btn btn-secondary btn-sm" data-nav-to="clients" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDC64 Cliente</button>
-            <button class="btn btn-secondary btn-sm" data-nav-to="products" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDCE6 Producto</button>
-            <button class="btn btn-secondary btn-sm" data-nav-to="production" style="padding: 4px 10px; font-size: 11.5px;">⚙️ Producción</button>
-            <button class="btn btn-secondary btn-sm" data-nav-to="expenses" style="padding: 4px 10px; font-size: 11.5px;">\uD83C\uDFF7️ Gasto</button>
-            <button class="btn btn-secondary btn-sm" data-nav-to="purchases" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDECD️ Compra</button>
-            <button class="btn btn-secondary btn-sm" data-nav-to="shipping" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDE9A Envíos</button>
-            <button class="btn btn-secondary btn-sm" data-nav-to="cash" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDCB5 Caja</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- CENTRO DE RECORDATORIOS & RESUMEN EJECUTIVO (SOCIOS / GERENCIA) -->
-      <div class="card mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 4px solid #25d366;">
-        <div class="card-body" style="padding: 12px 16px;">
-          <div class="d-flex justify-between items-center flex-wrap gap-3">
-            <div>
-              <div class="d-flex items-center gap-2">
-                <strong style="font-size: 13.5px; color: var(--text-main);">\uD83D\uDCBC Notificaciones & Resumen Ejecutivo (Socios / Gerencia)</strong>
-                <span class="badge badge-success" style="font-size: 10px;">En Vivo</span>
-              </div>
-              <div class="text-xs text-muted" style="margin-top: 2px;">
-                Cierre de jornada laboral, balances periódicos y programación en Google Calendar sin scripts externos.
-              </div>
-            </div>
-            <div class="d-flex items-center gap-2 flex-wrap">
-              <button class="btn btn-sm" id="btn-dash-wa-summary" style="background: #25d366; border-color: #25d366; color: #fff; font-weight: 700; font-size: 12px;">
-                \uD83D\uDCF2 Resumen Día por WhatsApp
-              </button>
-              <button class="btn btn-secondary btn-sm" id="btn-dash-email-summary" style="font-size: 12px;">
-                \uD83D\uDCE7 Enviar por Correo
-              </button>
-              <button class="btn btn-secondary btn-sm" id="btn-dash-calendar" style="font-size: 12px;">
-                \uD83D\uDCC5 Agendar en Google Calendar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- GRID DE KPIS -->
-      <div class="kpi-grid">
-        ${renderKpiCard({
-        label: "Ventas del Día",
-        value: Formatters.currency(ventasDia),
-        icon: "\uD83D\uDCB0",
-        iconBg: "var(--color-success-bg)",
-        iconColor: "var(--color-success)",
-        trend: "+12%",
-        trendPositive: true,
-        footerText: "vs. día anterior"
-      })}
-
-        ${renderKpiCard({
-        label: "Ventas del Mes",
-        value: Formatters.currency(ventasMes),
-        icon: "\uD83D\uDCC8",
-        iconBg: "var(--brand-primary-light)",
-        iconColor: "var(--brand-primary)",
-        trend: "+8.4%",
-        trendPositive: true,
-        footerText: "meta mensual 85%"
-      })}
-
-        ${renderKpiCard({
-        label: "Inventario Valorizado",
-        value: Formatters.currency(inventarioValorizado),
-        icon: "\uD83D\uDCE6",
-        iconBg: "#f3e8ff",
-        iconColor: "#7e22ce",
-        footerText: `${products.length} referencias activas`
-      })}
-
-        ${renderKpiCard({
-        label: "Utilidad Estimada",
-        value: Formatters.currency(utilidadEstimada),
-        icon: "\uD83D\uDC8E",
-        iconBg: "#ecfdf5",
-        iconColor: "#059669",
-        footerText: "Margen global ~42%"
-      })}
-
-        ${renderKpiCard({
-        label: "Cuentas por Cobrar",
-        value: Formatters.currency(totalCarteraCobrar),
-        icon: "\uD83D\uDC65",
-        iconBg: "var(--color-warning-bg)",
-        iconColor: "var(--color-warning)",
-        footerText: `${carteraVencida.length} en mora`
-      })}
-
-        ${renderKpiCard({
-        label: "Cuentas por Pagar",
-        value: Formatters.currency(totalCuentasPagar),
-        icon: "\uD83D\uDCD1",
-        iconBg: "var(--color-danger-bg)",
-        iconColor: "var(--color-danger)",
-        footerText: `${cxp.length} facturas proveedores`
-      })}
-
-        ${renderKpiCard({
-        label: "Gastos Registrados",
-        value: Formatters.currency(totalGastos),
-        icon: "\uD83C\uDFF7️",
-        iconBg: "#fff1f2",
-        iconColor: "#e11d48",
-        footerText: "Gastos operativos mes"
-      })}
-
-        ${renderKpiCard({
-        label: "Envíos en Curso",
-        value: `${enviosPendientes.length} Despachos`,
-        icon: "\uD83D\uDE9A",
-        iconBg: "#e0f2fe",
-        iconColor: "#0369a1",
-        footerText: "Por entregar a clientes"
-      })}
-      </div>
-
-      <!-- PANEL PRINCIPAL DE GRÁFICOS Y ALERTAS -->
-      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;" class="dashboard-columns">
-        <!-- COLUMNA IZQUIERDA: GRÁFICOS ANALÍTICOS -->
-        <div class="d-flex flex-col gap-4">
-          <!-- Gráfico de Ventas Mensuales -->
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">Ventas por Período y Tendencia</div>
-                <div class="card-subtitle">Evolución de facturación últimos meses (COP)</div>
-              </div>
-              <span class="badge badge-info">2026</span>
-            </div>
-            <div class="card-body">
-              <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 180px; padding-top: 20px; border-bottom: 1px solid var(--border-color); gap: 12px;">
-                ${[
-        { m: "May", val: 18500000, h: 55 },
-        { m: "Jun", val: 24200000, h: 72 },
-        { m: "Jul", val: 21900000, h: 65 },
-        { m: "Ago", val: 29800000, h: 88 },
-        { m: "Sep", val: ventasMes || 32400000, h: 95 }
-      ].map((bar) => `
-                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">
-                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">${Formatters.currency(bar.val, 0)}</div>
-                    <div style="width: 100%; max-width: 48px; height: ${bar.h}%; background: var(--brand-primary); border-radius: 6px 6px 0 0; transition: height 0.5s ease;"></div>
-                    <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 8px;">${bar.m}</div>
-                  </div>
-                `).join("")}
-              </div>
-            </div>
-          </div>
-
-          <!-- Distribución por Categoría y Métodos de Pago -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="card" style="margin-bottom: 0;">
-              <div class="card-header">
-                <div class="card-title" style="font-size: 14px;">Ventas por Categoría</div>
-              </div>
-              <div class="card-body">
-                <div class="d-flex flex-col gap-3">
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Lavado Exterior (Shampoos)</span>
-                      <span>45%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 45%; height: 100%; background: var(--brand-primary);"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Protección & Ceras</span>
-                      <span>30%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 30%; height: 100%; background: var(--brand-secondary);"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Desengrasantes Pesados</span>
-                      <span>15%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 15%; height: 100%; background: #10b981;"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Accesorios / Microfibras</span>
-                      <span>10%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 10%; height: 100%; background: #8b5cf6;"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card" style="margin-bottom: 0;">
-              <div class="card-header">
-                <div class="card-title" style="font-size: 14px;">Métodos de Pago</div>
-              </div>
-              <div class="card-body">
-                <div class="d-flex flex-col gap-2 text-xs">
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-                    <span>\uD83D\uDCF1 Nequi / Daviplata</span>
-                    <strong style="color: #6366f1;">35% ($ 1.130.000)</strong>
-                  </div>
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-                    <span>\uD83D\uDCB5 Efectivo en Caja</span>
-                    <strong style="color: #10b981;">30% ($ 960.000)</strong>
-                  </div>
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-                    <span>\uD83D\uDCB3 Transferencia Bancaria</span>
-                    <strong style="color: var(--brand-primary);">20% ($ 640.000)</strong>
-                  </div>
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0;">
-                    <span>\uD83D\uDCD1 Crédito Directo 30 días</span>
-                    <strong style="color: #f59e0b;">15% ($ 480.000)</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- COLUMNA DERECHA: PANEL DE ALERTAS OPERATIVAS -->
-        <div>
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Alertas de Operación</div>
-              <span class="badge badge-danger">${productosStockBajo.length + productosAgotados.length + carteraVencida.length}</span>
-            </div>
-            <div class="card-body" style="padding: 12px 16px;">
-              <div class="d-flex flex-col gap-2">
-                ${productosAgotados.map((p) => `
-                  <div class="alert alert-danger" style="margin-bottom: 4px; padding: 10px 12px;">
-                    <div>
-                      <div class="font-bold">❌ Producto Agotado</div>
-                      <div class="text-xs">${p.nombre} (Stock: 0 ${p.unidadMedida})</div>
-                      <a href="#production" class="text-xs font-bold text-danger" style="text-decoration: underline; margin-top: 4px; display: inline-block;">Programar Producción →</a>
-                    </div>
-                  </div>
-                `).join("")}
-
-                ${productosStockBajo.map((p) => `
-                  <div class="alert alert-warning" style="margin-bottom: 4px; padding: 10px 12px;">
-                    <div>
-                      <div class="font-bold">⚠️ Stock Crítico Mínimo</div>
-                      <div class="text-xs">${p.nombre} (Existencias: ${p.stock} / Mínimo: ${p.stockMinimo})</div>
-                    </div>
-                  </div>
-                `).join("")}
-
-                ${carteraVencida.map((c) => `
-                  <div class="alert alert-warning" style="margin-bottom: 4px; padding: 10px 12px;">
-                    <div>
-                      <div class="font-bold">⏰ Factura en Mora</div>
-                      <div class="text-xs">${c.clienteNombre} - Doc ${c.documento} - Saldo: ${Formatters.currency(c.saldo)}</div>
-                    </div>
-                  </div>
-                `).join("")}
-
-                ${productosStockBajo.length === 0 && productosAgotados.length === 0 && carteraVencida.length === 0 ? `
-                  <div class="text-center text-muted" style="padding: 20px;">
-                    ✓ Todas las operaciones se encuentran al día. Sin alertas activas.
-                  </div>
-                ` : ""}
-              </div>
-            </div>
-          </div>
-
-          <!-- ESTADO DE FACTURACIÓN DIAN -->
-          <div class="card" style="border-left: 4px solid var(--brand-secondary);">
-            <div class="card-header">
-              <div class="card-title" style="font-size: 14px;">Facturación Electrónica DIAN</div>
-            </div>
-            <div class="card-body" style="padding: 14px 16px;">
-              <div class="text-xs text-muted mb-2">
-                Ambiente de Facturación Electrónica en Colombia:
-              </div>
-              <div class="badge badge-warning mb-2">Integración Pendiente de Configuración</div>
-              <p class="text-xs" style="color: var(--text-secondary); line-height: 1.4;">
-                El sistema almacena consecutivos fiscales y genera documentos equivalentes POS conformes a la normativa interna. Para emitir CUFE y XML validado se requiere enlazar el certificado digital o proveedor tecnológico en el módulo de integraciones.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-      container.querySelector("#btn-refresh-dashboard").addEventListener("click", () => {
-        this.render(container);
-      });
-      container.querySelector("#btn-quick-new-sale").addEventListener("click", () => {
-        window.location.hash = "#sales-pos";
-      });
-      container.querySelectorAll("[data-nav-to]").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          const target = e.currentTarget.getAttribute("data-nav-to");
-          window.location.hash = `#${target}`;
-        });
-      });
-      const btnWaSummary = container.querySelector("#btn-dash-wa-summary");
-      if (btnWaSummary) {
-        btnWaSummary.addEventListener("click", () => {
-          const todayFormatted = new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-          const defaultSummaryText = `\uD83D\uDCCA *RESUMEN EJECUTIVO DIARIO - ${tenant.nombreComercial}*
-\uD83D\uDCC5 *Fecha:* ${todayFormatted}
-
-\uD83D\uDCB0 *Ventas del Día:* ${Formatters.currency(ventasDia)}
-\uD83D\uDCC8 *Ventas Acumuladas Mes:* ${Formatters.currency(ventasMes)}
-\uD83D\uDC8E *Utilidad Estimada Mes:* ${Formatters.currency(utilidadEstimada)}
-⚠️ *Cartera Pendiente Total:* ${Formatters.currency(totalCarteraCobrar)}
-\uD83D\uDEA8 *Cartera en Mora:* ${Formatters.currency(carteraVencida.reduce((a, b) => a + Number(b.saldo || 0), 0))} (${carteraVencida.length} cuentas)
-\uD83D\uDCE6 *Inventario Valorizado:* ${Formatters.currency(inventarioValorizado)} (${products.length} referencias)
-\uD83D\uDE9A *Despachos Activos:* ${enviosPendientes.length} órdenes en curso
-
-${productosStockBajo.length > 0 ? `⚠️ *Productos con Stock Bajo:* ${productosStockBajo.map((p) => p.nombre + " (" + p.stock + ")").join(", ")}
-` : ""}
-✅ Cierre y monitoreo generado desde Nexa ERP.`;
-          Modal.show({
-            title: "\uD83D\uDCF2 Enviar Resumen Diario a Socios por WhatsApp",
-            size: "md",
-            content: `
-            <div class="mb-3" style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.25); border-radius: 8px; padding: 12px 14px;">
-              <div style="font-size: 13px; font-weight: 700; color: #166534; margin-bottom: 2px;">
-                Resumen Ejecutivo Listo para WhatsApp Web
-              </div>
-              <div style="font-size: 11.5px; color: var(--text-secondary);">
-                Este informe consolida las ventas, recaudo, cartera e inventario de hoy. Ingrese el número del socio o el grupo de socios.
-              </div>
-            </div>
-
-            <div class="form-group mb-3">
-              <label class="form-label font-bold">Número de WhatsApp (Socio o Gerente)</label>
-              <input type="text" class="form-control font-bold" id="dash-wa-phone" value="${tenant.whatsapp ? tenant.whatsapp.replace(/\D/g, "") : "57"}" placeholder="Ej: 573124567890">
-            </div>
-
-            <div class="form-group mb-3">
-              <label class="form-label font-bold">Mensaje Ejecutivo a Enviar</label>
-              <textarea class="form-control" id="dash-wa-text" rows="10" style="font-size: 12px; font-family: monospace; line-height: 1.4;">${defaultSummaryText}</textarea>
-            </div>
-          `,
-            footerButtons: [
-              { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-              {
-                label: "\uD83D\uDCAC Abrir en WhatsApp Web y Enviar",
-                class: "btn-primary",
-                onClick: () => {
-                  const phoneInp = document.getElementById("dash-wa-phone");
-                  const textInp = document.getElementById("dash-wa-text");
-                  const phone = (phoneInp ? phoneInp.value : "").replace(/\D/g, "");
-                  const text = textInp ? textInp.value : defaultSummaryText;
-                  if (!phone || phone.length < 10) {
-                    Toast.warning("Por favor ingrese un número de teléfono válido.");
-                    return;
-                  }
-                  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`, "_blank");
-                  Toast.success("Abriendo WhatsApp Web con el resumen del día...");
-                  Modal.close();
-                }
-              }
-            ]
-          });
-        });
-      }
-      const btnEmailSummary = container.querySelector("#btn-dash-email-summary");
-      if (btnEmailSummary) {
-        btnEmailSummary.addEventListener("click", () => {
-          const todayFormatted = new Date().toLocaleDateString("es-CO");
-          const subject = `Resumen Ejecutivo Diario - ${tenant.nombreComercial} (${todayFormatted})`;
-          const body = `Resumen Ejecutivo Diario - ${tenant.nombreComercial}
-Fecha: ${todayFormatted}
-
-Ventas del Día: ${Formatters.currency(ventasDia)}
-Ventas Mes: ${Formatters.currency(ventasMes)}
-Utilidad Estimada: ${Formatters.currency(utilidadEstimada)}
-Cartera Pendiente: ${Formatters.currency(totalCarteraCobrar)}
-Inventario: ${Formatters.currency(inventarioValorizado)}
-
-Generado por Nexa ERP.`;
-          window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
-        });
-      }
-      const btnCalendar = container.querySelector("#btn-dash-calendar");
-      if (btnCalendar) {
-        btnCalendar.addEventListener("click", () => {
-          const todayRaw = new Date().toISOString().split("T")[0].replace(/-/g, "");
-          const now = new Date;
-          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          const endOfMonthRaw = endOfMonth.toISOString().split("T")[0].replace(/-/g, "");
-          const endOfYearRaw = `${now.getFullYear()}1231`;
-          Modal.show({
-            title: "\uD83D\uDCC5 Programar Cierres & Recordatorios en Google Calendar",
-            size: "md",
-            content: `
-            <p class="text-xs text-muted mb-3">
-              Seleccione el evento que desea agendar en su Google Calendar personal o institucional para recibir alertas automáticas:
-            </p>
-            <div class="d-flex flex-col gap-2">
-              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
-                <div>
-                  <strong style="font-size: 13px;">\uD83D\uDCB0 Cierre de Caja & Arqueo Diario</strong>
-                  <div class="text-xs text-muted">Recordatorio para hoy al finalizar la jornada (6:30 PM)</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-gcal-daily">\uD83D\uDCC5 Agendar</button>
-              </div>
-
-              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
-                <div>
-                  <strong style="font-size: 13px;">\uD83D\uDCE6 Cierre Mensual de Inventario & Balances</strong>
-                  <div class="text-xs text-muted">Programar para el último día del mes en curso</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-gcal-monthly">\uD83D\uDCC5 Agendar</button>
-              </div>
-
-              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
-                <div>
-                  <strong style="font-size: 13px;">\uD83C\uDFDB️ Vencimiento DIAN: IVA & Retención</strong>
-                  <div class="text-xs text-muted">Recordatorio tributario para declaración bimestral DIAN</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-gcal-dian">\uD83D\uDCC5 Agendar</button>
-              </div>
-
-              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
-                <div>
-                  <strong style="font-size: 13px;">\uD83C\uDFC1 Cierre Fiscal de Fin de Año & Estados Financieros</strong>
-                  <div class="text-xs text-muted">Programado para el 31 de Diciembre</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" id="btn-gcal-yearly">\uD83D\uDCC5 Agendar</button>
-              </div>
-            </div>
-          `,
-            footerButtons: [
-              { label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }
-            ]
-          });
-          const launchGCal = (title, start, end, details) => {
-            const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${start}/${end}&details=${encodeURIComponent(details)}&location=Rayo+Pro+Colombia`;
-            window.open(url, "_blank");
-            Toast.info("Abriendo Google Calendar...");
-          };
-          document.getElementById("btn-gcal-daily")?.addEventListener("click", () => {
-            launchGCal(`Cierre de Caja y Arqueo Diario - ${tenant.nombreComercial}`, `${todayRaw}T183000Z`, `${todayRaw}T190000Z`, `Conciliación de efectivo físico, transferencias Nequi/Daviplata y envío de reporte a socios en Nexa ERP.`);
-          });
-          document.getElementById("btn-gcal-monthly")?.addEventListener("click", () => {
-            launchGCal(`Cierre Mensual de Inventario y Contabilidad - ${tenant.nombreComercial}`, `${endOfMonthRaw}T170000Z`, `${endOfMonthRaw}T190000Z`, `Auditoría de existencias físicas en bodega vs Kardex y balance general mensual en Nexa ERP.`);
-          });
-          document.getElementById("btn-gcal-dian")?.addEventListener("click", () => {
-            launchGCal(`Vencimiento Tributario DIAN (IVA / ReteFuente) - ${tenant.nombreComercial}`, `${endOfMonthRaw}T140000Z`, `${endOfMonthRaw}T160000Z`, `Presentación y pago de obligaciones tributarias DIAN para NIT ${tenant.nit}-${tenant.dv}.`);
-          });
-          document.getElementById("btn-gcal-yearly")?.addEventListener("click", () => {
-            launchGCal(`Cierre Anual Fiscal y Balance General - ${tenant.nombreComercial}`, `${endOfYearRaw}T150000Z`, `${endOfYearRaw}T180000Z`, `Cierre de ejercicio fiscal anual, inventario total valorizado y distribución de utilidades a socios.`);
-          });
-        });
-      }
-    }
-  };
-
-  // js/modules/clients.js
-  init_formatters();
-
-  // js/components/data-table.js
-  init_formatters();
-
-  class DataTable {
-    constructor({
-      containerId,
-      columns = [],
-      data = [],
-      pageSize = 10,
-      searchable = true,
-      searchPlaceholder = "Buscar en la tabla...",
-      emptyMessage = "No se encontraron registros.",
-      actions = null
-    }) {
-      this.container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
-      this.columns = columns;
-      this.rawData = [...data];
-      this.filteredData = [...data];
-      this.pageSize = pageSize;
-      this.currentPage = 1;
-      this.searchQuery = "";
-      this.sortKey = null;
-      this.sortAsc = true;
-      this.searchable = searchable;
-      this.searchPlaceholder = searchPlaceholder;
-      this.emptyMessage = emptyMessage;
-      this.actions = actions;
-      this.render();
-    }
-    updateData(newData) {
-      this.rawData = [...newData];
-      this.applyFilters();
-    }
-    applyFilters() {
-      let result = [...this.rawData];
-      if (this.searchQuery.trim()) {
-        const q = this.searchQuery.toLowerCase();
-        result = result.filter((row) => {
-          return this.columns.some((col) => {
-            const val = row[col.key];
-            if (val === null || val === undefined)
-              return false;
-            return String(val).toLowerCase().includes(q);
-          });
-        });
-      }
-      if (this.sortKey) {
-        result.sort((a, b) => {
-          const valA = a[this.sortKey];
-          const valB = b[this.sortKey];
-          if (valA === valB)
-            return 0;
-          if (valA === null || valA === undefined)
-            return 1;
-          if (valB === null || valB === undefined)
-            return -1;
-          const comp = valA > valB ? 1 : -1;
-          return this.sortAsc ? comp : -comp;
-        });
-      }
-      this.filteredData = result;
-      this.currentPage = 1;
-      this.renderBody();
-    }
-    render() {
-      if (!this.container)
-        return;
-      this.container.innerHTML = `
-      <div class="card" style="margin-bottom: 0;">
-        ${this.searchable ? `
-          <div class="table-toolbar">
-            <div class="table-search">
-              <span class="table-search-icon">\uD83D\uDD0D</span>
-              <input type="text" class="table-search-input" placeholder="${esc(this.searchPlaceholder)}" value="${esc(this.searchQuery)}">
-            </div>
-            <div class="table-info-counter text-xs text-muted"></div>
-          </div>
-        ` : ""}
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead>
-              <tr>
-                ${this.columns.map((col) => `
-                  <th style="cursor: pointer; ${col.width ? `width: ${col.width};` : ""}" data-col-key="${col.key}">
-                    ${col.title} <span class="sort-indicator" data-sort-for="${col.key}">↕</span>
-                  </th>
-                `).join("")}
-                ${this.actions ? '<th style="text-align: right; width: 120px;">Acciones</th>' : ""}
-              </tr>
-            </thead>
-            <tbody class="table-body"></tbody>
-          </table>
-        </div>
-        <div class="table-pagination">
-          <div class="pagination-info"></div>
-          <div class="pagination-controls d-flex gap-2">
-            <button class="btn btn-secondary btn-sm btn-prev">Anterior</button>
-            <button class="btn btn-secondary btn-sm btn-next">Siguiente</button>
-          </div>
-        </div>
-      </div>
-    `;
-      const searchInput = this.container.querySelector(".table-search-input");
-      if (searchInput) {
-        searchInput.addEventListener("input", (e) => {
-          this.searchQuery = e.target.value;
-          this.applyFilters();
-        });
-      }
-      this.container.querySelectorAll("thead th[data-col-key]").forEach((th) => {
-        th.addEventListener("click", () => {
-          const key = th.getAttribute("data-col-key");
-          if (this.sortKey === key) {
-            this.sortAsc = !this.sortAsc;
-          } else {
-            this.sortKey = key;
-            this.sortAsc = true;
-          }
-          this.applyFilters();
-        });
-      });
-      this.container.querySelector(".btn-prev").addEventListener("click", () => {
-        if (this.currentPage > 1) {
-          this.currentPage--;
-          this.renderBody();
-        }
-      });
-      this.container.querySelector(".btn-next").addEventListener("click", () => {
-        const maxPages = Math.ceil(this.filteredData.length / this.pageSize) || 1;
-        if (this.currentPage < maxPages) {
-          this.currentPage++;
-          this.renderBody();
-        }
-      });
-      this.renderBody();
-    }
-    renderBody() {
-      const tbody = this.container.querySelector(".table-body");
-      const paginationInfo = this.container.querySelector(".pagination-info");
-      const counter = this.container.querySelector(".table-info-counter");
-      const btnPrev = this.container.querySelector(".btn-prev");
-      const btnNext = this.container.querySelector(".btn-next");
-      const total = this.filteredData.length;
-      const maxPages = Math.ceil(total / this.pageSize) || 1;
-      const startIdx = (this.currentPage - 1) * this.pageSize;
-      const pageItems = this.filteredData.slice(startIdx, startIdx + this.pageSize);
-      if (counter) {
-        counter.textContent = `Mostrando ${pageItems.length} de ${total} registros`;
-      }
-      if (paginationInfo) {
-        paginationInfo.textContent = `Página ${this.currentPage} de ${maxPages} (${total} total)`;
-      }
-      if (btnPrev)
-        btnPrev.disabled = this.currentPage <= 1;
-      if (btnNext)
-        btnNext.disabled = this.currentPage >= maxPages;
-      this.container.querySelectorAll("[data-sort-for]").forEach((el) => {
-        const key = el.getAttribute("data-sort-for");
-        if (key === this.sortKey) {
-          el.textContent = this.sortAsc ? "↑" : "↓";
-          el.style.color = "var(--brand-primary)";
-        } else {
-          el.textContent = "↕";
-          el.style.color = "var(--text-light)";
-        }
-      });
-      if (pageItems.length === 0) {
-        const cols = this.columns.length + (this.actions ? 1 : 0);
-        tbody.innerHTML = `
-        <tr>
-          <td colspan="${cols}" class="text-center" style="padding: 30px; color: var(--text-muted);">
-            ${this.emptyMessage}
-          </td>
-        </tr>
-      `;
-        return;
-      }
-      tbody.innerHTML = pageItems.map((row) => {
-        const cellsHtml = this.columns.map((col) => {
-          let content = row[col.key];
-          if (col.render) {
-            content = col.render(row[col.key], row);
-          } else if (content === null || content === undefined) {
-            content = "-";
-          } else {
-            content = esc(content);
-          }
-          return `<td>${content}</td>`;
-        }).join("");
-        let actionsHtml = "";
-        if (this.actions) {
-          actionsHtml = `<td style="text-align: right; white-space: nowrap;">${this.actions(row)}</td>`;
-        }
-        return `<tr>${cellsHtml}${actionsHtml}</tr>`;
-      }).join("");
-    }
-  }
-
-  // js/modules/clients.js
-  var CLIENT_SEGMENTS = {
-    "Consumidor Final": {
-      priceListOrder: 1,
-      badge: "badge-neutral",
-      titulo: "P1 - Precio Público / Final",
-      requisitos: "Sin mínimo de compra. Venta al detal y mostrador. Pago 100% de contado (Efectivo, Nequi, Tarjeta). Sin cupo de crédito.",
-      cupoRecomendado: 0,
-      diasCredito: 0
-    },
-    "Taller / Detailing": {
-      priceListOrder: 2,
-      badge: "badge-info",
-      titulo: "P2 - Precio Lavaderos & Centros de Detailing",
-      requisitos: "Negocio físico activo de autolavado o taller. RUT o registro fotográfico. Frecuencia de compra quincenal. Descuento profesional.",
-      cupoRecomendado: 800000,
-      diasCredito: 15
-    },
-    Mayorista: {
-      priceListOrder: 3,
-      badge: "badge-warning",
-      titulo: "P3 - Precio Mayorista por Cajas (Docenas)",
-      requisitos: "Compras mínimas por cajas cerradas de 12 unidades o pedido consolidado superior a $600.000 COP. Despacho directo.",
-      cupoRecomendado: 2500000,
-      diasCredito: 30
-    },
-    Distribuidor: {
-      priceListOrder: 4,
-      badge: "badge-primary",
-      titulo: "P4 - Precio Distribuidor Autorizado Regional",
-      requisitos: "Almacén de repuestos o lubricentro con fuerza comercial. Pedido inicial de apertura mínimo de $2.500.000 COP y recompra mensual sostenida. Cámara de Comercio y 2 referencias.",
-      cupoRecomendado: 6000000,
-      diasCredito: 30
-    },
-    "Flotas / Convenios": {
-      priceListOrder: 5,
-      badge: "badge-success",
-      titulo: "P5 - Precio Especial Grandes Flotas & Convenios",
-      requisitos: "Flotas de tractomulas, camiones pesados o buses (>10 vehículos, ej: Cano Trucks). Suministro en garrafas 23L o canecas. Convenio corporativo formal a crédito.",
-      cupoRecomendado: 12000000,
-      diasCredito: 45
-    }
-  };
-  var ClientsModule = {
-    async render(container) {
-      const tenant = TenantServiceInstance.getActiveTenant();
-      const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [clients, priceLists, sales, cxcList, shipments, products, allSuppliers] = await Promise.all([
-        DB.getAll(STORES.CUSTOMERS, tenantId),
-        DB.getAll(STORES.PRICE_LISTS, tenantId),
-        DB.getAll(STORES.SALES, tenantId),
-        DB.getAll(STORES.RECEIVABLES_CXC, tenantId),
-        DB.getAll(STORES.ORDERS_SHIPPING, tenantId),
-        DB.getAll(STORES.PRODUCTS, tenantId),
-        DB.getAll(STORES.SUPPLIERS, tenantId)
-      ]);
-      const freelancers = allSuppliers.filter((s) => s.tipo === "FREELANCER" && s.estado === "ACTIVO");
-      container.innerHTML = `
-      <div class="view-header">
-        <div class="view-title-wrap">
-          <h1>Directorio de Clientes</h1>
-          <p>Control de terceros, cartera, asignación de listas de precios y cupos comerciales</p>
-        </div>
-        <div class="view-actions">
-          <a href="#freelancers" class="btn btn-secondary btn-sm" style="text-decoration: none; border-color: var(--brand-primary); color: var(--brand-primary);">\uD83E\uDD1D Red Vendedores Freelance</a>
-          <button class="btn btn-secondary btn-sm" id="btn-export-clients">\uD83D\uDCCA Exportar</button>
-          <button class="btn btn-primary btn-sm" id="btn-new-client">➕ Nuevo Cliente</button>
-        </div>
-      </div>
-
-      <div id="clients-table-container"></div>
-    `;
-      const dataTable = new DataTable({
-        containerId: "clients-table-container",
-        data: clients,
-        columns: [
-          {
-            key: "codigo",
-            title: "Código",
-            width: "90px",
-            render: (val) => `<strong>${val || "-"}</strong>`
-          },
-          {
-            key: "nombre",
-            title: "Cliente / Razón Social",
-            render: (val, row) => `
-            <div>
-              <div class="font-bold">${val}</div>
-              <div class="text-xs text-muted">NIT/CC: ${DianDV.formatWithDV(row.nitCc)}</div>
-            </div>
-          `
-          },
-          {
-            key: "tipoCliente",
-            title: "Tipo / Segmento",
-            render: (val) => {
-              const seg = CLIENT_SEGMENTS[val];
-              const badgeClass = seg ? seg.badge : "badge-neutral";
-              return `<span class="badge ${badgeClass}" style="font-weight: 700;">${val || "General"}</span>`;
-            }
-          },
-          {
-            key: "ciudad",
-            title: "Ciudad",
-            render: (val, row) => `${val || "-"}, ${row.departamento || ""}`
-          },
-          {
-            key: "telefono",
-            title: "Contacto",
-            render: (val, row) => `
-            <div class="text-xs">
-              <div>\uD83D\uDCDE ${val || "-"}</div>
-              ${row.whatsapp ? `<div>\uD83D\uDCAC <a href="https://wa.me/${row.whatsapp.replace(/\D/g, "")}" target="_blank" style="color: var(--brand-primary);">${row.whatsapp}</a></div>` : ""}
-            </div>
-          `
-          },
-          {
-            key: "vendedorFreelanceId",
-            title: "Vendedor Freelance",
-            render: (val) => {
-              if (!val)
-                return '<span class="text-muted" style="font-size: 11px;">Directo (Rayo Pro)</span>';
-              const f = (freelancers || []).find((x) => x.id === val);
-              return f ? `<span class="badge badge-info" style="font-size: 11px;">\uD83E\uDD1D ${f.nombre}</span>` : '<span class="text-muted">—</span>';
-            }
-          },
-          {
-            key: "listaPreciosId",
-            title: "Lista Asignada",
-            render: (val) => {
-              const list = priceLists.find((p) => p.id === val);
-              return `<span class="badge badge-info">${list ? list.nombre : "P1 (Público)"}</span>`;
-            }
-          },
-          {
-            key: "facturaElectronica",
-            title: "Facturación & IVA",
-            render: (val, row) => {
-              const esFE = val !== false;
-              const aplicaIva = row.aplicaIva !== false;
-              return `
-              <div>
-                <span class="badge ${esFE ? "badge-success" : "badge-neutral"}" style="font-size: 11px;">
-                  ${esFE ? "⚡ Factura Electrónica" : "\uD83D\uDCC4 Remisión / POS Sin FE"}
-                </span>
-                <div class="text-xs" style="margin-top: 2px; color: ${aplicaIva ? "var(--text-muted)" : "var(--color-warning)"}; font-weight: ${aplicaIva ? "normal" : "bold"};">
-                  ${aplicaIva ? "✓ Con IVA (19%)" : "✕ Exento / Sin IVA (0%)"}
-                </div>
-              </div>
-            `;
-            }
-          },
-          {
-            key: "saldoPendiente",
-            title: "Saldo Cartera",
-            render: (val) => {
-              const saldo = Number(val || 0);
-              return saldo > 0 ? `<strong class="text-danger">${Formatters.currency(saldo)}</strong>` : '<span class="text-success">$ 0</span>';
-            }
-          },
-          {
-            key: "estado",
-            title: "Estado",
-            render: (val) => `<span class="badge ${val === "ACTIVO" ? "badge-success" : "badge-danger"}">${val}</span>`
-          }
-        ],
-        actions: (row) => `
-        <button class="btn btn-secondary btn-sm btn-view-client" data-id="${row.id}" title="Ficha 360°">\uD83D\uDC41️ Ficha</button>
-        <button class="btn btn-secondary btn-sm btn-edit-client" data-id="${row.id}" title="Editar">✏️</button>
-      `
-      });
-      const exportBtn = container.querySelector("#btn-export-clients");
-      if (exportBtn) {
-        exportBtn.addEventListener("click", async () => {
-          await Promise.resolve().then(() => init_export_service());
-          ExportService.exportToCSV(clients, "Clientes_RayoPro");
-        });
-      }
-      const newClientBtn = container.querySelector("#btn-new-client");
-      if (newClientBtn) {
-        newClientBtn.addEventListener("click", () => {
-          this.openClientModal(null, tenantId, priceLists, products, freelancers, () => this.render(container));
-        });
-      }
-      container.addEventListener("click", (e) => {
-        const editBtn = e.target.closest(".btn-edit-client");
-        if (editBtn) {
-          const id = editBtn.getAttribute("data-id");
-          const client = clients.find((c) => c.id === id);
-          this.openClientModal(client, tenantId, priceLists, products, freelancers, () => this.render(container));
-          return;
-        }
-        const viewBtn = e.target.closest(".btn-view-client");
-        if (viewBtn) {
-          const id = viewBtn.getAttribute("data-id");
-          const client = clients.find((c) => c.id === id);
-          const clientSales = sales.filter((s) => s.clienteId === id);
-          const clientCxc = cxcList.filter((c) => c.clienteId === id);
-          const clientShipments = shipments.filter((sh) => sh.clienteId === id);
-          this.openClientProfileModal(client, clientSales, priceLists, clientCxc, clientShipments);
-        }
-      });
-    },
-    openClientModal(client = null, tenantId, priceLists, products = [], freelancers = [], onSaved) {
-      const isEdit = !!client;
-      const content = `
-      <form id="client-form">
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Código Interno</label>
-            <input type="text" class="form-control" name="codigo" required value="${client ? client.codigo : "CLI-" + Math.floor(100 + Math.random() * 900)}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Tipo de Persona</label>
-            <select class="form-select" name="tipoPersona" id="modal-client-persona">
-              <option value="NATURAL" ${client && client.tipoPersona === "NATURAL" ? "selected" : ""}>Persona Natural</option>
-              <option value="JURIDICA" ${!client || client.tipoPersona === "JURIDICA" ? "selected" : ""}>Persona Jurídica (Empresa)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group" style="grid-column: span 2;">
-            <label class="form-label">Nombre Comercial o Completo</label>
-            <input type="text" class="form-control" name="nombre" required value="${client ? client.nombre : ""}" placeholder="Ej: AutoSpa Medellín o Juan Pérez">
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">NIT o Cédula (Sin DV)</label>
-            <input type="text" class="form-control" id="modal-client-nit" name="nitCc" required value="${client ? client.nitCc : ""}" placeholder="Ej: 901458321">
-          </div>
-          <div class="form-group">
-            <label class="form-label">DV (Cálculo DIAN)</label>
-            <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : "-"}" style="background: #f1f5f9; font-weight: bold;">
-          </div>
-        </div>
-
-        <div class="card p-3 mb-3" style="background: rgba(0, 113, 227, 0.04); border: 1px solid rgba(0, 113, 227, 0.2);">
-          <div class="d-flex justify-between items-center mb-2">
-            <label class="form-label font-bold" style="color: var(--brand-primary); margin: 0;">\uD83E\uDD1D Vendedor Freelance Asignado</label>
-            <span class="badge badge-info" style="font-size: 10px;">Comisiones Automáticas</span>
-          </div>
-          <select class="form-select" name="vendedorFreelanceId" id="modal-client-freelancer" style="font-weight: 700;">
-            <option value="">-- Sin vendedor freelance (Venta Directa de Fábrica) --</option>
-            ${(freelancers || []).map((fl) => `
-              <option value="${fl.id}" ${client && client.vendedorFreelanceId === fl.id ? "selected" : ""}>
-                \uD83E\uDD1D ${fl.nombre} ${fl.zona ? "(" + fl.zona + ")" : ""}
-              </option>
-            `).join("")}
-          </select>
-          <span class="text-xs text-muted mt-1">Al facturar en POS a este cliente, la venta y su comisión en $$ se asignarán automáticamente a este vendedor.</span>
-        </div>
-
-        <div class="form-row mb-1">
-          <div class="form-group">
-            <label class="form-label font-bold">Tipo / Segmento Comercial</label>
-            <select class="form-select" name="tipoCliente" id="modal-client-segment">
-              <option value="Consumidor Final" ${client && client.tipoCliente === "Consumidor Final" ? "selected" : ""}>Consumidor Final (P1 - Público)</option>
-              <option value="Taller / Detailing" ${!client || client.tipoCliente === "Taller / Detailing" ? "selected" : ""}>Taller / Detailing (P2 - Taller)</option>
-              <option value="Mayorista" ${client && client.tipoCliente === "Mayorista" ? "selected" : ""}>Mayorista (P3 - Docenas/Cajas)</option>
-              <option value="Distribuidor" ${client && client.tipoCliente === "Distribuidor" ? "selected" : ""}>Distribuidor (P4 - Distribuidor)</option>
-              <option value="Flotas / Convenios" ${client && client.tipoCliente === "Flotas / Convenios" ? "selected" : ""}>Flotas / Convenios (P5 - Especial)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label font-bold">Lista de Precios Asignada</label>
-            <select class="form-select" name="listaPreciosId" id="modal-client-pricelist">
-              ${priceLists.map((pl) => `
-                <option value="${pl.id}" ${client && client.listaPreciosId === pl.id ? "selected" : ""}>${pl.nombre}</option>
-              `).join("")}
-            </select>
-          </div>
-        </div>
-
-        <!-- GUÍA DE REQUISITOS Y CONDICIONES POR SEGMENTO -->
-        <div id="modal-segment-guide" class="mb-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; font-size: 11.5px; line-height: 1.4;">
-          <div style="font-weight: 700; color: var(--brand-primary); margin-bottom: 2px;" id="modal-seg-title">
-            ${CLIENT_SEGMENTS[client?.tipoCliente || "Taller / Detailing"]?.titulo || "Condiciones Comerciales"}
-          </div>
-          <div style="color: var(--text-secondary);" id="modal-seg-requisitos">
-            <strong>Requisitos Comerciales:</strong> ${CLIENT_SEGMENTS[client?.tipoCliente || "Taller / Detailing"]?.requisitos || ""}
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Teléfono Fijo / Móvil</label>
-            <input type="text" class="form-control" name="telefono" value="${client ? client.telefono : ""}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">WhatsApp (Notificaciones)</label>
-            <input type="text" class="form-control" name="whatsapp" value="${client ? client.whatsapp : ""}" placeholder="+573001234567">
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Correo Electrónico</label>
-            <input type="email" class="form-control" name="email" value="${client ? client.email : ""}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Ciudad / Municipio</label>
-            <input type="text" class="form-control" name="ciudad" value="${client ? client.ciudad : "Medellín"}">
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Dirección de Entrega</label>
-            <input type="text" class="form-control" name="direccion" value="${client ? client.direccion : ""}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Barrio / Sector</label>
-            <input type="text" class="form-control" name="barrio" value="${client ? client.barrio : ""}">
-          </div>
-        </div>
-
-        <!-- CONFIGURACIÓN TRIBUTARIA Y FACTURACIÓN ELECTRÓNICA -->
-        <div class="card p-3 mb-3" style="background: rgba(0, 113, 227, 0.04); border: 1px solid rgba(0, 113, 227, 0.15);">
-          <div style="font-size: 13px; font-weight: 700; color: var(--brand-primary); margin-bottom: 8px;">
-            ⚖️ Configuración Tributaria & Facturación
-          </div>
-          <div class="form-row">
-            <div class="form-group mb-0">
-              <label class="form-label font-bold">¿Facturar Electrónicamente?</label>
-              <select class="form-select" name="facturaElectronica" id="modal-client-fe">
-                <option value="SI" ${!client || client.facturaElectronica !== false ? "selected" : ""}>⚡ Sí - Factura Electrónica DIAN</option>
-                <option value="NO" ${client && client.facturaElectronica === false ? "selected" : ""}>\uD83D\uDCC4 No - Remisión / Venta Interna (Sin FE)</option>
-              </select>
-              <span class="form-help">Para clientes que aún no requieren o no reciben FE formal.</span>
-            </div>
-            <div class="form-group mb-0">
-              <label class="form-label font-bold">¿Liquidar con IVA (19%)?</label>
-              <select class="form-select" name="aplicaIva" id="modal-client-iva">
-                <option value="SI" ${!client || client.aplicaIva !== false ? "selected" : ""}>✓ Sí - Liquidar IVA (19%)</option>
-                <option value="NO" ${client && client.aplicaIva === false ? "selected" : ""}>✕ No - Sin IVA / Exento (0% Etapa Inicial)</option>
-              </select>
-              <span class="form-help">Ideal para empresas en etapa inicial o tratos comerciales netos.</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Cupo de Crédito ($ COP)</label>
-            <input type="number" class="form-control" name="cupoCredito" value="${client ? client.cupoCredito : 0}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Días de Crédito Plazo</label>
-            <input type="number" class="form-control" name="diasCredito" value="${client ? client.diasCredito : 0}">
-          </div>
-        </div>
-
-        <div class="form-group mb-3">
-          <label class="form-label">Observaciones Comerciales</label>
-          <textarea class="form-control" name="observaciones" rows="2">${client ? client.observaciones || "" : ""}</textarea>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: isEdit ? `Editar Cliente: ${client.nombre}` : "Crear Nuevo Cliente",
-        content,
-        size: "lg",
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: isEdit ? "Guardar Cambios" : "Crear Cliente",
-            class: "btn-primary",
-            onClick: async () => {
-              const form = dialog.querySelector("#client-form");
-              if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-              }
-              const formData = new FormData(form);
-              const nitCc = formData.get("nitCc").replace(/\D/g, "");
-              const calculatedDv = DianDV.calculate(nitCc);
-              const preciosEspeciales = {};
-              dialog.querySelectorAll(".special-price-input").forEach((inp) => {
-                const pid = inp.getAttribute("data-product-id");
-                const val = Number(inp.value);
-                if (pid && val > 0)
-                  preciosEspeciales[pid] = val;
-              });
-              const payload = {
-                tenantId,
-                codigo: formData.get("codigo"),
-                tipoPersona: formData.get("tipoPersona"),
-                nombre: formData.get("nombre"),
-                nitCc,
-                dv: calculatedDv !== null ? calculatedDv : 0,
-                vendedorFreelanceId: formData.get("vendedorFreelanceId") || null,
-                tipoCliente: formData.get("tipoCliente"),
-                listaPreciosId: formData.get("listaPreciosId"),
-                facturaElectronica: formData.get("facturaElectronica") === "SI",
-                aplicaIva: formData.get("aplicaIva") === "SI",
-                telefono: formData.get("telefono"),
-                whatsapp: formData.get("whatsapp"),
-                email: formData.get("email"),
-                direccion: formData.get("direccion"),
-                ciudad: formData.get("ciudad"),
-                barrio: formData.get("barrio"),
-                cupoCredito: Number(formData.get("cupoCredito") || 0),
-                diasCredito: Number(formData.get("diasCredito") || 0),
-                observaciones: formData.get("observaciones"),
-                preciosEspeciales: Object.keys(preciosEspeciales).length > 0 ? preciosEspeciales : client ? client.preciosEspeciales || {} : {},
-                estado: "ACTIVO"
-              };
-              if (isEdit) {
-                payload.id = client.id;
-                payload.saldoPendiente = client.saldoPendiente || 0;
-                payload.totalComprado = client.totalComprado || 0;
-                payload.numeroCompras = client.numeroCompras || 0;
-                await DB.update(STORES.CUSTOMERS, payload);
-                await AuditService.log({
-                  modulo: "Clientes",
-                  accion: "MODIFICAR",
-                  registroId: payload.codigo,
-                  campoModificado: "Datos Generales",
-                  valorAnterior: client.nombre,
-                  valorNuevo: payload.nombre
-                });
-                Toast.success("Cliente actualizado correctamente.");
-              } else {
-                payload.saldoPendiente = 0;
-                payload.totalComprado = 0;
-                payload.numeroCompras = 0;
-                const saved = await DB.add(STORES.CUSTOMERS, payload);
-                await AuditService.log({
-                  modulo: "Clientes",
-                  accion: "CREAR",
-                  registroId: payload.codigo,
-                  campoModificado: "Cliente Nuevo",
-                  valorAnterior: "-",
-                  valorNuevo: payload.nombre
-                });
-                Toast.success("Cliente registrado exitosamente.");
-                Modal.close();
-                if (onSaved)
-                  onSaved(saved || payload);
-                return;
-              }
-              Modal.close();
-              if (onSaved)
-                onSaved(payload);
-            }
-          }
-        ]
-      });
-      const nitInput = dialog.querySelector("#modal-client-nit");
-      const dvInput = dialog.querySelector("#modal-client-dv");
-      nitInput.addEventListener("input", (e) => {
-        const clean = e.target.value.replace(/\D/g, "");
-        const dv = DianDV.calculate(clean);
-        dvInput.value = dv !== null ? dv : "-";
-      });
-      const segSelect = dialog.querySelector("#modal-client-segment");
-      const plSelect = dialog.querySelector("#modal-client-pricelist");
-      const segTitle = dialog.querySelector("#modal-seg-title");
-      const segReq = dialog.querySelector("#modal-seg-requisitos");
-      const cupoInp = dialog.querySelector('input[name="cupoCredito"]');
-      const diasInp = dialog.querySelector('input[name="diasCredito"]');
-      if (segSelect && plSelect) {
-        segSelect.addEventListener("change", (e) => {
-          const segKey = e.target.value;
-          const segData = CLIENT_SEGMENTS[segKey];
-          if (segData) {
-            if (segTitle)
-              segTitle.textContent = segData.titulo;
-            if (segReq)
-              segReq.innerHTML = `<strong>Requisitos Comerciales:</strong> ${segData.requisitos}`;
-            const matchingPl = priceLists.find((p) => p.orden === segData.priceListOrder) || priceLists[segData.priceListOrder - 1];
-            if (matchingPl) {
-              plSelect.value = matchingPl.id;
-            }
-            if (!isEdit && cupoInp && diasInp) {
-              cupoInp.value = segData.cupoRecomendado;
-              diasInp.value = segData.diasCredito;
-            }
-          }
-        });
-      }
-    },
-    openClientProfileModal(client, clientSales = [], priceLists, clientCxc = [], clientShipments = []) {
-      const list = priceLists.find((p) => p.id === client.listaPreciosId);
-      const listName = list ? list.nombre : "Precio Público";
-      const totalComprado = clientSales.reduce((acc, s) => acc + Number(s.total || 0), client.totalComprado || 0);
-      const numCompras = Math.max(clientSales.length, client.numeroCompras || 0);
-      const ticketPromedio = numCompras > 0 ? Math.round(totalComprado / numCompras) : 0;
-      const content = `
-      <div class="mb-4" style="background: rgba(0, 113, 227, 0.03); padding: 18px; border-radius: 16px; border: 1px solid rgba(0, 113, 227, 0.12);">
-        <div class="d-flex justify-between items-center mb-2">
-          <div>
-            <h2 style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">${client.nombre}</h2>
-            <div class="text-xs text-muted" style="margin-top: 2px;">NIT/CC: <strong>${DianDV.formatWithDV(client.nitCc)}</strong> • Segmento: <span class="badge badge-neutral" style="font-size: 11px;">${client.tipoCliente}</span></div>
-          </div>
-          <span class="badge ${client.estado === "ACTIVO" ? "badge-success" : "badge-danger"}">${client.estado}</span>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 14px;">
-          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
-            <div class="text-xs text-muted">Total Comprado</div>
-            <div style="font-size: 16px; font-weight: 700; color: var(--color-success);">${Formatters.currency(totalComprado)}</div>
-          </div>
-          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
-            <div class="text-xs text-muted">Saldo en Cartera</div>
-            <div style="font-size: 16px; font-weight: 700; color: ${client.saldoPendiente > 0 ? "var(--color-danger)" : "var(--color-success)"};">
-              ${Formatters.currency(client.saldoPendiente || 0)}
-            </div>
-          </div>
-          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
-            <div class="text-xs text-muted">Cupo Disponible</div>
-            <div style="font-size: 16px; font-weight: 700; color: var(--brand-primary);">
-              ${Formatters.currency(Math.max(0, (client.cupoCredito || 0) - (client.saldoPendiente || 0)))}
-            </div>
-          </div>
-          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
-            <div class="text-xs text-muted">Ticket Promedio</div>
-            <div style="font-size: 16px; font-weight: 700; color: var(--text-main);">${Formatters.currency(ticketPromedio)}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="d-flex flex-col gap-2 mb-4 text-xs" style="color: var(--text-main); background: var(--bg-surface-solid); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
-        <div>\uD83D\uDCCD <strong>Dirección de Entrega:</strong> ${client.direccion || "-"}, ${client.barrio || ""} (${client.ciudad || "-"}, ${client.departamento || ""})</div>
-        <div>\uD83D\uDCDE <strong>Contacto Comercial:</strong> ${client.telefono || "-"} | <strong>WhatsApp:</strong> ${client.whatsapp || "-"} | <strong>Email:</strong> ${client.email || "-"}</div>
-        <div>\uD83C\uDFF7️ <strong>Lista de Precios Predilecta:</strong> <span class="badge badge-info" style="font-size: 11px;">${listName}</span></div>
-        <div>⚡ <strong>Régimen de Facturación:</strong> 
-          <span class="badge ${client.facturaElectronica !== false ? "badge-success" : "badge-neutral"}" style="font-size: 11px;">
-            ${client.facturaElectronica !== false ? "Facturación Electrónica DIAN" : "Documento Interno / Sin FE"}
-          </span>
-          <span class="badge ${client.aplicaIva !== false ? "badge-info" : "badge-warning"}" style="font-size: 11px; margin-left: 6px;">
-            ${client.aplicaIva !== false ? "Liquida IVA (19%)" : "Exento de IVA / Etapa Inicial (0%)"}
-          </span>
-        </div>
-        <div>⏱️ <strong>Condición de Crédito:</strong> ${client.diasCredito > 0 ? `${client.diasCredito} Días plazo (Cupo Total: ${Formatters.currency(client.cupoCredito)})` : "Contado inmediato"}</div>
-        ${client.observaciones ? `<div style="background: rgba(245, 158, 11, 0.08); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #f59e0b; margin-top: 4px;">\uD83D\uDCDD <strong>Notas Internas:</strong> ${client.observaciones}</div>` : ""}
-      </div>
-
-      <!-- SECCIÓN CARTERA & ABONOS HISTÓRICOS -->
-      ${clientCxc.length > 0 ? `
-        <div class="mb-4">
-          <h4 class="text-sm font-bold mb-2" style="color: var(--text-main);">\uD83D\uDCD1 Estado de Cartera & Conciliación de Pagos</h4>
-          <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
-            <table class="data-table" style="font-size: 12px;">
-              <thead>
-                <tr>
-                  <th>Doc. Cartera</th>
-                  <th>Emisión / Venc.</th>
-                  <th class="text-right">Valor Inicial</th>
-                  <th class="text-right">Abonos Aplicados</th>
-                  <th class="text-right">Saldo Actual</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${clientCxc.map((c) => `
-                  <tr>
-                    <td><strong>${c.documento}</strong><br><span class="text-xs text-muted">${c.observaciones || ""}</span></td>
-                    <td>${Formatters.date(c.fechaEmision)}<br><span class="text-xs text-muted">Vence: ${Formatters.date(c.fechaVencimiento)}</span></td>
-                    <td class="text-right font-medium">${Formatters.currency(c.valorTotal)}</td>
-                    <td class="text-right font-medium" style="color: var(--color-success);">- ${Formatters.currency(c.abonos || 0)}</td>
-                    <td class="text-right font-bold" style="color: var(--color-danger);">${Formatters.currency(c.saldo)}</td>
-                    <td><span class="badge ${c.saldo === 0 ? "badge-success" : "badge-warning"}">${c.estado}</span></td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ` : ""}
-
-      <h4 class="text-sm font-bold mb-2" style="color: var(--text-main);">\uD83D\uDED2 Historial de Facturas & Ventas</h4>
-      <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
-        <table class="data-table" style="font-size: 12px;">
-          <thead>
-            <tr>
-              <th>Consecutivo</th>
-              <th>Fecha</th>
-              <th>Medio Pago</th>
-              <th class="text-right">Total</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${clientSales.length > 0 ? clientSales.map((s) => `
-              <tr>
-                <td><strong>${s.consecutivo}</strong></td>
-                <td>${Formatters.date(s.fecha)}</td>
-                <td>${s.metodoPago}</td>
-                <td class="text-right font-bold">${Formatters.currency(s.total)}</td>
-                <td><span class="badge ${s.estado === "PAGADA" ? "badge-success" : "badge-warning"}">${s.estado}</span></td>
-              </tr>
-            `).join("") : `
-              <tr><td colspan="5" class="text-center text-muted" style="padding: 15px;">Sin compras registradas aún.</td></tr>
-            `}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- DESPACHOS RECIENTES -->
-      ${clientShipments.length > 0 ? `
-        <div class="mt-4">
-          <h4 class="text-sm font-bold mb-2" style="color: var(--text-main);">\uD83D\uDCE6 Envíos y Guías de Carga Registradas</h4>
-          <div class="table-responsive" style="max-height: 160px; overflow-y: auto;">
-            <table class="data-table" style="font-size: 12px;">
-              <thead>
-                <tr>
-                  <th>No. Guía</th>
-                  <th>Transportadora</th>
-                  <th>Cajas / Bultos</th>
-                  <th>Contenido</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${clientShipments.map((sh) => `
-                  <tr>
-                    <td><strong>${sh.numeroGuia}</strong></td>
-                    <td>${sh.transportadora}</td>
-                    <td>${sh.cajasTotal || 1} Cajas</td>
-                    <td class="text-xs">${sh.contenidoDescripcion || "-"}</td>
-                    <td><span class="badge ${sh.estadoCiclo === "ENTREGADO" ? "badge-success" : "badge-info"}">${sh.estadoCiclo}</span></td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ` : ""}
-    `;
-      Modal.show({
-        title: `Ficha 360° del Cliente: ${client.nombre}`,
-        content,
-        size: "lg",
-        footerButtons: [
-          { label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }
-        ]
-      });
-    }
-  };
-
-  // js/modules/products.js
-  init_formatters();
-  var ProductsModule = {
-    async render(container) {
-      const tenant = TenantServiceInstance.getActiveTenant();
-      const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [products, priceLists, warehouses] = await Promise.all([
-        DB.getAll(STORES.PRODUCTS, tenantId),
-        DB.getAll(STORES.PRICE_LISTS, tenantId),
-        DB.getAll(STORES.WAREHOUSES, tenantId)
-      ]);
-      container.innerHTML = `
-            <div class="view-header">
-        <div class="view-title-wrap">
-          <h1>Catálogo de Productos & Insumos</h1>
-          <p>Control de materias primas, productos terminados, 5 listas de precios y niveles de stock</p>
-        </div>
-        <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-export-products">\uD83D\uDCCA Exportar</button>
-          <button class="btn btn-primary btn-sm" id="btn-new-product">➕ Nuevo Producto</button>
-        </div>
-      </div>
-
-      <!-- FILTROS DE TIPO -->
-      <div class="card mb-3" style="padding: 10px 16px;">
-        <div class="d-flex items-center gap-2 flex-wrap">
-          <span class="text-xs font-bold text-muted">FILTRAR POR TIPO:</span>
-          <button class="btn btn-secondary btn-sm filter-type-btn active" data-type="ALL">Todos (${products.length})</button>
-          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="PRODUCTO_TERMINADO">⚡ Terminados Fabricados (${products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO").length})</button>
-          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="MATERIA_PRIMA">\uD83E\uDDEA Materias Primas Químicas (${products.filter((p) => p.tipoItem === "MATERIA_PRIMA").length})</button>
-          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="MERCANCIA">\uD83D\uDECD️ Mercancía Reventa (${products.filter((p) => p.tipoItem === "MERCANCIA").length})</button>
-        </div>
-      </div>
-
-      <div id="products-table-container"></div>
-    `;
-      let currentFiltered = [...products];
-      const dataTable = new DataTable({
-        containerId: "products-table-container",
-        data: currentFiltered,
-        columns: [
-          {
-            key: "sku",
-            title: "SKU / Código",
-            width: "120px",
-            render: (val, row) => `
-            <div>
-              <strong style="color: var(--brand-primary);">${val || row.codigoInterno}</strong>
-              <div class="text-xs text-muted">${row.codigoBarras || ""}</div>
-            </div>
-          `
-          },
-          {
-            key: "nombre",
-            title: "Descripción / Presentación",
-            render: (val, row) => `
-            <div>
-              <div class="font-bold">${val}</div>
-              <div class="text-xs text-muted">${row.categoria} • ${row.presentacion || row.unidadMedida}</div>
-            </div>
-          `
-          },
-          {
-            key: "tipoItem",
-            title: "Tipo",
-            render: (val) => {
-              const map = {
-                PRODUCTO_TERMINADO: { label: "Terminado", class: "badge-info" },
-                MATERIA_PRIMA: { label: "Materia Prima", class: "badge-warning" },
-                MERCANCIA: { label: "Mercancía", class: "badge-neutral" },
-                SERVICIO: { label: "Servicio", class: "badge-success" }
-              };
-              const item = map[val] || { label: val, class: "badge-neutral" };
-              return `<span class="badge ${item.class}">${item.label}</span>`;
-            }
-          },
-          {
-            key: "stock",
-            title: "Existencias",
-            render: (val, row) => {
-              const stock = Number(val || 0);
-              const min = Number(row.stockMinimo || 10);
-              let badge = "badge-success";
-              if (stock <= 0)
-                badge = "badge-danger";
-              else if (stock <= min)
-                badge = "badge-warning";
-              return `
-              <div>
-                <span class="badge ${badge}">${stock} ${row.unidadMedida}</span>
-                <div class="text-xs text-muted" style="margin-top: 2px;">Mín: ${min} | Máx: ${row.stockMaximo || 100}</div>
-              </div>
-            `;
-            }
-          },
-          {
-            key: "costoPromedio",
-            title: "Costo Promedio",
-            render: (val) => Formatters.currency(val)
-          },
-          {
-            key: "precios",
-            title: "Precio 1 (Público)",
-            render: (val, row) => {
-              const p1 = row.precios && row.precios.plist_1 || 0;
-              return `<strong>${Formatters.currency(p1)}</strong>`;
-            }
-          },
-          {
-            key: "estado",
-            title: "Estado",
-            render: (val) => `<span class="badge ${val === "ACTIVO" ? "badge-success" : "badge-danger"}">${val}</span>`
-          }
-        ],
-        actions: (row) => `
-        <button class="btn btn-secondary btn-sm btn-edit-product" data-id="${row.id}" title="Editar">✏️ Editar</button>
-      `
-      });
-      container.querySelectorAll(".filter-type-btn").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          container.querySelectorAll(".filter-type-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          const type = btn.getAttribute("data-type");
-          if (type === "ALL") {
-            currentFiltered = [...products];
-          } else {
-            currentFiltered = products.filter((p) => p.tipoItem === type);
-          }
-          dataTable.updateData(currentFiltered);
-        });
-      });
-      const exportProdBtn = container.querySelector("#btn-export-products");
-      if (exportProdBtn) {
-        exportProdBtn.addEventListener("click", async () => {
-          await Promise.resolve().then(() => init_export_service());
-          ExportService.exportToCSV(products, "Catalogo_Productos_RayoPro");
-        });
-      }
-      const newProdBtn = container.querySelector("#btn-new-product");
-      if (newProdBtn) {
-        newProdBtn.addEventListener("click", () => {
-          this.openProductModal(null, tenantId, priceLists, warehouses, () => this.render(container));
-        });
-      }
-      container.addEventListener("click", (e) => {
-        const editBtn = e.target.closest(".btn-edit-product");
-        if (editBtn) {
-          const id = editBtn.getAttribute("data-id");
-          const product = products.find((p) => p.id === id);
-          this.openProductModal(product, tenantId, priceLists, warehouses, () => this.render(container));
-        }
-      });
-    },
-    openProductModal(product = null, tenantId, priceLists, warehouses, onSaved) {
-      const isEdit = !!product;
-      const content = `
-      <form id="product-form">
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Tipo de Ítem</label>
-            <select class="form-select" name="tipoItem">
-              <option value="PRODUCTO_TERMINADO" ${product && product.tipoItem === "PRODUCTO_TERMINADO" ? "selected" : ""}>Producto Terminado (Fabricado)</option>
-              <option value="MATERIA_PRIMA" ${product && product.tipoItem === "MATERIA_PRIMA" ? "selected" : ""}>Materia Prima / Químico / Insumo</option>
-              <option value="MERCANCIA" ${product && product.tipoItem === "MERCANCIA" ? "selected" : ""}>Mercancía para Reventa</option>
-              <option value="SERVICIO" ${product && product.tipoItem === "SERVICIO" ? "selected" : ""}>Servicio</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">SKU / Referencia</label>
-            <input type="text" class="form-control" name="sku" required value="${product ? product.sku : "SKU-" + Math.floor(1000 + Math.random() * 9000)}" placeholder="Ej: RAYO-SHAMP-1G">
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group" style="grid-column: span 2;">
-            <label class="form-label">Nombre Comercial del Producto</label>
-            <input type="text" class="form-control" name="nombre" required value="${product ? product.nombre : ""}" placeholder="Ej: Shampoo Automotriz pH Neutro 1 Galón">
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Categoría</label>
-            <input type="text" class="form-control" name="categoria" required value="${product ? product.categoria : "Lavado Exterior"}" placeholder="Ej: Lavado Exterior">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Unidad de Medida</label>
-            <select class="form-select" name="unidadMedida">
-              <option value="Unidad" ${product && product.unidadMedida === "Unidad" ? "selected" : ""}>Unidad</option>
-              <option value="Galón" ${product && product.unidadMedida === "Galón" ? "selected" : ""}>Galón (3785 ml)</option>
-              <option value="Litro" ${product && product.unidadMedida === "Litro" ? "selected" : ""}>Litro</option>
-              <option value="Kg" ${product && product.unidadMedida === "Kg" ? "selected" : ""}>Kilogramo (Kg)</option>
-              <option value="Gramo" ${product && product.unidadMedida === "Gramo" ? "selected" : ""}>Gramo</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Costo Promedio ($ COP)</label>
-            <input type="number" class="form-control" name="costoPromedio" id="prod-costo" value="${product ? product.costoPromedio : 0}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Margen Esperado (%)</label>
-            <input type="number" class="form-control" name="margenEsperado" value="${product ? product.margenEsperado : 50}">
-          </div>
-        </div>
-
-        <!-- 5 LISTAS DE PRECIOS CONFIGURABLES -->
-        <div class="card mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color);">
-          <div class="card-header" style="padding: 10px 14px; background: rgba(0, 113, 227, 0.06); border-bottom: 1px solid var(--border-color);">
-            <div class="card-title" style="font-size: 13px; font-weight: 700; color: var(--brand-primary);">\uD83D\uDCB0 5 Listas de Precios de Venta (COP)</div>
-          </div>
-          <div class="card-body" style="padding: 14px;">
-            <div class="form-row">
-              ${priceLists.map((pl) => `
-                <div class="form-group mb-2">
-                  <label class="form-label text-xs font-bold" style="color: var(--text-main);">${pl.nombre}</label>
-                  <input type="number" class="form-control font-bold" name="precio_${pl.id}" value="${product && product.precios && product.precios[pl.id] || 0}" style="color: var(--brand-primary);">
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Stock Mínimo Alerta</label>
-            <input type="number" class="form-control" name="stockMinimo" value="${product ? product.stockMinimo : 15}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Bodega Habitual</label>
-            <select class="form-select" name="bodegaId">
-              ${warehouses.map((w) => `
-                <option value="${w.id}" ${product && product.bodegaId === w.id ? "selected" : ""}>${w.nombre}</option>
-              `).join("")}
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group mb-3">
-          <label class="form-label">Descripción Técnica</label>
-          <textarea class="form-control" name="descripcion" rows="2">${product ? product.descripcion || "" : ""}</textarea>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: isEdit ? `Editar Producto: ${product.nombre}` : "Nuevo Producto / Referencia",
-        content,
-        size: "lg",
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: isEdit ? "Guardar Cambios" : "Crear Producto",
-            class: "btn-primary",
-            onClick: async () => {
-              const form = dialog.querySelector("#product-form");
-              if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-              }
-              const formData = new FormData(form);
-              const precios = {};
-              priceLists.forEach((pl) => {
-                precios[pl.id] = Number(formData.get(`precio_${pl.id}`) || 0);
-              });
-              const payload = {
-                tenantId,
-                tipoItem: formData.get("tipoItem"),
-                sku: formData.get("sku"),
-                codigoInterno: formData.get("sku"),
-                nombre: formData.get("nombre"),
-                categoria: formData.get("categoria"),
-                unidadMedida: formData.get("unidadMedida"),
-                costoPromedio: Number(formData.get("costoPromedio") || 0),
-                margenEsperado: Number(formData.get("margenEsperado") || 0),
-                stockMinimo: Number(formData.get("stockMinimo") || 0),
-                bodegaId: formData.get("bodegaId"),
-                descripcion: formData.get("descripcion"),
-                precios,
-                estado: "ACTIVO"
-              };
-              if (isEdit) {
-                payload.id = product.id;
-                payload.stock = product.stock || 0;
-                await DB.update(STORES.PRODUCTS, payload);
-                await AuditService.log({
-                  modulo: "Productos",
-                  accion: "MODIFICAR",
-                  registroId: payload.sku,
-                  campoModificado: "Ficha y Precios",
-                  valorAnterior: product.nombre,
-                  valorNuevo: `${payload.nombre} (P1: $ ${precios.plist_1 || 0})`
-                });
-                Toast.success("Producto actualizado con éxito.");
-              } else {
-                payload.stock = 0;
-                await DB.add(STORES.PRODUCTS, payload);
-                await AuditService.log({
-                  modulo: "Productos",
-                  accion: "CREAR",
-                  registroId: payload.sku,
-                  campoModificado: "Producto Creado",
-                  valorAnterior: "-",
-                  valorNuevo: payload.nombre
-                });
-                Toast.success("Producto registrado exitosamente.");
-              }
-              Modal.close();
-              if (onSaved)
-                onSaved();
-            }
-          }
-        ]
-      });
-    }
-  };
-
-  // js/modules/inventory.js
-  init_formatters();
-
   // js/services/kardex-service.js
   var MOVEMENT_TYPES = {
     COMPRA: { label: "Compra de Mercancía/Insumos", type: "IN" },
@@ -4824,1557 +3100,6 @@ Generado por Nexa ERP.`;
     }
   };
 
-  // js/modules/inventory.js
-  var InventoryModule = {
-    async render(container) {
-      const tenant = TenantServiceInstance.getActiveTenant();
-      const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [products, warehouses, movements] = await Promise.all([
-        DB.getAll(STORES.PRODUCTS, tenantId),
-        DB.getAll(STORES.WAREHOUSES, tenantId),
-        KardexService.getMovements(tenantId)
-      ]);
-      container.innerHTML = `
-            <div class="view-header">
-        <div class="view-title-wrap">
-          <h1>Inventario & Kardex Multibodega</h1>
-          <p>Trazabilidad completa de entradas, salidas, consumos de producción y traslados</p>
-        </div>
-        <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-inventory-adjustment">⚖️ Ajuste Manual</button>
-          <button class="btn btn-primary btn-sm" id="btn-inventory-transfer">\uD83D\uDD04 Traslado de Bodega</button>
-        </div>
-      </div>
-
-      <!-- RESUMEN DE BODEGAS -->
-      <div class="kpi-grid mb-4">
-        ${warehouses.map((w) => {
-        const prodsInWh = products.filter((p) => p.bodegaId === w.id);
-        const totalStock = prodsInWh.reduce((acc, p) => acc + (p.stock || 0), 0);
-        return `
-            <div class="kpi-card">
-              <div class="kpi-card-header">
-                <span class="kpi-label">${w.codigo}</span>
-                <span class="badge badge-info">${w.esPrincipal ? "Principal" : "Secundaria"}</span>
-              </div>
-              <div class="kpi-value" style="font-size: 18px;">${w.nombre}</div>
-              <div class="kpi-footer">
-                <span><strong>${prodsInWh.length}</strong> referencias • <strong>${totalStock}</strong> unidades físicas</span>
-              </div>
-            </div>
-          `;
-      }).join("")}
-      </div>
-
-      <!-- TABS: KARDEX VS EXISTENCIAS -->
-      <div class="card mb-3" style="padding: 6px 14px;">
-        <div class="d-flex gap-2">
-          <button class="btn btn-secondary btn-sm tab-btn active" data-tab="kardex">\uD83D\uDCD1 Movimientos de Kardex (${movements.length})</button>
-          <button class="btn btn-secondary btn-sm tab-btn" data-tab="stocks">\uD83D\uDCE6 Existencias Actuales (${products.length})</button>
-        </div>
-      </div>
-
-      <div id="inventory-content-area"></div>
-    `;
-      const renderKardexTable = () => {
-        const target = container.querySelector("#inventory-content-area");
-        target.innerHTML = '<div id="kardex-table-container"></div>';
-        new DataTable({
-          containerId: "kardex-table-container",
-          data: movements,
-          columns: [
-            {
-              key: "fecha",
-              title: "Fecha y Hora",
-              render: (val) => Formatters.dateTime(val)
-            },
-            {
-              key: "productoNombre",
-              title: "Producto / Insumo",
-              render: (val, row) => `
-              <div>
-                <strong>${val}</strong>
-                <div class="text-xs text-muted">SKU: ${row.sku || "-"}</div>
-              </div>
-            `
-            },
-            {
-              key: "bodegaNombre",
-              title: "Bodega",
-              render: (val) => `<span class="badge badge-neutral">${val}</span>`
-            },
-            {
-              key: "documentoTipo",
-              title: "Tipo Movimiento",
-              render: (val, row) => {
-                const meta = MOVEMENT_TYPES[val] || { label: val, type: "OTHER" };
-                const badgeClass = meta.type === "IN" ? "badge-success" : meta.type === "OUT" ? "badge-danger" : "badge-warning";
-                return `
-                <div>
-                  <span class="badge ${badgeClass}">${meta.label}</span>
-                  <div class="text-xs text-muted">Doc: ${row.documentoNumero}</div>
-                </div>
-              `;
-              }
-            },
-            {
-              key: "cantidadEntrada",
-              title: "Entrada",
-              render: (val) => val > 0 ? `<strong class="text-success">+${val}</strong>` : "-"
-            },
-            {
-              key: "cantidadSalida",
-              title: "Salida",
-              render: (val) => val > 0 ? `<strong class="text-danger">-${val}</strong>` : "-"
-            },
-            {
-              key: "saldoCantidad",
-              title: "Saldo Final",
-              render: (val) => `<strong>${val}</strong>`
-            },
-            {
-              key: "costoUnitario",
-              title: "Costo Unit.",
-              render: (val) => Formatters.currency(val)
-            },
-            {
-              key: "observacion",
-              title: "Observaciones",
-              render: (val) => `<span class="text-xs text-muted">${val || "-"}</span>`
-            }
-          ]
-        });
-      };
-      const renderStocksTable = () => {
-        const target = container.querySelector("#inventory-content-area");
-        target.innerHTML = '<div id="stocks-table-container"></div>';
-        new DataTable({
-          containerId: "stocks-table-container",
-          data: products,
-          columns: [
-            {
-              key: "sku",
-              title: "SKU",
-              render: (val) => `<strong>${val}</strong>`
-            },
-            {
-              key: "nombre",
-              title: "Nombre Producto",
-              render: (val, row) => `${val} <span class="text-xs text-muted">(${row.unidadMedida})</span>`
-            },
-            {
-              key: "stock",
-              title: "Existencia Actual",
-              render: (val, row) => {
-                const stock = Number(val || 0);
-                const min = Number(row.stockMinimo || 10);
-                let cls = "badge-success";
-                if (stock <= 0)
-                  cls = "badge-danger";
-                else if (stock <= min)
-                  cls = "badge-warning";
-                return `<span class="badge ${cls}">${stock} ${row.unidadMedida}</span>`;
-              }
-            },
-            {
-              key: "costoPromedio",
-              title: "Costo Promedio",
-              render: (val) => Formatters.currency(val)
-            },
-            {
-              key: "stock",
-              title: "Valor Total Stock",
-              render: (val, row) => Formatters.currency(Number(val || 0) * Number(row.costoPromedio || 0))
-            },
-            {
-              key: "ubicacionBodega",
-              title: "Ubicación",
-              render: (val) => val || "No especificada"
-            }
-          ]
-        });
-      };
-      renderKardexTable();
-      container.querySelectorAll(".tab-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          container.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          const tab = btn.getAttribute("data-tab");
-          if (tab === "kardex")
-            renderKardexTable();
-          else
-            renderStocksTable();
-        });
-      });
-      container.querySelector("#btn-inventory-adjustment").addEventListener("click", () => {
-        this.openAdjustmentModal(tenantId, products, warehouses, () => this.render(container));
-      });
-      container.querySelector("#btn-inventory-transfer").addEventListener("click", () => {
-        this.openTransferModal(tenantId, products, warehouses, () => this.render(container));
-      });
-    },
-    openAdjustmentModal(tenantId, products, warehouses, onComplete) {
-      const content = `
-      <form id="adjustment-form">
-        <div class="form-group mb-3">
-          <label class="form-label">Seleccionar Producto o Insumo</label>
-          <select class="form-select" name="productoId" required>
-            ${products.map((p) => `
-              <option value="${p.id}">${p.nombre} (SKU: ${p.sku} | Stock: ${p.stock} ${p.unidadMedida})</option>
-            `).join("")}
-          </select>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Tipo de Ajuste</label>
-            <select class="form-select" name="documentoTipo" required>
-              <option value="AJUSTE_POS">Ajuste Positivo (+) Entrada física encontrada</option>
-              <option value="AJUSTE_NEG">Ajuste Negativo (-) Salida o faltante</option>
-              <option value="MERMA">Baja por Merma Técnica (-)</option>
-              <option value="DANO">Baja por Daño / Vencimiento (-)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Cantidad a Ajustar</label>
-            <input type="number" step="any" min="0.01" class="form-control" name="cantidad" required placeholder="Ej: 5">
-          </div>
-        </div>
-
-        <div class="form-group mb-3">
-          <label class="form-label">Bodega Afectada</label>
-          <select class="form-select" name="bodegaId">
-            ${warehouses.map((w) => `<option value="${w.id}">${w.nombre}</option>`).join("")}
-          </select>
-        </div>
-
-        <div class="form-group mb-3">
-          <label class="form-label">Motivo o Justificación del Ajuste</label>
-          <textarea class="form-control" name="observacion" required rows="2" placeholder="Ej: Conteo físico fin de mes o frasco quebrado en estiba"></textarea>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: "Registrar Ajuste Manual de Inventario",
-        content,
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: "Aplicar Ajuste a Kardex",
-            class: "btn-primary",
-            onClick: async () => {
-              const form = dialog.querySelector("#adjustment-form");
-              if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-              }
-              const formData = new FormData(form);
-              const productoId = formData.get("productoId");
-              const cantidad = Number(formData.get("cantidad"));
-              const tipo = formData.get("documentoTipo");
-              const bodegaId = formData.get("bodegaId");
-              const observacion = formData.get("observacion");
-              const prod = products.find((p) => p.id === productoId);
-              await KardexService.registerMovement({
-                tenantId,
-                productoId,
-                bodegaId,
-                documentoTipo: tipo,
-                documentoNumero: "AJUSTE-" + Math.floor(1000 + Math.random() * 9000),
-                cantidad,
-                costoUnitario: prod.costoPromedio,
-                observacion
-              });
-              Toast.success("Ajuste de inventario registrado en Kardex.");
-              Modal.close();
-              if (onComplete)
-                onComplete();
-            }
-          }
-        ]
-      });
-    },
-    openTransferModal(tenantId, products, warehouses, onComplete) {
-      const content = `
-      <form id="transfer-form">
-        <div class="form-group mb-3">
-          <label class="form-label">Producto a Trasladar</label>
-          <select class="form-select" name="productoId" required>
-            ${products.map((p) => `
-              <option value="${p.id}">${p.nombre} (Stock: ${p.stock} ${p.unidadMedida})</option>
-            `).join("")}
-          </select>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Bodega Origen</label>
-            <select class="form-select" name="bodegaOrigenId" required>
-              ${warehouses.map((w) => `<option value="${w.id}">${w.nombre}</option>`).join("")}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Bodega Destino</label>
-            <select class="form-select" name="bodegaDestinoId" required>
-              ${warehouses.map((w, idx) => `<option value="${w.id}" ${idx === 1 ? "selected" : ""}>${w.nombre}</option>`).join("")}
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group mb-3">
-          <label class="form-label">Cantidad a Trasladar</label>
-          <input type="number" step="any" min="0.01" class="form-control" name="cantidad" required placeholder="Ej: 10">
-        </div>
-
-        <div class="form-group mb-3">
-          <label class="form-label">Observaciones</label>
-          <textarea class="form-control" name="observacion" rows="2" placeholder="Reabastecimiento de punto de venta"></textarea>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: "Traslado de Mercancía entre Bodegas",
-        content,
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: "Ejecutar Traslado",
-            class: "btn-primary",
-            onClick: async () => {
-              const form = dialog.querySelector("#transfer-form");
-              if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-              }
-              const formData = new FormData(form);
-              const productoId = formData.get("productoId");
-              const origenId = formData.get("bodegaOrigenId");
-              const destinoId = formData.get("bodegaDestinoId");
-              const cantidad = Number(formData.get("cantidad"));
-              const obs = formData.get("observacion") || "Traslado entre bodegas";
-              if (origenId === destinoId) {
-                Toast.warning("La bodega de origen y destino no pueden ser la misma.");
-                return;
-              }
-              const prod = products.find((p) => p.id === productoId);
-              const docNum = "TR-" + Math.floor(1000 + Math.random() * 9000);
-              await KardexService.registerMovement({
-                tenantId,
-                productoId,
-                bodegaId: origenId,
-                documentoTipo: "TRASLADO_SALIDA",
-                documentoNumero: docNum,
-                cantidad,
-                costoUnitario: prod.costoPromedio,
-                observacion: `Salida traslado hacia otra bodega. ${obs}`
-              });
-              await KardexService.registerMovement({
-                tenantId,
-                productoId,
-                bodegaId: destinoId,
-                documentoTipo: "TRASLADO_ENTRADA",
-                documentoNumero: docNum,
-                cantidad,
-                costoUnitario: prod.costoPromedio,
-                observacion: `Entrada traslado desde bodega origen. ${obs}`
-              });
-              Toast.success("Traslado completado exitosamente.");
-              Modal.close();
-              if (onComplete)
-                onComplete();
-            }
-          }
-        ]
-      });
-    }
-  };
-
-  // js/modules/production.js
-  init_formatters();
-
-  // js/services/production-service.js
-  var ProductionService = {
-    async calculateEstimatedCost(recetaId, cantidadAProducir) {
-      const receta = await DB.getById(STORES.RECIPES_BOM, recetaId);
-      if (!receta)
-        throw new Error("Receta no encontrada.");
-      const factor = cantidadAProducir / (receta.rendimientoLote || 1);
-      let costoTotalInsumos = 0;
-      const desgloseInsumos = [];
-      for (const insumo of receta.insumos) {
-        const prod = await DB.getById(STORES.PRODUCTS, insumo.materiaPrimaId);
-        const cantRequerida = insumo.cantidad * factor;
-        const cantConMerma = cantRequerida * (1 + (insumo.mermaEsperada || 0) / 100);
-        const costoUnitario = prod ? prod.costoPromedio || 0 : 0;
-        const costoInsumo = cantConMerma * costoUnitario;
-        costoTotalInsumos += costoInsumo;
-        desgloseInsumos.push({
-          materiaPrimaId: insumo.materiaPrimaId,
-          nombre: prod ? prod.nombre : "Insumo",
-          sku: prod ? prod.sku : "-",
-          cantidadBase: insumo.cantidad,
-          cantidadRequerida: Math.round(cantConMerma * 100) / 100,
-          unidadMedida: insumo.unidadMedida,
-          stockDisponible: prod ? prod.stock : 0,
-          costoUnitario,
-          costoTotal: Math.round(costoInsumo),
-          stockSuficiente: prod ? prod.stock >= cantConMerma : false
-        });
-      }
-      const costosIndirectos = (receta.costosIndirectosEstimados || 0) * factor;
-      const costoTotalEstimado = Math.round(costoTotalInsumos + costosIndirectos);
-      const costoUnitarioEstimado = Math.round(costoTotalEstimado / cantidadAProducir);
-      return {
-        receta,
-        cantidadAProducir,
-        desgloseInsumos,
-        costoTotalInsumos: Math.round(costoTotalInsumos),
-        costosIndirectos: Math.round(costosIndirectos),
-        costoTotalEstimado,
-        costoUnitarioEstimado,
-        todosConStock: desgloseInsumos.every((i) => i.stockSuficiente)
-      };
-    },
-    async executeProductionOrder({
-      tenantId,
-      recetaId,
-      productoTerminadoId,
-      cantidadProducida,
-      loteCodigo,
-      costosIndirectosReales = 0,
-      responsableId,
-      responsableNombre,
-      observaciones
-    }) {
-      const pt = await DB.getById(STORES.PRODUCTS, productoTerminadoId);
-      if (!pt)
-        throw new Error("Producto terminado no encontrado.");
-      const receta = await DB.getById(STORES.RECIPES_BOM, recetaId);
-      if (!receta)
-        throw new Error("Receta no encontrada.");
-      const factor = cantidadProducida / (receta.rendimientoLote || 1);
-      const numeroOrden = "OP-" + new Date().getFullYear() + "-" + Math.floor(1000 + Math.random() * 9000);
-      const lote = loteCodigo || `LOTE-${pt.sku.substring(0, 4)}-${Date.now().toString().slice(-4)}`;
-      let costoTotalMateriasPrimasReal = 0;
-      const insumosConsumidos = [];
-      for (const insumo of receta.insumos) {
-        const mp = await DB.getById(STORES.PRODUCTS, insumo.materiaPrimaId);
-        if (!mp)
-          continue;
-        const cantConsumida = Math.round(insumo.cantidad * factor * (1 + (insumo.mermaEsperada || 0) / 100) * 100) / 100;
-        const costoInsumo = cantConsumida * (mp.costoPromedio || 0);
-        costoTotalMateriasPrimasReal += costoInsumo;
-        insumosConsumidos.push({
-          materiaPrimaId: mp.id,
-          nombre: mp.nombre,
-          sku: mp.sku,
-          cantidad: cantConsumida,
-          unidadMedida: insumo.unidadMedida,
-          costoUnitario: mp.costoPromedio,
-          costoTotal: Math.round(costoInsumo)
-        });
-        await KardexService.registerMovement({
-          tenantId,
-          productoId: mp.id,
-          bodegaId: mp.bodegaId || "wh_2",
-          documentoTipo: "CONSUMO_PRODUCCION",
-          documentoNumero: numeroOrden,
-          cantidad: cantConsumida,
-          costoUnitario: mp.costoPromedio,
-          usuarioId: responsableId,
-          observacion: `Consumo para fabricación de ${cantidadProducida} ${pt.unidadMedida} de ${pt.nombre} (Lote: ${lote})`
-        });
-      }
-      const costoRealTotal = Math.round(costoTotalMateriasPrimasReal + Number(costosIndirectosReales || 0));
-      const costoUnitarioReal = Math.round(costoRealTotal / cantidadProducida);
-      await KardexService.registerMovement({
-        tenantId,
-        productoId: pt.id,
-        bodegaId: pt.bodegaId || "wh_1",
-        documentoTipo: "PRODUCCION_ENTRADA",
-        documentoNumero: numeroOrden,
-        cantidad: cantidadProducida,
-        costoUnitario: costoUnitarioReal,
-        usuarioId: responsableId,
-        observacion: `Entrada de fabricación terminada. Lote: ${lote}`
-      });
-      const orden = {
-        tenantId,
-        numeroOrden,
-        recetaId,
-        recetaNombre: receta.nombreReceta,
-        productoTerminadoId: pt.id,
-        productoTerminadoNombre: pt.nombre,
-        loteCodigo: lote,
-        fechaProgramada: new Date().toISOString().split("T")[0],
-        fechaInicio: new Date().toISOString(),
-        fechaFin: new Date().toISOString(),
-        cantidadPlanificada: cantidadProducida,
-        cantidadProducida,
-        costoEstimadoTotal: costoRealTotal,
-        costoRealTotal,
-        costoUnitarioReal,
-        costosIndirectosReales,
-        insumosConsumidos,
-        estado: "COMPLETADA",
-        responsableId,
-        responsableNombre: responsableNombre || "Jefe de Planta",
-        observaciones: observaciones || "Producción finalizada exitosamente."
-      };
-      const savedOrder = await DB.add(STORES.PRODUCTION_ORDERS, orden);
-      await AuditService.log({
-        modulo: "Producción",
-        accion: "CREAR",
-        registroId: numeroOrden,
-        campoModificado: "Orden Ejecutada",
-        valorAnterior: "-",
-        valorNuevo: `${cantidadProducida} ${pt.unidadMedida} de ${pt.nombre} (Lote: ${lote}) - Costo Unit: $ ${costoUnitarioReal}`
-      });
-      return savedOrder;
-    }
-  };
-
-  // js/modules/production.js
-  init_export_service();
-
-  // js/components/print-template.js
-  init_formatters();
-  var LEGAL_NOTE = "Documento interno — no válido como factura electrónica de venta.";
-  function tenantOrBlank() {
-    return TenantServiceInstance.getActiveTenant() || {
-      nombreComercial: "Empresa",
-      razonSocial: "Empresa",
-      nit: "",
-      dv: "",
-      direccion: "",
-      ciudad: "",
-      telefono: "",
-      email: ""
-    };
-  }
-  var PrintTemplates = {
-    getHeader(docTitle, docNumber, docDate) {
-      const tenant = tenantOrBlank();
-      if (tenant.membreteUrl) {
-        return `
-        <div class="doc-header" style="display: block; margin-bottom: 16px;">
-          <img src="${esc(tenant.membreteUrl)}" alt="${esc(tenant.nombreComercial)}" style="width: 100%; max-height: 100px; object-fit: contain; margin-bottom: 10px; border-radius: 4px;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 6px;">
-            <div>
-              <div class="doc-badge">${esc(docTitle)}</div>
-              <div style="font-size: 16px; font-weight: 800; color: #1d1d1f; margin: 4px 0 0 0;">No. ${esc(docNumber)}</div>
-            </div>
-            <div style="text-align: right; font-size: 11.5px; color: #444;">
-              <div><strong>Fecha:</strong> ${esc(Formatters.dateTime(docDate))}</div>
-            </div>
-          </div>
-        </div>
-      `;
-      }
-      const logoSrc = TenantServiceInstance.getHorizontalLogo(tenant, false);
-      return `
-      <div class="doc-header">
-        <div class="doc-brand">
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-            <img src="${esc(logoSrc)}" alt="${esc(tenant.nombreComercial)}" style="height: 48px; max-width: 180px; object-fit: contain; display: block; border-radius: 4px;" onerror="this.style.display='none'">
-          </div>
-          <div style="font-size: 13px; font-weight: 700; color: #1d1d1f; line-height: 1.2;">${esc(tenant.razonSocial || tenant.nombreComercial)}</div>
-          <p><strong>NIT:</strong> ${esc(tenant.nit)}${tenant.dv !== undefined && tenant.dv !== null && tenant.dv !== "" ? "-" + esc(tenant.dv) : ""} | <strong>Régimen:</strong> ${esc(tenant.regimen || "-")}</p>
-          <p>${esc(tenant.direccion || "")}${tenant.ciudad ? " • " + esc(tenant.ciudad) : ""}</p>
-          <p>${tenant.telefono ? "<strong>Tel:</strong> " + esc(tenant.telefono) : ""}${tenant.email ? " | <strong>Email:</strong> " + esc(tenant.email) : ""}</p>
-        </div>
-        <div class="doc-meta">
-          <div class="doc-badge">${esc(docTitle)}</div>
-          <div style="font-size: 16px; font-weight: 800; color: #1d1d1f; margin: 4px 0;">No. ${esc(docNumber)}</div>
-          <div style="font-size: 12px; color: #6e6e73;"><strong>Fecha:</strong> ${esc(Formatters.dateTime(docDate))}</div>
-        </div>
-      </div>
-    `;
-    },
-    shippingBoxLabel(shipping) {
-      const tenant = tenantOrBlank();
-      const qr = tenant.qrResenaUrl ? `<div style="position: absolute; top: 10px; right: 10px; text-align: center; width: 70px;">
-           <img src="${esc(tenant.qrResenaUrl)}" alt="QR" style="width: 55px; height: 55px; display: block; margin: 0 auto;">
-           <div style="font-size: 8px; line-height: 1.2; margin-top: 4px; font-weight: bold; color: #444;">${esc(tenant.qrResenaTexto || "DÉJANOS UNA RESEÑA")}</div>
-         </div>` : "";
-      return `
-      <div style="flex: 1; min-height: 225px; border: 2px solid #000; border-radius: 8px; display: flex; flex-direction: column; padding: 8px; box-sizing: border-box; position: relative; page-break-inside: avoid;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px;">
-          <div style="font-weight: 900; font-size: 14px;">${esc(tenant.nombreComercial)}</div>
-          <div style="text-align: right;">
-            <div style="background: #000; color: #fff; padding: 2px 8px; font-weight: bold; border-radius: 4px; font-size: 11px; display: inline-block;">
-              ${esc(shipping.transportadora || "Transportadora por definir")}
-            </div>
-            <div style="font-size: 10px; font-weight: bold; margin-top: 4px;">GUÍA: ${esc(shipping.numeroGuia || "PENDIENTE")} · DOC: ${esc(shipping.documentoNumero || "-")}</div>
-          </div>
-        </div>
-
-        <div style="display: flex; flex: 1; gap: 12px;">
-          <div style="flex: 1; border: 2px solid #000; padding: 6px; border-radius: 4px; font-size: 10px; line-height: 1.2; display: flex; flex-direction: column;">
-            <div style="color: #444; margin-bottom: 4px; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 2px;">DE (REMITENTE):</div>
-            <div style="font-weight: 900; font-size: 11px;">${esc(tenant.razonSocial || tenant.nombreComercial)}</div>
-            <div>NIT: ${esc(tenant.nit)}${tenant.dv !== undefined && tenant.dv !== "" ? "-" + esc(tenant.dv) : ""}</div>
-            <div>${esc(tenant.direccion || "")}</div>
-            <div>${esc(tenant.ciudad || "")}</div>
-            <div>Tel: ${esc(tenant.telefono || "")}</div>
-          </div>
-
-          <div style="flex: 2; border: 2px solid #000; padding: 6px; ${qr ? "padding-right: 90px;" : ""} border-radius: 4px; font-size: 11px; line-height: 1.2; display: flex; flex-direction: column; background: #fffdf0; position: relative;">
-            <div style="font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">PARA (DESTINATARIO):</div>
-            <div style="font-weight: 900; font-size: 13px;">${esc(shipping.clienteNombre)}</div>
-            <div><strong>NIT/CC:</strong> ${esc(shipping.nitCc || "-")}</div>
-            <div><strong>Dirección:</strong> ${esc(shipping.direccion || "-")}${shipping.barrio ? " (" + esc(shipping.barrio) + ")" : ""}</div>
-            <div><strong>Destino:</strong> ${esc(shipping.ciudad || "-")} ${shipping.departamento ? "- " + esc(shipping.departamento) : ""}</div>
-            <div><strong>Tel:</strong> ${esc(shipping.telefono || "-")}</div>
-            <div style="margin-top: 2px; padding-top: 2px; border-top: 1px dashed #999; font-weight: 600;">
-              Contenido: ${esc(shipping.contenidoDescripcion || "Mercancía")} - ${esc(shipping.cajasTotal || 1)} CAJA(S)
-            </div>
-            ${qr}
-          </div>
-        </div>
-      </div>
-    `;
-    },
-    batchShippingLabels(shippings) {
-      if (!shippings || shippings.length === 0)
-        return "";
-      let html = "";
-      const perPage = 4;
-      for (let i = 0;i < shippings.length; i += perPage) {
-        const chunk = shippings.slice(i, i + perPage);
-        html += `<div style="box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; ${i + perPage < shippings.length ? "page-break-after: always;" : ""}">`;
-        chunk.forEach((s) => {
-          html += this.shippingBoxLabel(s);
-        });
-        for (let j = chunk.length;j < perPage; j++)
-          html += '<div style="flex: 1;"></div>';
-        html += "</div>";
-      }
-      return html;
-    },
-    saleInvoice(sale, items = []) {
-      const tipo = sale.tipoDoc;
-      const anulada = sale.estado === "ANULADA";
-      const esCotizacion = tipo === "COTIZACION" || sale.estado === "COTIZACION";
-      const esCredito = tipo === "VENTA_CREDITO" || sale.metodoPago === "Crédito";
-      const conIva = Number(sale.impuestos || 0) > 0;
-      let docTitle = "DOCUMENTO INTERNO DE VENTA";
-      if (esCotizacion)
-        docTitle = "COTIZACIÓN";
-      else if (esCredito)
-        docTitle = "VENTA A CRÉDITO (DOC. INTERNO)";
-      const header = this.getHeader(docTitle, sale.consecutivo, sale.fecha);
-      const rows = (items || []).map((it, idx) => `
-      <tr style="font-size: 11px;">
-        <td class="text-center" style="padding: 4px;">${idx + 1}</td>
-        <td style="padding: 4px;"><strong>${esc(it.sku || "-")}</strong></td>
-        <td style="padding: 4px;">${esc(it.nombre)}</td>
-        <td class="text-center" style="padding: 4px;"><strong>${esc(it.cantidad)}</strong></td>
-        <td class="text-right" style="padding: 4px;">${Formatters.currency(it.precioUnitario)}</td>
-        <td class="text-right" style="padding: 4px;"><strong>${Formatters.currency(it.total !== undefined ? it.total : it.cantidad * it.precioUnitario)}</strong></td>
-      </tr>
-    `).join("");
-      const validez = esCotizacion ? `<p style="margin-top: 2px;">Cotización válida por ${esc(tenantOrBlank().diasValidezCotizacion || 15)} días. Precios sujetos a disponibilidad de inventario.</p>` : "";
-      return `
-      <div style="position: relative;">
-      ${anulada ? `<div style="position: absolute; top: 35%; left: 0; right: 0; text-align: center; font-size: 72px; font-weight: 900; color: rgba(220, 38, 38, 0.18); transform: rotate(-18deg); pointer-events: none;">ANULADA</div>` : ""}
-      ${header}
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; background: #fbfbfd; padding: 8px; border-radius: 6px; border: 1px solid #e5e5ea; line-height: 1.3;">
-        <div>
-          <div style="font-size: 10px; text-transform: uppercase; color: #86868b; font-weight: 700;">Cliente</div>
-          <div style="font-size: 12px; font-weight: 700; color: #1d1d1f; margin: 2px 0;">${esc(sale.clienteNombre)}</div>
-          <div style="font-size: 11px; color: #424245;"><strong>NIT/CC:</strong> ${esc(sale.clienteNit || "-")}</div>
-          ${esCotizacion ? "" : `<div style="font-size: 11px; color: #424245;"><strong>Forma de pago:</strong> ${esc(sale.metodoPago || "-")}</div>`}
-        </div>
-        <div>
-          <div style="font-size: 10px; text-transform: uppercase; color: #86868b; font-weight: 700;">Información</div>
-          <div style="font-size: 11px; color: #424245;"><strong>Atendió:</strong> ${esc(sale.vendedorNombre || "-")}</div>
-          ${sale.freelancerNombre ? `<div style="font-size: 11px; color: #424245;"><strong>Asesor comercial:</strong> ${esc(sale.freelancerNombre)}</div>` : ""}
-          <div style="font-size: 11px; color: #424245;"><strong>Estado:</strong> ${esc(sale.estado)}</div>
-          <div style="font-size: 10px; color: #86868b; margin-top: 2px;">${conIva ? "Incluye IVA discriminado" : "Sin IVA liquidado"}</div>
-        </div>
-      </div>
-
-      <table style="margin-bottom: 10px;">
-        <thead>
-          <tr style="font-size: 11px;">
-            <th class="text-center" style="width: 30px; padding: 4px;">#</th>
-            <th style="width: 100px; padding: 4px;">SKU</th>
-            <th style="padding: 4px;">Descripción</th>
-            <th class="text-center" style="width: 50px; padding: 4px;">Cant.</th>
-            <th class="text-right" style="width: 90px; padding: 4px;">V. Unit</th>
-            <th class="text-right" style="width: 100px; padding: 4px;">Total</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-
-      <div class="doc-totals" style="margin-top: 5px;">
-        <div class="total-row" style="padding: 2px 0;"><span>Base (antes de IVA):</span><span>${Formatters.currency(sale.subtotal)}</span></div>
-        ${Number(sale.descuentos) > 0 ? `<div class="total-row" style="padding: 2px 0; color: #ff3b30;"><span>Descuentos:</span><span>-${Formatters.currency(sale.descuentos)}</span></div>` : ""}
-        <div class="total-row" style="padding: 2px 0;"><span>IVA:</span><span>${Formatters.currency(sale.impuestos || 0)}</span></div>
-        <div class="total-row grand-total" style="padding-top: 4px; margin-top: 4px;"><span>TOTAL:</span><span>${Formatters.currency(sale.total)}</span></div>
-        ${!esCotizacion && !esCredito && Number(sale.cambio) > 0 ? `<div class="total-row" style="padding: 2px 0; font-size: 11px;"><span>Recibido / Cambio:</span><span>${Formatters.currency(sale.pagoRecibido)} / ${Formatters.currency(sale.cambio)}</span></div>` : ""}
-      </div>
-
-      ${anulada && sale.anulacion ? `<div style="margin-top: 10px; padding: 8px; border: 1px solid #fca5a5; border-radius: 6px; font-size: 11px; color: #991b1b;"><strong>Anulada</strong> el ${esc(Formatters.dateTime(sale.anulacion.fecha))} por ${esc(sale.anulacion.usuarioNombre)}. Motivo: ${esc(sale.anulacion.motivo)}</div>` : ""}
-
-      <div class="doc-footer" style="margin-top: 15px; padding-top: 10px; font-size: 10px; line-height: 1.3;">
-        ${tenantOrBlank().piePaginaDocumentos ? `<p>${esc(tenantOrBlank().piePaginaDocumentos)}</p>` : "<p>Gracias por su compra.</p>"}
-        ${validez}
-        <p style="margin-top: 4px; font-size: 9px; font-weight: 700;">${LEGAL_NOTE}</p>
-      </div>
-      </div>
-    `;
-    },
-    productionOrder(order) {
-      const tenant = tenantOrBlank();
-      const header = this.getHeader("ORDEN DE FABRICACIÓN", order.numeroOrden, order.fechaInicio || order.fechaProgramada);
-      const rows = (order.insumosConsumidos || []).map((ins, idx) => `
-      <tr>
-        <td class="text-center">${idx + 1}</td>
-        <td><strong>${esc(ins.sku || "-")}</strong></td>
-        <td>${esc(ins.nombre)}</td>
-        <td class="text-center font-bold">${esc(ins.cantidad)} ${esc(ins.unidadMedida || "")}</td>
-        <td class="text-right">${Formatters.currency(ins.costoUnitario, 2)}</td>
-        <td class="text-right"><strong>${Formatters.currency(ins.costoTotal)}</strong></td>
-      </tr>
-    `).join("");
-      return `
-      ${header}
-      <div style="background: #fbfbfd; border: 1px solid #e5e5ea; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
-        <div style="font-size: 11px; font-weight: 700; color: #0071e3; text-transform: uppercase;">Producto fabricado</div>
-        <div style="font-size: 17px; font-weight: 800; color: #1d1d1f; margin: 4px 0;">${esc(order.productoTerminadoNombre)}</div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 12px; margin-top: 8px;">
-          <div><strong>Lote:</strong> ${esc(order.loteCodigo)}</div>
-          <div><strong>Cantidad:</strong> ${esc(order.cantidadProducida)}</div>
-          <div><strong>Estado:</strong> ${esc(order.estado)}</div>
-          <div><strong>Responsable:</strong> ${esc(order.responsableNombre || "-")}</div>
-        </div>
-      </div>
-
-      <h4 style="font-size: 13px; margin-bottom: 8px; color: #1d1d1f;">Insumos y empaques consumidos</h4>
-      <table>
-        <thead>
-          <tr>
-            <th class="text-center" style="width: 40px;">#</th>
-            <th style="width: 120px;">SKU</th>
-            <th>Descripción</th>
-            <th class="text-center" style="width: 100px;">Consumo</th>
-            <th class="text-right" style="width: 120px;">Costo unit.</th>
-            <th class="text-right" style="width: 130px;">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-
-      <div class="doc-totals">
-        <div class="total-row"><span>Costos indirectos (CIF):</span><span>${Formatters.currency(order.costosIndirectosReales || 0)}</span></div>
-        <div class="total-row grand-total"><span>COSTO TOTAL LOTE:</span><span>${Formatters.currency(order.costoRealTotal)}</span></div>
-        <div class="total-row" style="font-weight: 700; color: #0071e3; margin-top: 4px;"><span>Costo unitario real:</span><span>${Formatters.currency(order.costoUnitarioReal, 2)}</span></div>
-      </div>
-
-      <div style="margin-top: 50px; display: flex; justify-content: space-around; align-items: flex-end;">
-        <div style="width: 220px; text-align: center;">
-          ${tenant.firmaUrl ? `<img src="${esc(tenant.firmaUrl)}" alt="Firma" style="height: 60px; object-fit: contain; margin-bottom: -10px;" onerror="this.style.display='none'">` : '<div style="height: 60px;"></div>'}
-          <div style="border-top: 1px solid #1d1d1f; font-size: 11px; padding-top: 4px; font-weight: bold;">${esc(tenant.firmaNombre || "Responsable de planta")}</div>
-          <div style="font-size: 10px; color: #6e6e73;">${esc(tenant.firmaCargo || "Operaciones y planta")}</div>
-        </div>
-        <div style="width: 220px; text-align: center;">
-          <div style="height: 60px;"></div>
-          <div style="border-top: 1px solid #1d1d1f; font-size: 11px; padding-top: 4px; font-weight: bold;">Control de calidad</div>
-          <div style="font-size: 10px; color: #6e6e73;">Inspección pH, viscosidad y sello</div>
-        </div>
-      </div>
-    `;
-    },
-    commercialQuote(quote, items = []) {
-      return this.saleInvoice({ ...quote, tipoDoc: "COTIZACION" }, items);
-    }
-  };
-
-  // js/modules/production.js
-  var ProductionModule = {
-    async render(container) {
-      const tenant = TenantServiceInstance.getActiveTenant();
-      const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [recipes, orders, rawMaterials, finishedGoods] = await Promise.all([
-        DB.getAll(STORES.RECIPES_BOM, tenantId),
-        DB.getAll(STORES.PRODUCTION_ORDERS, tenantId),
-        (await DB.getAll(STORES.PRODUCTS, tenantId)).filter((p) => p.tipoItem === "MATERIA_PRIMA"),
-        (await DB.getAll(STORES.PRODUCTS, tenantId)).filter((p) => p.tipoItem === "PRODUCTO_TERMINADO")
-      ]);
-      container.innerHTML = `
-      <div class="view-header">
-        <div class="view-title-wrap">
-          <div class="d-flex items-center gap-2">
-            <h1>Módulo de Producción & Fórmulas (BOM)</h1>
-            <span class="badge-demo">FABRICACIÓN AUTOMOTRIZ</span>
-          </div>
-          <p>Control de recetas químicas, explosión de insumos, costeo por lote y fabricación en planta</p>
-        </div>
-        <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-new-recipe">\uD83E\uDDEA Nueva Fórmula / Receta</button>
-          <button class="btn btn-primary btn-sm" id="btn-execute-production">⚡ Ejecutar Orden de Producción</button>
-        </div>
-      </div>
-
-      <!-- TABS: ÓRDENES REALIZADAS VS FÓRMULAS ACTIVAS + BÓVEDA + COSTOS -->
-      <div class="card mb-3" style="padding: 6px 14px;">
-        <div class="d-flex justify-between items-center" style="flex-wrap: wrap; gap: 8px;">
-          <div class="d-flex gap-2">
-            <button class="btn btn-secondary btn-sm tab-prod-btn active" data-tab="orders">\uD83D\uDCCB Órdenes de Producción (${orders.length})</button>
-            <button class="btn btn-secondary btn-sm tab-prod-btn" data-tab="recipes">\uD83E\uDDEA Fórmulas Maestras BOM (${recipes.length})</button>
-          </div>
-          <div class="d-flex gap-2">
-            <a href="#formulas-vault" class="btn btn-secondary btn-sm" style="border-color: #6366f1; color: #6366f1; text-decoration: none;">\uD83D\uDD12 Bóveda de Fórmulas</a>
-            <a href="#pricing-calculator" class="btn btn-secondary btn-sm" style="border-color: var(--brand-primary); color: var(--brand-primary); text-decoration: none;">\uD83D\uDCA1 Costos & Precios IA</a>
-          </div>
-        </div>
-      </div>
-
-      <div id="production-content-area"></div>
-    `;
-      const renderOrdersTable = () => {
-        const target = container.querySelector("#production-content-area");
-        target.innerHTML = '<div id="orders-table-container"></div>';
-        new DataTable({
-          containerId: "orders-table-container",
-          data: orders.sort((a, b) => new Date(b.fechaInicio || b.fechaProgramada) - new Date(a.fechaInicio || a.fechaProgramada)),
-          columns: [
-            {
-              key: "numeroOrden",
-              title: "No. Orden / Lote",
-              render: (val, row) => `
-              <div>
-                <strong style="color: var(--brand-primary);">${val}</strong>
-                <div class="text-xs text-muted">Lote: <strong>${row.loteCodigo}</strong></div>
-              </div>
-            `
-            },
-            {
-              key: "productoTerminadoNombre",
-              title: "Producto Fabricado",
-              render: (val, row) => `
-              <div>
-                <div class="font-bold">${val}</div>
-                <div class="text-xs text-muted">Cant: <strong>${row.cantidadProducida} unidades</strong></div>
-              </div>
-            `
-            },
-            {
-              key: "fechaInicio",
-              title: "Fecha Fabricación",
-              render: (val) => Formatters.date(val)
-            },
-            {
-              key: "costoRealTotal",
-              title: "Costo Total Lote",
-              render: (val) => Formatters.currency(val)
-            },
-            {
-              key: "costoUnitarioReal",
-              title: "Costo Unit. Real",
-              render: (val) => `<strong class="text-success">${Formatters.currency(val)}</strong>`
-            },
-            {
-              key: "responsableNombre",
-              title: "Responsable",
-              render: (val) => `<span class="badge badge-neutral">${val || "Planta"}</span>`
-            },
-            {
-              key: "estado",
-              title: "Estado",
-              render: (val) => `<span class="badge badge-success">${val}</span>`
-            }
-          ],
-          actions: (row) => `
-          <button class="btn btn-secondary btn-sm btn-print-order" data-id="${row.id}" title="Imprimir Orden">\uD83D\uDDA8️ Imprimir</button>
-        `
-        });
-      };
-      const renderRecipesTable = () => {
-        const target = container.querySelector("#production-content-area");
-        target.innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Fórmulas Químicas y Estructura de Materiales (BOM)</div>
-          </div>
-          <div class="card-body">
-            <div class="d-flex flex-col gap-3">
-              ${recipes.map((r) => {
-          const pt = finishedGoods.find((p) => p.id === r.productoTerminadoId);
-          return `
-                  <div class="card" style="border: 1px solid var(--border-color); margin-bottom: 0;">
-                    <div class="card-header" style="background: #f8fafc;">
-                      <div>
-                        <strong style="color: var(--brand-primary); font-size: 15px;">${r.nombreReceta}</strong>
-                        <div class="text-xs text-muted">Producto Resultante: <strong>${pt ? pt.nombre : "Producto Terminado"}</strong> | Rendimiento Lote: <strong>${r.rendimientoLote} ${r.unidadMedidaLote}</strong></div>
-                      </div>
-                      <button class="btn btn-primary btn-sm btn-quick-produce" data-receta-id="${r.id}">⚡ Fabricar Este Lote</button>
-                    </div>
-                    <div class="card-body" style="padding: 12px 16px;">
-                      <div class="text-xs font-bold text-muted mb-2">INSUMOS Y MATERIAS PRIMAS CONSUMIDAS POR LOTE:</div>
-                      <div class="table-responsive">
-                        <table class="data-table" style="font-size: 12px;">
-                          <thead>
-                            <tr>
-                              <th>Materia Prima / Insumo</th>
-                              <th class="text-center">Cant. Lote</th>
-                              <th class="text-center">Unidad</th>
-                              <th class="text-center">Merma Esp.</th>
-                              <th class="text-right">Stock Disponible</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            ${r.insumos.map((ins) => {
-            const mp = rawMaterials.find((m) => m.id === ins.materiaPrimaId);
-            const stock = mp ? mp.stock : 0;
-            const isSufficient = stock >= ins.cantidad;
-            return `
-                                <tr>
-                                  <td><strong>${mp ? mp.nombre : "Insumo"}</strong> <span class="text-xs text-muted">(${mp ? mp.sku : "-"})</span></td>
-                                  <td class="text-center font-bold">${ins.cantidad}</td>
-                                  <td class="text-center">${ins.unidadMedida}</td>
-                                  <td class="text-center">${ins.mermaEsperada || 0}%</td>
-                                  <td class="text-right">
-                                    <span class="badge ${isSufficient ? "badge-success" : "badge-danger"}">
-                                      ${stock} ${ins.unidadMedida}
-                                    </span>
-                                  </td>
-                                </tr>
-                              `;
-          }).join("")}
-                          </tbody>
-                        </table>
-                      </div>
-                      ${r.observaciones ? `<div class="text-xs text-muted mt-2"><strong>Instrucciones de Mezcla:</strong> ${r.observaciones}</div>` : ""}
-                    </div>
-                  </div>
-                `;
-        }).join("")}
-            </div>
-          </div>
-        </div>
-      `;
-      };
-      renderOrdersTable();
-      container.querySelectorAll(".tab-prod-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          container.querySelectorAll(".tab-prod-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          const tab = btn.getAttribute("data-tab");
-          if (tab === "orders")
-            renderOrdersTable();
-          else
-            renderRecipesTable();
-        });
-      });
-      container.querySelector("#btn-execute-production").addEventListener("click", () => {
-        this.openExecuteProductionModal(tenantId, recipes, finishedGoods, rawMaterials, () => this.render(container));
-      });
-      container.addEventListener("click", (e) => {
-        const quickBtn = e.target.closest(".btn-quick-produce");
-        if (quickBtn) {
-          const recetaId = quickBtn.getAttribute("data-receta-id");
-          this.openExecuteProductionModal(tenantId, recipes, finishedGoods, rawMaterials, () => this.render(container), recetaId);
-          return;
-        }
-        const printBtn = e.target.closest(".btn-print-order");
-        if (printBtn) {
-          const orderId = printBtn.getAttribute("data-id");
-          const order = orders.find((o) => o.id === orderId);
-          if (order) {
-            const html = PrintTemplates.productionOrder(order);
-            ExportService.printDocument(html, `Orden_Produccion_${order.numeroOrden}`);
-          }
-        }
-      });
-    },
-    openExecuteProductionModal(tenantId, recipes, finishedGoods, rawMaterials, onCompleted, preselectedRecipeId = null) {
-      if (recipes.length === 0) {
-        Toast.warning("No hay recetas BOM registradas. Debe crear una receta primero.");
-        return;
-      }
-      const selectedRecipe = preselectedRecipeId ? recipes.find((r) => r.id === preselectedRecipeId) : recipes[0];
-      const content = `
-      <form id="execute-production-form">
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Seleccionar Fórmula Maestra (BOM)</label>
-            <select class="form-select" id="sel-production-recipe" name="recetaId">
-              ${recipes.map((r) => `
-                <option value="${r.id}" ${r.id === selectedRecipe.id ? "selected" : ""}>${r.nombreReceta}</option>
-              `).join("")}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Cantidad a Fabricar (Unidades)</label>
-            <input type="number" step="1" min="1" class="form-control" id="inp-prod-qty" name="cantidad" value="${selectedRecipe.rendimientoLote || 50}" required>
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Código de Lote</label>
-            <input type="text" class="form-control" name="loteCodigo" value="LOTE-RP${new Date().getMonth() + 1}-${Math.floor(100 + Math.random() * 900)}" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Costos Indirectos Adicionales (CIF COP)</label>
-            <input type="number" class="form-control" id="inp-prod-cif" name="costosIndirectos" value="${selectedRecipe.costosIndirectosEstimados || 35000}">
-          </div>
-        </div>
-
-        <!-- EXPLOSIÓN DINÁMICA DE INSUMOS -->
-        <div class="card mb-3" style="background: #f8fafc; border: 1px solid var(--border-color);">
-          <div class="card-header" style="padding: 10px 14px;">
-            <div class="card-title" style="font-size: 13px;">\uD83D\uDCA5 Explosión de Insumos & Verificación de Stock</div>
-          </div>
-          <div class="card-body" style="padding: 12px;" id="explosion-preview-area">
-            <div class="text-xs text-muted">Calculando insumos requeridos...</div>
-          </div>
-        </div>
-
-        <div class="form-group mb-3">
-          <label class="form-label">Observaciones / Registro de Calidad</label>
-          <textarea class="form-control" name="observaciones" rows="2" placeholder="Control de pH, viscosidad o densidad verificado"></textarea>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: "Ejecutar Fabricación en Planta",
-        content,
-        size: "lg",
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: "Fabricar & Ingresar a Inventario",
-            class: "btn-primary",
-            id: "btn-confirm-production",
-            onClick: async () => {
-              const form = dialog.querySelector("#execute-production-form");
-              if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-              }
-              const formData = new FormData(form);
-              const recetaId = formData.get("recetaId");
-              const cantidad = Number(formData.get("cantidad"));
-              const loteCodigo = formData.get("loteCodigo");
-              const cif = Number(formData.get("costosIndirectos") || 0);
-              const observaciones = formData.get("observaciones");
-              const receta = recipes.find((r) => r.id === recetaId);
-              try {
-                dialog.querySelector("#btn-confirm-production").disabled = true;
-                dialog.querySelector("#btn-confirm-production").textContent = "Procesando fabricación...";
-                await ProductionService.executeProductionOrder({
-                  tenantId,
-                  recetaId,
-                  productoTerminadoId: receta.productoTerminadoId,
-                  cantidadProducida: cantidad,
-                  loteCodigo,
-                  costosIndirectosReales: cif,
-                  responsableId: "usr_planta",
-                  responsableNombre: "Julián Montoya (Planta)",
-                  observaciones
-                });
-                Toast.success(`¡Lote ${loteCodigo} fabricado con éxito! Se consumieron las materias primas e ingresó el producto terminado a Kardex.`);
-                Modal.close();
-                if (onCompleted)
-                  onCompleted();
-              } catch (err) {
-                console.error(err);
-                Toast.error(`Error al procesar la producción: ${err.message}`);
-                dialog.querySelector("#btn-confirm-production").disabled = false;
-                dialog.querySelector("#btn-confirm-production").textContent = "Fabricar & Ingresar a Inventario";
-              }
-            }
-          }
-        ]
-      });
-      const updateExplosion = async () => {
-        const recId = dialog.querySelector("#sel-production-recipe").value;
-        const qty = Number(dialog.querySelector("#inp-prod-qty").value) || 1;
-        const previewArea = dialog.querySelector("#explosion-preview-area");
-        const submitBtn = dialog.querySelector("#btn-confirm-production");
-        try {
-          const est = await ProductionService.calculateEstimatedCost(recId, qty);
-          previewArea.innerHTML = `
-          <div class="table-responsive mb-2">
-            <table class="data-table" style="font-size: 11px;">
-              <thead>
-                <tr>
-                  <th>Insumo Químico / Empaque</th>
-                  <th class="text-center">Requerido</th>
-                  <th class="text-right">Stock Disponible</th>
-                  <th class="text-right">Costo Estimado</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${est.desgloseInsumos.map((ins) => `
-                  <tr>
-                    <td><strong>${ins.nombre}</strong></td>
-                    <td class="text-center font-bold">${ins.cantidadRequerida} ${ins.unidadMedida}</td>
-                    <td class="text-right">
-                      <span class="badge ${ins.stockSuficiente ? "badge-success" : "badge-danger"}">
-                        ${ins.stockDisponible} ${ins.unidadMedida}
-                      </span>
-                    </td>
-                    <td class="text-right">${Formatters.currency(ins.costoTotal)}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          </div>
-
-          <div class="d-flex justify-between items-center text-xs mt-2" style="border-top: 1px dashed #cbd5e1; padding-top: 8px;">
-            <div>
-              <span>Costo Total Estimado: <strong>${Formatters.currency(est.costoTotalEstimado)}</strong></span>
-              <span class="ml-2 text-muted">| Costo Unitario: <strong class="text-success">${Formatters.currency(est.costoUnitarioEstimado)} / un</strong></span>
-            </div>
-            ${!est.todosConStock ? `
-              <span class="badge badge-danger">⚠️ Stock insuficiente en uno o más insumos</span>
-            ` : `
-              <span class="badge badge-success">✓ Stock disponible para producir</span>
-            `}
-          </div>
-        `;
-          if (!est.todosConStock) {
-            submitBtn.disabled = true;
-            submitBtn.title = "Insumos insuficientes en bodega";
-          } else {
-            submitBtn.disabled = false;
-          }
-        } catch (e) {
-          previewArea.innerHTML = `<div class="text-danger text-xs">${e.message}</div>`;
-        }
-      };
-      dialog.querySelector("#sel-production-recipe").addEventListener("change", updateExplosion);
-      dialog.querySelector("#inp-prod-qty").addEventListener("input", updateExplosion);
-      updateExplosion();
-    }
-  };
-
-  // js/modules/purchases.js
-  init_formatters();
-  var PurchasesModule = {
-    async render(container) {
-      const tenant = TenantServiceInstance.getActiveTenant();
-      const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      const [purchases, suppliers, products, warehouses] = await Promise.all([
-        DB.getAll(STORES.PURCHASES, tenantId),
-        DB.getAll(STORES.SUPPLIERS, tenantId),
-        DB.getAll(STORES.PRODUCTS, tenantId),
-        DB.getAll(STORES.WAREHOUSES, tenantId)
-      ]);
-      container.innerHTML = `
-      <div class="view-header">
-        <div class="view-title-wrap">
-          <h1>Compras & Abastecimiento</h1>
-          <p>Recepción de materias primas, insumos de empaque y actualización automática de costos en Kardex</p>
-        </div>
-        <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-manage-suppliers">\uD83D\uDC65 Directorio Proveedores</button>
-          <button class="btn btn-primary btn-sm" id="btn-new-purchase">\uD83D\uDECD️ Registrar Compra</button>
-        </div>
-      </div>
-
-      <div id="purchases-table-container"></div>
-    `;
-      new DataTable({
-        containerId: "purchases-table-container",
-        data: purchases,
-        columns: [
-          {
-            key: "consecutivo",
-            title: "Factura / Doc.",
-            render: (val) => `<strong style="color: var(--brand-primary);">${val}</strong>`
-          },
-          {
-            key: "proveedorNombre",
-            title: "Proveedor",
-            render: (val) => `<strong>${val || "Proveedor General"}</strong>`
-          },
-          {
-            key: "fecha",
-            title: "Fecha Emisión",
-            render: (val) => Formatters.date(val)
-          },
-          {
-            key: "total",
-            title: "Valor Total",
-            render: (val) => `<strong>${Formatters.currency(val)}</strong>`
-          },
-          {
-            key: "condicionPago",
-            title: "Condición",
-            render: (val) => `<span class="badge ${val === "Crédito" ? "badge-warning" : "badge-success"}">${val || "Contado"}</span>`
-          },
-          {
-            key: "estado",
-            title: "Estado Recepción",
-            render: (val) => `<span class="badge badge-success">${val || "RECIBIDA"}</span>`
-          }
-        ]
-      });
-      container.querySelector("#btn-new-purchase").addEventListener("click", () => {
-        this.openPurchaseModal(tenantId, suppliers, products, warehouses, () => this.render(container));
-      });
-      container.querySelector("#btn-manage-suppliers").addEventListener("click", () => {
-        this.openSuppliersModal(tenantId, suppliers, () => this.render(container));
-      });
-    },
-    openPurchaseModal(tenantId, suppliers, products, warehouses, onSaved) {
-      let purchaseItems = [];
-      const content = `
-      <form id="purchase-form">
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Proveedor</label>
-            <select class="form-select" id="purch-supplier" name="proveedorId" required>
-              ${suppliers.map((s) => `<option value="${s.id}">${s.razonSocial} (NIT: ${s.nitCc}-${s.dv || 0})</option>`).join("")}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">No. Factura de Compra / Remisión</label>
-            <input type="text" class="form-control" name="consecutivo" required value="FAC-PROV-${Math.floor(1000 + Math.random() * 9000)}">
-          </div>
-        </div>
-
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Bodega Destino de Almacenamiento</label>
-            <select class="form-select" name="bodegaDestinoId">
-              ${warehouses.map((w) => `<option value="${w.id}">${w.nombre}</option>`).join("")}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Forma de Pago</label>
-            <select class="form-select" name="condicionPago" id="purch-payment-term">
-              <option value="Contado">Contado Inmediato (Transferencia / Banco)</option>
-              <option value="Crédito">Crédito a Proveedor (Genera Cuenta por Pagar)</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- AGREGAR ÍTEMS A LA COMPRA -->
-        <div class="card mb-3" style="background: #f8fafc; border: 1px solid var(--border-color);">
-          <div class="card-header" style="padding: 10px 14px;">
-            <div class="card-title" style="font-size: 13px;">\uD83D\uDCE6 Ítems Comprados / Materias Primas</div>
-          </div>
-          <div class="card-body" style="padding: 12px;">
-            <div class="form-row mb-2">
-              <div class="form-group mb-0" style="flex: 2;">
-                <select class="form-select" id="purch-item-prod">
-                  ${products.map((p) => `<option value="${p.id}" data-cost="${p.costoPromedio}">${p.nombre} (${p.unidadMedida})</option>`).join("")}
-                </select>
-              </div>
-              <div class="form-group mb-0">
-                <input type="number" step="any" min="0.1" class="form-control" id="purch-item-qty" placeholder="Cantidad" value="10">
-              </div>
-              <div class="form-group mb-0">
-                <input type="number" class="form-control" id="purch-item-cost" placeholder="Costo Unit.">
-              </div>
-              <div class="form-group mb-0">
-                <button type="button" class="btn btn-secondary" id="btn-add-purch-item">➕ Añadir</button>
-              </div>
-            </div>
-
-            <div class="table-responsive">
-              <table class="data-table" style="font-size: 11px;">
-                <thead>
-                  <tr>
-                    <th>Ítem</th>
-                    <th class="text-center">Cantidad</th>
-                    <th class="text-right">Costo Unit.</th>
-                    <th class="text-right">Total</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="purch-items-tbody">
-                  <tr><td colspan="5" class="text-center text-muted" style="padding: 12px;">Sin ítems agregados.</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="d-flex justify-between items-center text-xs mt-2" style="border-top: 1px solid #cbd5e1; padding-top: 6px;">
-              <span class="font-bold">TOTAL COMPRA:</span>
-              <strong id="purch-total-lbl" style="font-size: 15px; color: var(--brand-primary);">$ 0</strong>
-            </div>
-          </div>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: "Registrar Entrada de Mercancía / Compra",
-        content,
-        size: "lg",
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: "Ingresar Compra a Kardex",
-            class: "btn-primary",
-            onClick: async () => {
-              if (purchaseItems.length === 0) {
-                Toast.warning("Debe agregar al menos un producto a la compra.");
-                return;
-              }
-              const form = dialog.querySelector("#purchase-form");
-              const formData = new FormData(form);
-              const proveedorId = formData.get("proveedorId");
-              const supp = suppliers.find((s) => s.id === proveedorId);
-              const consecutivo = formData.get("consecutivo");
-              const bodegaId = formData.get("bodegaDestinoId");
-              const condicionPago = formData.get("condicionPago");
-              const totalCompra = purchaseItems.reduce((acc, i) => acc + i.cantidad * i.costoUnitario, 0);
-              const purchaseRecord = {
-                tenantId,
-                consecutivo,
-                proveedorId,
-                proveedorNombre: supp ? supp.razonSocial : "Proveedor",
-                fecha: new Date().toISOString(),
-                total: totalCompra,
-                condicionPago,
-                estado: "RECIBIDA",
-                items: purchaseItems
-              };
-              await DB.add(STORES.PURCHASES, purchaseRecord);
-              for (const item of purchaseItems) {
-                await KardexService.registerMovement({
-                  tenantId,
-                  productoId: item.productoId,
-                  bodegaId,
-                  documentoTipo: "COMPRA",
-                  documentoNumero: consecutivo,
-                  cantidad: item.cantidad,
-                  costoUnitario: item.costoUnitario,
-                  observacion: `Entrada compra fac. ${consecutivo} de ${supp?.razonSocial}`
-                });
-              }
-              if (condicionPago === "Crédito") {
-                await DB.add(STORES.PAYABLES_CXP, {
-                  tenantId,
-                  compraId: purchaseRecord.id,
-                  documento: consecutivo,
-                  proveedorId,
-                  proveedorNombre: supp.razonSocial,
-                  fechaEmision: new Date().toISOString().split("T")[0],
-                  fechaVencimiento: new Date(Date.now() + (supp.diasCredito || 30) * 86400000).toISOString().split("T")[0],
-                  valorTotal: totalCompra,
-                  abonos: 0,
-                  saldo: totalCompra,
-                  diasMora: 0,
-                  estado: "AL_DIA"
-                });
-              }
-              Toast.success("Compra procesada exitosamente. Se actualizaron existencias en Kardex.");
-              Modal.close();
-              if (onSaved)
-                onSaved();
-            }
-          }
-        ]
-      });
-      const updatePurchTable = () => {
-        const tbody = dialog.querySelector("#purch-items-tbody");
-        const totalLbl = dialog.querySelector("#purch-total-lbl");
-        if (purchaseItems.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 12px;">Sin ítems agregados.</td></tr>`;
-          totalLbl.textContent = "$ 0";
-          return;
-        }
-        let total = 0;
-        tbody.innerHTML = purchaseItems.map((it, idx) => {
-          const sub = it.cantidad * it.costoUnitario;
-          total += sub;
-          return `
-          <tr>
-            <td><strong>${it.nombre}</strong></td>
-            <td class="text-center">${it.cantidad}</td>
-            <td class="text-right">${Formatters.currency(it.costoUnitario)}</td>
-            <td class="text-right"><strong>${Formatters.currency(sub)}</strong></td>
-            <td class="text-right"><button type="button" class="btn btn-danger btn-sm purch-del-item" data-idx="${idx}">&times;</button></td>
-          </tr>
-        `;
-        }).join("");
-        totalLbl.textContent = Formatters.currency(total);
-      };
-      const prodSelect = dialog.querySelector("#purch-item-prod");
-      const costInput = dialog.querySelector("#purch-item-cost");
-      const setCostFromSelect = () => {
-        const selected = prodSelect.options[prodSelect.selectedIndex];
-        costInput.value = selected.getAttribute("data-cost") || 0;
-      };
-      prodSelect.addEventListener("change", setCostFromSelect);
-      setCostFromSelect();
-      dialog.querySelector("#btn-add-purch-item").addEventListener("click", () => {
-        const pId = prodSelect.value;
-        const prod = products.find((p) => p.id === pId);
-        const qty = Number(dialog.querySelector("#purch-item-qty").value) || 1;
-        const cost = Number(costInput.value) || 0;
-        purchaseItems.push({
-          productoId: pId,
-          nombre: prod.nombre,
-          cantidad: qty,
-          costoUnitario: cost
-        });
-        updatePurchTable();
-      });
-      dialog.querySelector("#purch-items-tbody").addEventListener("click", (e) => {
-        if (e.target.classList.contains("purch-del-item")) {
-          const idx = Number(e.target.getAttribute("data-idx"));
-          purchaseItems.splice(idx, 1);
-          updatePurchTable();
-        }
-      });
-    },
-    openSuppliersModal(tenantId, suppliers, onUpdated) {
-      const content = `
-      <div class="d-flex justify-between items-center mb-3">
-        <h4 class="text-sm font-bold">Directorio de Proveedores Comerciales</h4>
-        <button class="btn btn-primary btn-sm" id="btn-add-supplier-inner">➕ Nuevo Proveedor</button>
-      </div>
-      <div class="table-responsive">
-        <table class="data-table" style="font-size: 12px;">
-          <thead>
-            <tr>
-              <th>Razón Social</th>
-              <th>NIT</th>
-              <th>Contacto</th>
-              <th>Días Crédito</th>
-              <th>Categoría</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${suppliers.map((s) => `
-              <tr>
-                <td><strong>${s.razonSocial}</strong></td>
-                <td>${s.nitCc}-${s.dv || 0}</td>
-                <td>${s.contacto || "-"} (${s.telefono || "-"})</td>
-                <td>${s.diasCredito || 0} días</td>
-                <td><span class="badge badge-neutral">${s.categoria || "Insumos"}</span></td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
-      const suppDialog = Modal.show({
-        title: "Gestión de Proveedores",
-        content,
-        size: "lg",
-        footerButtons: [{ label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }]
-      });
-      const btnAddInner = suppDialog.querySelector("#btn-add-supplier-inner");
-      if (btnAddInner) {
-        btnAddInner.addEventListener("click", () => {
-          this.openAddSupplierForm(tenantId, async () => {
-            const updatedSuppliers = await DB.getAll(STORES.SUPPLIERS, tenantId);
-            Modal.close();
-            this.openSuppliersModal(tenantId, updatedSuppliers, onUpdated);
-            if (onUpdated)
-              onUpdated();
-          });
-        });
-      }
-    },
-    openAddSupplierForm(tenantId, onSaved) {
-      const content = `
-      <form id="new-supplier-form">
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Razón Social / Nombre *</label>
-            <input type="text" class="form-control" name="razonSocial" required placeholder="Ej: Distribuidora Química S.A.S">
-          </div>
-          <div class="form-group">
-            <label class="form-label">NIT / Cédula</label>
-            <input type="text" class="form-control" name="nitCc" placeholder="Ej: 900123456">
-          </div>
-        </div>
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Persona de Contacto</label>
-            <input type="text" class="form-control" name="contacto" placeholder="Ej: María González">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Teléfono / WhatsApp</label>
-            <input type="text" class="form-control" name="telefono" placeholder="3001234567">
-          </div>
-        </div>
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Email</label>
-            <input type="email" class="form-control" name="email" placeholder="proveedor@empresa.com">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Ciudad</label>
-            <input type="text" class="form-control" name="ciudad" value="Medellín">
-          </div>
-        </div>
-        <div class="form-row mb-3">
-          <div class="form-group">
-            <label class="form-label">Categoría de Insumos</label>
-            <select class="form-select" name="categoria">
-              <option value="Insumos Químicos">Insumos Químicos</option>
-              <option value="Empaque y Envases">Empaque y Envases</option>
-              <option value="Materias Primas">Materias Primas</option>
-              <option value="Servicios">Servicios</option>
-              <option value="Logística">Logística</option>
-              <option value="Otros">Otros</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Días de Crédito</label>
-            <input type="number" class="form-control" name="diasCredito" value="30" min="0">
-          </div>
-        </div>
-      </form>
-    `;
-      const dialog = Modal.show({
-        title: "➕ Nuevo Proveedor",
-        content,
-        size: "md",
-        footerButtons: [
-          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
-          {
-            label: "Guardar Proveedor",
-            class: "btn-primary",
-            onClick: async () => {
-              const form = dialog.querySelector("#new-supplier-form");
-              if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-              }
-              const fd = new FormData(form);
-              const payload = {
-                tenantId,
-                razonSocial: fd.get("razonSocial"),
-                nitCc: fd.get("nitCc") || "0",
-                dv: "0",
-                contacto: fd.get("contacto"),
-                telefono: fd.get("telefono"),
-                email: fd.get("email"),
-                ciudad: fd.get("ciudad"),
-                categoria: fd.get("categoria"),
-                diasCredito: Number(fd.get("diasCredito")) || 30,
-                estado: "ACTIVO",
-                creadoEn: new Date().toISOString()
-              };
-              await DB.add(STORES.SUPPLIERS, payload);
-              Toast.success(`Proveedor "${payload.razonSocial}" registrado.`);
-              Modal.close();
-              if (onSaved)
-                onSaved();
-            }
-          }
-        ]
-      });
-    }
-  };
-
-  // js/modules/sales-pos.js
-  init_formatters();
-
   // js/services/tax-service.js
   var round = (n) => Math.round(Number(n) || 0);
   var TaxService = {
@@ -6437,9 +3162,6 @@ Generado por Nexa ERP.`;
       };
     }
   };
-
-  // js/modules/sales-pos.js
-  init_export_service();
 
   // js/services/sales-service.js
   var DOC_TYPES = {
@@ -6913,7 +3635,3451 @@ Generado por Nexa ERP.`;
     }
   };
 
+  // js/services/finance-service.js
+  var inRange = (iso, from, to) => {
+    if (!iso)
+      return false;
+    const t = new Date(iso).getTime();
+    return (!from || t >= from.getTime()) && (!to || t < to.getTime());
+  };
+  var FinanceService = {
+    periods(now = new Date) {
+      const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return {
+        hoy: { from: d0, to: new Date(d0.getTime() + 86400000), label: "Hoy" },
+        mes: { from: new Date(now.getFullYear(), now.getMonth(), 1), to: new Date(now.getFullYear(), now.getMonth() + 1, 1), label: "Mes actual" },
+        anio: { from: new Date(now.getFullYear(), 0, 1), to: new Date(now.getFullYear() + 1, 0, 1), label: "Año actual" }
+      };
+    },
+    saleCost(sale, products) {
+      if (Number(sale.costoTotal) > 0)
+        return { costo: Number(sale.costoTotal), estimado: false };
+      let costo = 0;
+      let estimado = false;
+      (sale.items || []).forEach((it) => {
+        if (it.costoUnitario !== undefined) {
+          costo += Number(it.costoUnitario) * Number(it.cantidad || 0);
+        } else {
+          const p = products.find((x) => x.id === it.productoId);
+          costo += Number(p && p.costoPromedio || 0) * Number(it.cantidad || 0);
+          estimado = true;
+        }
+      });
+      return { costo, estimado };
+    },
+    summarize({ sales, expenses, products, from = null, to = null }) {
+      const efectivas = sales.filter((s) => SalesService.isEffectiveSale(s) && inRange(s.fecha, from, to));
+      let ventasBrutas = 0, ventasNetas = 0, iva = 0, costoVentas = 0, comisiones = 0, costoEstimado = false;
+      efectivas.forEach((s) => {
+        ventasBrutas += Number(s.total || 0);
+        ventasNetas += Number(s.subtotal !== undefined ? s.subtotal : s.total || 0);
+        iva += Number(s.impuestos || 0);
+        comisiones += Number(s.comisionFreelance || 0);
+        const c = this.saleCost(s, products);
+        costoVentas += c.costo;
+        if (c.estimado)
+          costoEstimado = true;
+      });
+      const gastos = expenses.filter((e) => inRange(e.fecha, from, to)).reduce((a, e) => a + Number(e.valor || 0), 0);
+      const utilidadBruta = ventasNetas - costoVentas;
+      const utilidadOperativa = utilidadBruta - comisiones - gastos;
+      return {
+        n: efectivas.length,
+        ventasBrutas: Math.round(ventasBrutas),
+        ventasNetas: Math.round(ventasNetas),
+        iva: Math.round(iva),
+        costoVentas: Math.round(costoVentas),
+        comisiones: Math.round(comisiones),
+        gastos: Math.round(gastos),
+        utilidadBruta: Math.round(utilidadBruta),
+        utilidadOperativa: Math.round(utilidadOperativa),
+        margenBrutoPct: ventasNetas > 0 ? utilidadBruta / ventasNetas * 100 : null,
+        costoEstimado
+      };
+    },
+    monthlySeries(sales, months = 6, now = new Date) {
+      const out = [];
+      for (let i = months - 1;i >= 0; i--) {
+        const from = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const to = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+        const value = sales.filter((s) => SalesService.isEffectiveSale(s) && inRange(s.fecha, from, to)).reduce((a, s) => a + Number(s.subtotal !== undefined ? s.subtotal : s.total || 0), 0);
+        out.push({ label: from.toLocaleDateString("es-CO", { month: "short" }).replace(".", ""), value: Math.round(value) });
+      }
+      return out;
+    },
+    byCategory(sales, products, from = null, to = null) {
+      const acc = {};
+      sales.filter((s) => SalesService.isEffectiveSale(s) && inRange(s.fecha, from, to)).forEach((s) => {
+        (s.items || []).forEach((it) => {
+          const p = products.find((x) => x.id === it.productoId);
+          const cat = p && p.categoria || "Sin categoría";
+          const val = it.base !== undefined ? Number(it.base) : Number(it.total || it.cantidad * it.precioUnitario || 0);
+          acc[cat] = (acc[cat] || 0) + val;
+        });
+      });
+      const total = Object.values(acc).reduce((a, b) => a + b, 0);
+      return Object.entries(acc).map(([categoria, valor]) => ({ categoria, valor: Math.round(valor), pct: total ? valor / total * 100 : 0 })).sort((a, b) => b.valor - a.valor);
+    },
+    byPayment(sales, from = null, to = null) {
+      const acc = {};
+      sales.filter((s) => SalesService.isEffectiveSale(s) && inRange(s.fecha, from, to)).forEach((s) => {
+        const m = s.metodoPago || "Sin dato";
+        acc[m] = (acc[m] || 0) + Number(s.total || 0);
+      });
+      const total = Object.values(acc).reduce((a, b) => a + b, 0);
+      return Object.entries(acc).map(([metodo, valor]) => ({ metodo, valor: Math.round(valor), pct: total ? valor / total * 100 : 0 })).sort((a, b) => b.valor - a.valor);
+    }
+  };
+
+  // js/modules/dashboard.js
+  init_formatters();
+
+  // js/components/kpi-card.js
+  function renderKpiCard({
+    label,
+    value,
+    icon = "\uD83D\uDCCA",
+    iconBg = "var(--brand-primary-light)",
+    iconColor = "var(--brand-primary)",
+    trend = null,
+    trendPositive = true,
+    footerText = ""
+  }) {
+    const trendHtml = trend !== null ? `
+    <span class="kpi-trend ${trendPositive ? "positive" : "negative"}">
+      ${trendPositive ? "↑" : "↓"} ${trend}
+    </span>
+  ` : "";
+    return `
+    <div class="kpi-card">
+      <div class="kpi-card-header">
+        <span class="kpi-label">${label}</span>
+        <div class="kpi-icon-wrap" style="background: ${iconBg}; color: ${iconColor};">
+          ${icon}
+        </div>
+      </div>
+      <div class="kpi-value">${value}</div>
+      <div class="kpi-footer">
+        ${trendHtml}
+        <span>${footerText}</span>
+      </div>
+    </div>
+  `;
+  }
+
+  // js/modules/dashboard.js
+  var DashboardModule = {
+    async render(container) {
+      const tenant = TenantServiceInstance.getActiveTenant();
+      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      const [sales, products, expenses, cxc, cxp, shipping, orders] = await Promise.all([
+        DB.getAll(STORES.SALES, tenantId),
+        DB.getAll(STORES.PRODUCTS, tenantId),
+        DB.getAll(STORES.EXPENSES, tenantId),
+        DB.getAll(STORES.RECEIVABLES_CXC, tenantId),
+        DB.getAll(STORES.PAYABLES_CXP, tenantId),
+        DB.getAll(STORES.ORDERS_SHIPPING, tenantId),
+        DB.getAll(STORES.PRODUCTION_ORDERS, tenantId)
+      ]);
+      const P = FinanceService.periods();
+      const resDia = FinanceService.summarize({ sales, expenses, products, ...P.hoy });
+      const resMes = FinanceService.summarize({ sales, expenses, products, ...P.mes });
+      const ventasDia = resDia.ventasNetas;
+      const ventasMes = resMes.ventasNetas;
+      const serieMensual = FinanceService.monthlySeries(sales, 6);
+      const maxSerie = Math.max(1, ...serieMensual.map((x) => x.value));
+      const porCategoria = FinanceService.byCategory(sales, products, P.mes.from, P.mes.to).slice(0, 5);
+      const porPago = FinanceService.byPayment(sales, P.mes.from, P.mes.to);
+      const totalGastos = expenses.reduce((acc, exp) => acc + Number(exp.valor || 0), 0);
+      const totalCarteraCobrar = cxc.reduce((acc, c) => acc + Number(c.saldo || 0), 0);
+      const totalCuentasPagar = cxp.reduce((acc, p) => acc + Number(p.saldo || 0), 0);
+      const inventarioValorizado = products.reduce((acc, p) => acc + Number(p.stock || 0) * Number(p.costoPromedio || 0), 0);
+      const productosStockBajo = products.filter((p) => p.stock > 0 && p.stock <= (p.stockMinimo || 15));
+      const productosAgotados = products.filter((p) => Number(p.stock || 0) <= 0);
+      const carteraVencida = cxc.filter((c) => c.estado === "VENCIDO" || c.diasMora && c.diasMora > 0);
+      const enviosPendientes = shipping.filter((s) => s.estadoCiclo !== "ENTREGADO");
+      const utilidadEstimada = resMes.utilidadOperativa;
+      container.innerHTML = `
+      <div class="view-header">
+        <div class="view-title-wrap">
+          <div class="d-flex items-center gap-2">
+            <h1>Dashboard Ejecutivo</h1>
+            <span class="badge-demo">DEMO RAYO PRO</span>
+          </div>
+          <p>Visión general de ventas, cartera, inventario y alertas operativas de <strong>${esc(tenant.nombreComercial)}</strong></p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-dashboard">\uD83D\uDD04 Actualizar</button>
+          <button class="btn btn-primary btn-sm" id="btn-quick-new-sale">⚡ Nueva Venta POS</button>
+        </div>
+      </div>
+
+      <!-- BOTONES DE ACCIÓN RÁPIDA (COMPACTO) -->
+      <div class="card mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color);">
+        <div class="card-body" style="padding: 10px 14px;">
+          <div class="text-xs font-bold text-muted mb-1" style="letter-spacing: 0.5px; font-size: 10.5px;">ACCIONES RÁPIDAS OPERATIVAS</div>
+          <div class="d-flex flex-wrap gap-1">
+            <button class="btn btn-secondary btn-sm" data-nav-to="sales-pos" style="padding: 4px 10px; font-size: 11.5px;">➕ Venta</button>
+            <button class="btn btn-secondary btn-sm" data-nav-to="clients" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDC64 Cliente</button>
+            <button class="btn btn-secondary btn-sm" data-nav-to="products" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDCE6 Producto</button>
+            <button class="btn btn-secondary btn-sm" data-nav-to="production" style="padding: 4px 10px; font-size: 11.5px;">⚙️ Producción</button>
+            <button class="btn btn-secondary btn-sm" data-nav-to="expenses" style="padding: 4px 10px; font-size: 11.5px;">\uD83C\uDFF7️ Gasto</button>
+            <button class="btn btn-secondary btn-sm" data-nav-to="purchases" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDECD️ Compra</button>
+            <button class="btn btn-secondary btn-sm" data-nav-to="shipping" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDE9A Envíos</button>
+            <button class="btn btn-secondary btn-sm" data-nav-to="cash" style="padding: 4px 10px; font-size: 11.5px;">\uD83D\uDCB5 Caja</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTRO DE RECORDATORIOS & RESUMEN EJECUTIVO (SOCIOS / GERENCIA) -->
+      <div class="card mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 4px solid #25d366;">
+        <div class="card-body" style="padding: 12px 16px;">
+          <div class="d-flex justify-between items-center flex-wrap gap-3">
+            <div>
+              <div class="d-flex items-center gap-2">
+                <strong style="font-size: 13.5px; color: var(--text-main);">\uD83D\uDCBC Notificaciones & Resumen Ejecutivo (Socios / Gerencia)</strong>
+                <span class="badge badge-success" style="font-size: 10px;">En Vivo</span>
+              </div>
+              <div class="text-xs text-muted" style="margin-top: 2px;">
+                Cierre de jornada laboral, balances periódicos y programación en Google Calendar sin scripts externos.
+              </div>
+            </div>
+            <div class="d-flex items-center gap-2 flex-wrap">
+              <button class="btn btn-sm" id="btn-dash-wa-summary" style="background: #25d366; border-color: #25d366; color: #fff; font-weight: 700; font-size: 12px;">
+                \uD83D\uDCF2 Resumen Día por WhatsApp
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-dash-email-summary" style="font-size: 12px;">
+                \uD83D\uDCE7 Enviar por Correo
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-dash-calendar" style="font-size: 12px;">
+                \uD83D\uDCC5 Agendar en Google Calendar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRID DE KPIS -->
+      <div class="kpi-grid">
+        ${renderKpiCard({
+        label: "Ventas del Día",
+        value: Formatters.currency(ventasDia),
+        icon: "\uD83D\uDCB0",
+        iconBg: "var(--color-success-bg)",
+        iconColor: "var(--color-success)",
+        trend: "+12%",
+        trendPositive: true,
+        footerText: "vs. día anterior"
+      })}
+
+        ${renderKpiCard({
+        label: "Ventas del Mes",
+        value: Formatters.currency(ventasMes),
+        icon: "\uD83D\uDCC8",
+        iconBg: "var(--brand-primary-light)",
+        iconColor: "var(--brand-primary)",
+        trend: "+8.4%",
+        trendPositive: true,
+        footerText: "meta mensual 85%"
+      })}
+
+        ${renderKpiCard({
+        label: "Inventario Valorizado",
+        value: Formatters.currency(inventarioValorizado),
+        icon: "\uD83D\uDCE6",
+        iconBg: "#f3e8ff",
+        iconColor: "#7e22ce",
+        footerText: `${products.length} referencias activas`
+      })}
+
+        ${renderKpiCard({
+        label: "Utilidad operativa del mes",
+        value: Formatters.currency(utilidadEstimada),
+        icon: "\uD83D\uDC8E",
+        iconBg: "#ecfdf5",
+        iconColor: "#059669",
+        footerText: resMes.margenBrutoPct === null ? "Sin ventas este mes" : `Margen bruto ${resMes.margenBrutoPct.toFixed(1)}%${resMes.costoEstimado ? " (costo parcialmente estimado)" : ""}`
+      })}
+
+        ${renderKpiCard({
+        label: "Cuentas por Cobrar",
+        value: Formatters.currency(totalCarteraCobrar),
+        icon: "\uD83D\uDC65",
+        iconBg: "var(--color-warning-bg)",
+        iconColor: "var(--color-warning)",
+        footerText: `${carteraVencida.length} en mora`
+      })}
+
+        ${renderKpiCard({
+        label: "Cuentas por Pagar",
+        value: Formatters.currency(totalCuentasPagar),
+        icon: "\uD83D\uDCD1",
+        iconBg: "var(--color-danger-bg)",
+        iconColor: "var(--color-danger)",
+        footerText: `${cxp.length} facturas proveedores`
+      })}
+
+        ${renderKpiCard({
+        label: "Gastos Registrados",
+        value: Formatters.currency(totalGastos),
+        icon: "\uD83C\uDFF7️",
+        iconBg: "#fff1f2",
+        iconColor: "#e11d48",
+        footerText: "Gastos operativos mes"
+      })}
+
+        ${renderKpiCard({
+        label: "Envíos en Curso",
+        value: `${enviosPendientes.length} Despachos`,
+        icon: "\uD83D\uDE9A",
+        iconBg: "#e0f2fe",
+        iconColor: "#0369a1",
+        footerText: "Por entregar a clientes"
+      })}
+      </div>
+
+      <!-- PANEL PRINCIPAL DE GRÁFICOS Y ALERTAS -->
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;" class="dashboard-columns">
+        <!-- COLUMNA IZQUIERDA: GRÁFICOS ANALÍTICOS -->
+        <div class="d-flex flex-col gap-4">
+          <!-- Gráfico de Ventas Mensuales -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Ventas netas por mes</div>
+                <div class="card-subtitle">Últimos 6 meses, sin IVA, excluye cotizaciones y anuladas</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 180px; padding-top: 20px; border-bottom: 1px solid var(--border-color); gap: 12px;">
+                ${serieMensual.map((x) => ({ m: x.label, val: x.value, h: Math.max(2, Math.round(x.value / maxSerie * 95)) })).map((bar) => `
+                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">
+                    <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">${Formatters.currency(bar.val, 0)}</div>
+                    <div style="width: 100%; max-width: 48px; height: ${bar.h}%; background: var(--brand-primary); border-radius: 6px 6px 0 0; transition: height 0.5s ease;"></div>
+                    <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 8px;">${esc(bar.m)}</div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+
+          <!-- Distribución por Categoría y Métodos de Pago -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="card" style="margin-bottom: 0;">
+              <div class="card-header">
+                <div class="card-title" style="font-size: 14px;">Ventas por categoría (mes)</div>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-col gap-3">
+                  ${porCategoria.length ? porCategoria.map((c, i) => `
+                    <div>
+                      <div class="d-flex justify-between text-xs font-semibold mb-1">
+                        <span>${esc(c.categoria)}</span>
+                        <span>${c.pct.toFixed(0)}% · ${Formatters.currency(c.valor)}</span>
+                      </div>
+                      <div style="height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${c.pct.toFixed(1)}%; height: 100%; background: ${["var(--brand-primary)", "var(--brand-secondary)", "#10b981", "#8b5cf6", "#64748b"][i]};"></div>
+                      </div>
+                    </div>`).join("") : '<div class="text-xs text-muted">Sin ventas este mes.</div>'}
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 0;">
+              <div class="card-header">
+                <div class="card-title" style="font-size: 14px;">Métodos de pago (mes)</div>
+              </div>
+              <div class="card-body">
+                <div class="d-flex flex-col gap-2 text-xs">
+                  ${porPago.length ? porPago.map((m) => `
+                    <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                      <span>${esc(m.metodo)}</span>
+                      <strong>${m.pct.toFixed(0)}% (${Formatters.currency(m.valor)})</strong>
+                    </div>`).join("") : '<div class="text-muted">Sin ventas este mes.</div>'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: PANEL DE ALERTAS OPERATIVAS -->
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Alertas de Operación</div>
+              <span class="badge badge-danger">${productosStockBajo.length + productosAgotados.length + carteraVencida.length}</span>
+            </div>
+            <div class="card-body" style="padding: 12px 16px;">
+              <div class="d-flex flex-col gap-2">
+                ${productosAgotados.map((p) => `
+                  <div class="alert alert-danger" style="margin-bottom: 4px; padding: 10px 12px;">
+                    <div>
+                      <div class="font-bold">❌ Producto Agotado</div>
+                      <div class="text-xs">${esc(p.nombre)} (Stock: 0 ${esc(p.unidadMedida)})</div>
+                      <a href="#production" class="text-xs font-bold text-danger" style="text-decoration: underline; margin-top: 4px; display: inline-block;">Programar Producción →</a>
+                    </div>
+                  </div>
+                `).join("")}
+
+                ${productosStockBajo.map((p) => `
+                  <div class="alert alert-warning" style="margin-bottom: 4px; padding: 10px 12px;">
+                    <div>
+                      <div class="font-bold">⚠️ Stock Crítico Mínimo</div>
+                      <div class="text-xs">${esc(p.nombre)} (Existencias: ${p.stock} / Mínimo: ${p.stockMinimo})</div>
+                    </div>
+                  </div>
+                `).join("")}
+
+                ${carteraVencida.map((c) => `
+                  <div class="alert alert-warning" style="margin-bottom: 4px; padding: 10px 12px;">
+                    <div>
+                      <div class="font-bold">⏰ Factura en Mora</div>
+                      <div class="text-xs">${esc(c.clienteNombre)} - Doc ${esc(c.documento)} - Saldo: ${Formatters.currency(c.saldo)}</div>
+                    </div>
+                  </div>
+                `).join("")}
+
+                ${productosStockBajo.length === 0 && productosAgotados.length === 0 && carteraVencida.length === 0 ? `
+                  <div class="text-center text-muted" style="padding: 20px;">
+                    ✓ Todas las operaciones se encuentran al día. Sin alertas activas.
+                  </div>
+                ` : ""}
+              </div>
+            </div>
+          </div>
+
+          <!-- ESTADO DE FACTURACIÓN DIAN -->
+          <div class="card" style="border-left: 4px solid var(--brand-secondary);">
+            <div class="card-header">
+              <div class="card-title" style="font-size: 14px;">Facturación Electrónica DIAN</div>
+            </div>
+            <div class="card-body" style="padding: 14px 16px;">
+              <div class="text-xs text-muted mb-2">
+                Ambiente de Facturación Electrónica en Colombia:
+              </div>
+              <div class="badge badge-warning mb-2">Integración Pendiente de Configuración</div>
+              <p class="text-xs" style="color: var(--text-secondary); line-height: 1.4;">
+                Los documentos que genera NexaAdmin son internos (no son factura electrónica ni documento equivalente). Para emitir factura electrónica con CUFE se requiere integrar un proveedor tecnológico autorizado por la DIAN (pendiente).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+      container.querySelector("#btn-refresh-dashboard").addEventListener("click", () => {
+        this.render(container);
+      });
+      container.querySelector("#btn-quick-new-sale").addEventListener("click", () => {
+        window.location.hash = "#sales-pos";
+      });
+      container.querySelectorAll("[data-nav-to]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const target = e.currentTarget.getAttribute("data-nav-to");
+          window.location.hash = `#${target}`;
+        });
+      });
+      const btnWaSummary = container.querySelector("#btn-dash-wa-summary");
+      if (btnWaSummary) {
+        btnWaSummary.addEventListener("click", () => {
+          const todayFormatted = new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+          const defaultSummaryText = `\uD83D\uDCCA *RESUMEN EJECUTIVO DIARIO - ${esc(tenant.nombreComercial)}*
+\uD83D\uDCC5 *Fecha:* ${todayFormatted}
+
+\uD83D\uDCB0 *Ventas netas del día:* ${Formatters.currency(ventasDia)}
+\uD83D\uDCC8 *Ventas netas del mes:* ${Formatters.currency(ventasMes)}
+\uD83D\uDC8E *Utilidad operativa del mes:* ${Formatters.currency(utilidadEstimada)}
+⚠️ *Cartera Pendiente Total:* ${Formatters.currency(totalCarteraCobrar)}
+\uD83D\uDEA8 *Cartera en Mora:* ${Formatters.currency(carteraVencida.reduce((a, b) => a + Number(b.saldo || 0), 0))} (${carteraVencida.length} cuentas)
+\uD83D\uDCE6 *Inventario Valorizado:* ${Formatters.currency(inventarioValorizado)} (${products.length} referencias)
+\uD83D\uDE9A *Despachos Activos:* ${enviosPendientes.length} órdenes en curso
+
+${productosStockBajo.length > 0 ? `⚠️ *Productos con Stock Bajo:* ${productosStockBajo.map((p) => p.nombre + " (" + p.stock + ")").join(", ")}
+` : ""}
+✅ Cierre y monitoreo generado desde Nexa ERP.`;
+          Modal.show({
+            title: "\uD83D\uDCF2 Enviar Resumen Diario a Socios por WhatsApp",
+            size: "md",
+            content: `
+            <div class="mb-3" style="background: rgba(37, 211, 102, 0.08); border: 1px solid rgba(37, 211, 102, 0.25); border-radius: 8px; padding: 12px 14px;">
+              <div style="font-size: 13px; font-weight: 700; color: #166534; margin-bottom: 2px;">
+                Resumen Ejecutivo Listo para WhatsApp Web
+              </div>
+              <div style="font-size: 11.5px; color: var(--text-secondary);">
+                Este informe consolida las ventas, recaudo, cartera e inventario de hoy. Ingrese el número del socio o el grupo de socios.
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <label class="form-label font-bold">Número de WhatsApp (Socio o Gerente)</label>
+              <input type="text" class="form-control font-bold" id="dash-wa-phone" value="${tenant.whatsapp ? tenant.whatsapp.replace(/\D/g, "") : "57"}" placeholder="Ej: 573124567890">
+            </div>
+
+            <div class="form-group mb-3">
+              <label class="form-label font-bold">Mensaje Ejecutivo a Enviar</label>
+              <textarea class="form-control" id="dash-wa-text" rows="10" style="font-size: 12px; font-family: monospace; line-height: 1.4;">${defaultSummaryText}</textarea>
+            </div>
+          `,
+            footerButtons: [
+              { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+              {
+                label: "\uD83D\uDCAC Abrir en WhatsApp Web y Enviar",
+                class: "btn-primary",
+                onClick: () => {
+                  const phoneInp = document.getElementById("dash-wa-phone");
+                  const textInp = document.getElementById("dash-wa-text");
+                  const phone = (phoneInp ? phoneInp.value : "").replace(/\D/g, "");
+                  const text = textInp ? textInp.value : defaultSummaryText;
+                  if (!phone || phone.length < 10) {
+                    Toast.warning("Por favor ingrese un número de teléfono válido.");
+                    return;
+                  }
+                  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`, "_blank");
+                  Toast.success("Abriendo WhatsApp Web con el resumen del día...");
+                  Modal.close();
+                }
+              }
+            ]
+          });
+        });
+      }
+      const btnEmailSummary = container.querySelector("#btn-dash-email-summary");
+      if (btnEmailSummary) {
+        btnEmailSummary.addEventListener("click", () => {
+          const todayFormatted = new Date().toLocaleDateString("es-CO");
+          const subject = `Resumen Ejecutivo Diario - ${tenant.nombreComercial} (${todayFormatted})`;
+          const body = `Resumen Ejecutivo Diario - ${tenant.nombreComercial}
+Fecha: ${todayFormatted}
+
+Ventas netas del día: ${Formatters.currency(ventasDia)}
+Ventas Mes: ${Formatters.currency(ventasMes)}
+Utilidad operativa del mes: ${Formatters.currency(utilidadEstimada)}
+Cartera Pendiente: ${Formatters.currency(totalCarteraCobrar)}
+Inventario: ${Formatters.currency(inventarioValorizado)}
+
+Generado por Nexa ERP.`;
+          window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+        });
+      }
+      const btnCalendar = container.querySelector("#btn-dash-calendar");
+      if (btnCalendar) {
+        btnCalendar.addEventListener("click", () => {
+          const todayRaw = new Date().toISOString().split("T")[0].replace(/-/g, "");
+          const now = new Date;
+          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          const endOfMonthRaw = endOfMonth.toISOString().split("T")[0].replace(/-/g, "");
+          const endOfYearRaw = `${now.getFullYear()}1231`;
+          Modal.show({
+            title: "\uD83D\uDCC5 Programar Cierres & Recordatorios en Google Calendar",
+            size: "md",
+            content: `
+            <p class="text-xs text-muted mb-3">
+              Seleccione el evento que desea agendar en su Google Calendar personal o institucional para recibir alertas automáticas:
+            </p>
+            <div class="d-flex flex-col gap-2">
+              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
+                <div>
+                  <strong style="font-size: 13px;">\uD83D\uDCB0 Cierre de Caja & Arqueo Diario</strong>
+                  <div class="text-xs text-muted">Recordatorio para hoy al finalizar la jornada (6:30 PM)</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-gcal-daily">\uD83D\uDCC5 Agendar</button>
+              </div>
+
+              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
+                <div>
+                  <strong style="font-size: 13px;">\uD83D\uDCE6 Cierre Mensual de Inventario & Balances</strong>
+                  <div class="text-xs text-muted">Programar para el último día del mes en curso</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-gcal-monthly">\uD83D\uDCC5 Agendar</button>
+              </div>
+
+              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
+                <div>
+                  <strong style="font-size: 13px;">\uD83C\uDFDB️ Vencimiento DIAN: IVA & Retención</strong>
+                  <div class="text-xs text-muted">Recordatorio tributario para declaración bimestral DIAN</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-gcal-dian">\uD83D\uDCC5 Agendar</button>
+              </div>
+
+              <div class="card p-3 d-flex justify-between items-center" style="margin-bottom: 0; border: 1px solid var(--border-color); background: var(--bg-surface-solid);">
+                <div>
+                  <strong style="font-size: 13px;">\uD83C\uDFC1 Cierre Fiscal de Fin de Año & Estados Financieros</strong>
+                  <div class="text-xs text-muted">Programado para el 31 de Diciembre</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-gcal-yearly">\uD83D\uDCC5 Agendar</button>
+              </div>
+            </div>
+          `,
+            footerButtons: [
+              { label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }
+            ]
+          });
+          const launchGCal = (title, start, end, details) => {
+            const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${start}/${end}&details=${encodeURIComponent(details)}&location=Rayo+Pro+Colombia`;
+            window.open(url, "_blank");
+            Toast.info("Abriendo Google Calendar...");
+          };
+          document.getElementById("btn-gcal-daily")?.addEventListener("click", () => {
+            launchGCal(`Cierre de Caja y Arqueo Diario - ${esc(tenant.nombreComercial)}`, `${todayRaw}T183000Z`, `${todayRaw}T190000Z`, `Conciliación de efectivo físico, transferencias Nequi/Daviplata y envío de reporte a socios en Nexa ERP.`);
+          });
+          document.getElementById("btn-gcal-monthly")?.addEventListener("click", () => {
+            launchGCal(`Cierre Mensual de Inventario y Contabilidad - ${esc(tenant.nombreComercial)}`, `${endOfMonthRaw}T170000Z`, `${endOfMonthRaw}T190000Z`, `Auditoría de existencias físicas en bodega vs Kardex y balance general mensual en Nexa ERP.`);
+          });
+          document.getElementById("btn-gcal-dian")?.addEventListener("click", () => {
+            launchGCal(`Vencimiento Tributario DIAN (IVA / ReteFuente) - ${esc(tenant.nombreComercial)}`, `${endOfMonthRaw}T140000Z`, `${endOfMonthRaw}T160000Z`, `Presentación y pago de obligaciones tributarias DIAN para NIT ${esc(tenant.nit)}-${tenant.dv}.`);
+          });
+          document.getElementById("btn-gcal-yearly")?.addEventListener("click", () => {
+            launchGCal(`Cierre Anual Fiscal y Balance General - ${esc(tenant.nombreComercial)}`, `${endOfYearRaw}T150000Z`, `${endOfYearRaw}T180000Z`, `Cierre de ejercicio fiscal anual, inventario total valorizado y distribución de utilidades a socios.`);
+          });
+        });
+      }
+    }
+  };
+
+  // js/utils/dom.js
+  function bindOnce(el, key, eventName, handler) {
+    if (!el)
+      return;
+    el.__nexaHandlers = el.__nexaHandlers || {};
+    const prev = el.__nexaHandlers[key];
+    if (prev)
+      el.removeEventListener(prev.eventName, prev.handler);
+    el.__nexaHandlers[key] = { eventName, handler };
+    el.addEventListener(eventName, handler);
+  }
+
+  // js/modules/clients.js
+  init_formatters();
+
+  // js/components/data-table.js
+  init_formatters();
+
+  class DataTable {
+    constructor({
+      containerId,
+      columns = [],
+      data = [],
+      pageSize = 10,
+      searchable = true,
+      searchPlaceholder = "Buscar en la tabla...",
+      emptyMessage = "No se encontraron registros.",
+      actions = null
+    }) {
+      this.container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
+      this.columns = columns;
+      this.rawData = [...data];
+      this.filteredData = [...data];
+      this.pageSize = pageSize;
+      this.currentPage = 1;
+      this.searchQuery = "";
+      this.sortKey = null;
+      this.sortAsc = true;
+      this.searchable = searchable;
+      this.searchPlaceholder = searchPlaceholder;
+      this.emptyMessage = emptyMessage;
+      this.actions = actions;
+      this.render();
+    }
+    updateData(newData) {
+      this.rawData = [...newData];
+      this.applyFilters();
+    }
+    applyFilters() {
+      let result = [...this.rawData];
+      if (this.searchQuery.trim()) {
+        const q = this.searchQuery.toLowerCase();
+        result = result.filter((row) => {
+          return this.columns.some((col) => {
+            const val = row[col.key];
+            if (val === null || val === undefined)
+              return false;
+            return String(val).toLowerCase().includes(q);
+          });
+        });
+      }
+      if (this.sortKey) {
+        result.sort((a, b) => {
+          const valA = a[this.sortKey];
+          const valB = b[this.sortKey];
+          if (valA === valB)
+            return 0;
+          if (valA === null || valA === undefined)
+            return 1;
+          if (valB === null || valB === undefined)
+            return -1;
+          const comp = valA > valB ? 1 : -1;
+          return this.sortAsc ? comp : -comp;
+        });
+      }
+      this.filteredData = result;
+      this.currentPage = 1;
+      this.renderBody();
+    }
+    render() {
+      if (!this.container)
+        return;
+      this.container.innerHTML = `
+      <div class="card" style="margin-bottom: 0;">
+        ${this.searchable ? `
+          <div class="table-toolbar">
+            <div class="table-search">
+              <span class="table-search-icon">\uD83D\uDD0D</span>
+              <input type="text" class="table-search-input" placeholder="${esc(this.searchPlaceholder)}" value="${esc(this.searchQuery)}">
+            </div>
+            <div class="table-info-counter text-xs text-muted"></div>
+          </div>
+        ` : ""}
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                ${this.columns.map((col) => `
+                  <th style="cursor: pointer; ${col.width ? `width: ${col.width};` : ""}" data-col-key="${col.key}">
+                    ${col.title} <span class="sort-indicator" data-sort-for="${col.key}">↕</span>
+                  </th>
+                `).join("")}
+                ${this.actions ? '<th style="text-align: right; width: 120px;">Acciones</th>' : ""}
+              </tr>
+            </thead>
+            <tbody class="table-body"></tbody>
+          </table>
+        </div>
+        <div class="table-pagination">
+          <div class="pagination-info"></div>
+          <div class="pagination-controls d-flex gap-2">
+            <button class="btn btn-secondary btn-sm btn-prev">Anterior</button>
+            <button class="btn btn-secondary btn-sm btn-next">Siguiente</button>
+          </div>
+        </div>
+      </div>
+    `;
+      const searchInput = this.container.querySelector(".table-search-input");
+      if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+          this.searchQuery = e.target.value;
+          this.applyFilters();
+        });
+      }
+      this.container.querySelectorAll("thead th[data-col-key]").forEach((th) => {
+        th.addEventListener("click", () => {
+          const key = th.getAttribute("data-col-key");
+          if (this.sortKey === key) {
+            this.sortAsc = !this.sortAsc;
+          } else {
+            this.sortKey = key;
+            this.sortAsc = true;
+          }
+          this.applyFilters();
+        });
+      });
+      this.container.querySelector(".btn-prev").addEventListener("click", () => {
+        if (this.currentPage > 1) {
+          this.currentPage--;
+          this.renderBody();
+        }
+      });
+      this.container.querySelector(".btn-next").addEventListener("click", () => {
+        const maxPages = Math.ceil(this.filteredData.length / this.pageSize) || 1;
+        if (this.currentPage < maxPages) {
+          this.currentPage++;
+          this.renderBody();
+        }
+      });
+      this.renderBody();
+    }
+    renderBody() {
+      const tbody = this.container.querySelector(".table-body");
+      const paginationInfo = this.container.querySelector(".pagination-info");
+      const counter = this.container.querySelector(".table-info-counter");
+      const btnPrev = this.container.querySelector(".btn-prev");
+      const btnNext = this.container.querySelector(".btn-next");
+      const total = this.filteredData.length;
+      const maxPages = Math.ceil(total / this.pageSize) || 1;
+      const startIdx = (this.currentPage - 1) * this.pageSize;
+      const pageItems = this.filteredData.slice(startIdx, startIdx + this.pageSize);
+      if (counter) {
+        counter.textContent = `Mostrando ${pageItems.length} de ${total} registros`;
+      }
+      if (paginationInfo) {
+        paginationInfo.textContent = `Página ${this.currentPage} de ${maxPages} (${total} total)`;
+      }
+      if (btnPrev)
+        btnPrev.disabled = this.currentPage <= 1;
+      if (btnNext)
+        btnNext.disabled = this.currentPage >= maxPages;
+      this.container.querySelectorAll("[data-sort-for]").forEach((el) => {
+        const key = el.getAttribute("data-sort-for");
+        if (key === this.sortKey) {
+          el.textContent = this.sortAsc ? "↑" : "↓";
+          el.style.color = "var(--brand-primary)";
+        } else {
+          el.textContent = "↕";
+          el.style.color = "var(--text-light)";
+        }
+      });
+      if (pageItems.length === 0) {
+        const cols = this.columns.length + (this.actions ? 1 : 0);
+        tbody.innerHTML = `
+        <tr>
+          <td colspan="${cols}" class="text-center" style="padding: 30px; color: var(--text-muted);">
+            ${this.emptyMessage}
+          </td>
+        </tr>
+      `;
+        return;
+      }
+      tbody.innerHTML = pageItems.map((row) => {
+        const cellsHtml = this.columns.map((col) => {
+          let content = row[col.key];
+          if (col.render) {
+            content = col.render(row[col.key], row);
+          } else if (content === null || content === undefined) {
+            content = "-";
+          } else {
+            content = esc(content);
+          }
+          return `<td>${content}</td>`;
+        }).join("");
+        let actionsHtml = "";
+        if (this.actions) {
+          actionsHtml = `<td style="text-align: right; white-space: nowrap;">${this.actions(row)}</td>`;
+        }
+        return `<tr>${cellsHtml}${actionsHtml}</tr>`;
+      }).join("");
+    }
+  }
+
+  // js/modules/clients.js
+  var CLIENT_SEGMENTS = {
+    "Consumidor Final": {
+      priceListOrder: 1,
+      badge: "badge-neutral",
+      titulo: "P1 - Precio Público / Final",
+      requisitos: "Sin mínimo de compra. Venta al detal y mostrador. Pago 100% de contado (Efectivo, Nequi, Tarjeta). Sin cupo de crédito.",
+      cupoRecomendado: 0,
+      diasCredito: 0
+    },
+    "Taller / Detailing": {
+      priceListOrder: 2,
+      badge: "badge-info",
+      titulo: "P2 - Precio Lavaderos & Centros de Detailing",
+      requisitos: "Negocio físico activo de autolavado o taller. RUT o registro fotográfico. Frecuencia de compra quincenal. Descuento profesional.",
+      cupoRecomendado: 800000,
+      diasCredito: 15
+    },
+    Mayorista: {
+      priceListOrder: 3,
+      badge: "badge-warning",
+      titulo: "P3 - Precio Mayorista por Cajas (Docenas)",
+      requisitos: "Compras mínimas por cajas cerradas de 12 unidades o pedido consolidado superior a $600.000 COP. Despacho directo.",
+      cupoRecomendado: 2500000,
+      diasCredito: 30
+    },
+    Distribuidor: {
+      priceListOrder: 4,
+      badge: "badge-primary",
+      titulo: "P4 - Precio Distribuidor Autorizado Regional",
+      requisitos: "Almacén de repuestos o lubricentro con fuerza comercial. Pedido inicial de apertura mínimo de $2.500.000 COP y recompra mensual sostenida. Cámara de Comercio y 2 referencias.",
+      cupoRecomendado: 6000000,
+      diasCredito: 30
+    },
+    "Flotas / Convenios": {
+      priceListOrder: 5,
+      badge: "badge-success",
+      titulo: "P5 - Precio Especial Grandes Flotas & Convenios",
+      requisitos: "Flotas de tractomulas, camiones pesados o buses (>10 vehículos, ej: Cano Trucks). Suministro en garrafas 23L o canecas. Convenio corporativo formal a crédito.",
+      cupoRecomendado: 12000000,
+      diasCredito: 45
+    }
+  };
+  var ClientsModule = {
+    async render(container) {
+      const tenant = TenantServiceInstance.getActiveTenant();
+      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      const [clients, priceLists, sales, cxcList, shipments, products, allSuppliers] = await Promise.all([
+        DB.getAll(STORES.CUSTOMERS, tenantId),
+        DB.getAll(STORES.PRICE_LISTS, tenantId),
+        DB.getAll(STORES.SALES, tenantId),
+        DB.getAll(STORES.RECEIVABLES_CXC, tenantId),
+        DB.getAll(STORES.ORDERS_SHIPPING, tenantId),
+        DB.getAll(STORES.PRODUCTS, tenantId),
+        DB.getAll(STORES.SUPPLIERS, tenantId)
+      ]);
+      const freelancers = allSuppliers.filter((s) => s.tipo === "FREELANCER" && s.estado === "ACTIVO");
+      container.innerHTML = `
+      <div class="view-header">
+        <div class="view-title-wrap">
+          <h1>Directorio de Clientes</h1>
+          <p>Control de terceros, cartera, asignación de listas de precios y cupos comerciales</p>
+        </div>
+        <div class="view-actions">
+          <a href="#freelancers" class="btn btn-secondary btn-sm" style="text-decoration: none; border-color: var(--brand-primary); color: var(--brand-primary);">\uD83E\uDD1D Red Vendedores Freelance</a>
+          <button class="btn btn-secondary btn-sm" id="btn-export-clients">\uD83D\uDCCA Exportar</button>
+          <button class="btn btn-primary btn-sm" id="btn-new-client">➕ Nuevo Cliente</button>
+        </div>
+      </div>
+
+      <div id="clients-table-container"></div>
+    `;
+      const dataTable = new DataTable({
+        containerId: "clients-table-container",
+        data: clients,
+        columns: [
+          {
+            key: "codigo",
+            title: "Código",
+            width: "90px",
+            render: (val) => `<strong>${esc(val || "-")}</strong>`
+          },
+          {
+            key: "nombre",
+            title: "Cliente / Razón Social",
+            render: (val, row) => `
+            <div>
+              <div class="font-bold">${esc(val)}</div>
+              <div class="text-xs text-muted">NIT/CC: ${DianDV.formatWithDV(row.nitCc)}</div>
+            </div>
+          `
+          },
+          {
+            key: "tipoCliente",
+            title: "Tipo / Segmento",
+            render: (val) => {
+              const seg = CLIENT_SEGMENTS[val];
+              const badgeClass = seg ? seg.badge : "badge-neutral";
+              return `<span class="badge ${badgeClass}" style="font-weight: 700;">${esc(val || "General")}</span>`;
+            }
+          },
+          {
+            key: "ciudad",
+            title: "Ciudad",
+            render: (val, row) => `${esc(val || "-")}, ${esc(row.departamento || "")}`
+          },
+          {
+            key: "telefono",
+            title: "Contacto",
+            render: (val, row) => `
+            <div class="text-xs">
+              <div>\uD83D\uDCDE ${esc(val || "-")}</div>
+              ${row.whatsapp ? `<div>\uD83D\uDCAC <a href="https://wa.me/${row.whatsapp.replace(/\D/g, "")}" target="_blank" style="color: var(--brand-primary);">${esc(row.whatsapp)}</a></div>` : ""}
+            </div>
+          `
+          },
+          {
+            key: "vendedorFreelanceId",
+            title: "Vendedor Freelance",
+            render: (val) => {
+              if (!val)
+                return '<span class="text-muted" style="font-size: 11px;">Directo (Rayo Pro)</span>';
+              const f = (freelancers || []).find((x) => x.id === val);
+              return f ? `<span class="badge badge-info" style="font-size: 11px;">\uD83E\uDD1D ${esc(f.nombre)}</span>` : '<span class="text-muted">—</span>';
+            }
+          },
+          {
+            key: "listaPreciosId",
+            title: "Lista Asignada",
+            render: (val) => {
+              const list = priceLists.find((p) => p.id === val);
+              return `<span class="badge badge-info">${list ? list.nombre : "P1 (Público)"}</span>`;
+            }
+          },
+          {
+            key: "facturaElectronica",
+            title: "Facturación & IVA",
+            render: (val, row) => {
+              const esFE = val !== false;
+              const aplicaIva = row.aplicaIva !== false;
+              return `
+              <div>
+                <span class="badge ${esFE ? "badge-success" : "badge-neutral"}" style="font-size: 11px;">
+                  ${esFE ? "⚡ Factura Electrónica" : "\uD83D\uDCC4 Remisión / POS Sin FE"}
+                </span>
+                <div class="text-xs" style="margin-top: 2px; color: ${aplicaIva ? "var(--text-muted)" : "var(--color-warning)"}; font-weight: ${aplicaIva ? "normal" : "bold"};">
+                  ${aplicaIva ? "✓ Con IVA (19%)" : "✕ Exento / Sin IVA (0%)"}
+                </div>
+              </div>
+            `;
+            }
+          },
+          {
+            key: "saldoPendiente",
+            title: "Saldo Cartera",
+            render: (val) => {
+              const saldo = Number(val || 0);
+              return saldo > 0 ? `<strong class="text-danger">${Formatters.currency(saldo)}</strong>` : '<span class="text-success">$ 0</span>';
+            }
+          },
+          {
+            key: "estado",
+            title: "Estado",
+            render: (val) => `<span class="badge ${val === "ACTIVO" ? "badge-success" : "badge-danger"}">${esc(val)}</span>`
+          }
+        ],
+        actions: (row) => `
+        <button class="btn btn-secondary btn-sm btn-view-client" data-id="${esc(row.id)}" title="Ficha 360°">\uD83D\uDC41️ Ficha</button>
+        <button class="btn btn-secondary btn-sm btn-edit-client" data-id="${esc(row.id)}" title="Editar">✏️</button>
+      `
+      });
+      const exportBtn = container.querySelector("#btn-export-clients");
+      if (exportBtn) {
+        exportBtn.addEventListener("click", async () => {
+          await Promise.resolve().then(() => init_export_service());
+          ExportService.exportToCSV(clients, "Clientes_RayoPro");
+        });
+      }
+      const newClientBtn = container.querySelector("#btn-new-client");
+      if (newClientBtn) {
+        newClientBtn.addEventListener("click", () => {
+          this.openClientModal(null, tenantId, priceLists, products, freelancers, () => this.render(container));
+        });
+      }
+      bindOnce(container, "clients-click", "click", (e) => {
+        const editBtn = e.target.closest(".btn-edit-client");
+        if (editBtn) {
+          const id = editBtn.getAttribute("data-id");
+          const client = clients.find((c) => c.id === id);
+          this.openClientModal(client, tenantId, priceLists, products, freelancers, () => this.render(container));
+          return;
+        }
+        const viewBtn = e.target.closest(".btn-view-client");
+        if (viewBtn) {
+          const id = viewBtn.getAttribute("data-id");
+          const client = clients.find((c) => c.id === id);
+          const clientSales = sales.filter((s) => s.clienteId === id);
+          const clientCxc = cxcList.filter((c) => c.clienteId === id);
+          const clientShipments = shipments.filter((sh) => sh.clienteId === id);
+          this.openClientProfileModal(client, clientSales, priceLists, clientCxc, clientShipments);
+        }
+      });
+    },
+    openClientModal(client = null, tenantId, priceLists, products = [], freelancers = [], onSaved) {
+      const isEdit = !!client;
+      const content = `
+      <form id="client-form">
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Código Interno</label>
+            <input type="text" class="form-control" name="codigo" required value="${client ? client.codigo : "CLI-" + Math.floor(100 + Math.random() * 900)}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo de Persona</label>
+            <select class="form-select" name="tipoPersona" id="modal-client-persona">
+              <option value="NATURAL" ${client && client.tipoPersona === "NATURAL" ? "selected" : ""}>Persona Natural</option>
+              <option value="JURIDICA" ${!client || client.tipoPersona === "JURIDICA" ? "selected" : ""}>Persona Jurídica (Empresa)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label">Nombre Comercial o Completo</label>
+            <input type="text" class="form-control" name="nombre" required value="${client ? client.nombre : ""}" placeholder="Ej: AutoSpa Medellín o Juan Pérez">
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">NIT o Cédula (Sin DV)</label>
+            <input type="text" class="form-control" id="modal-client-nit" name="nitCc" required value="${client ? client.nitCc : ""}" placeholder="Ej: 901458321">
+          </div>
+          <div class="form-group">
+            <label class="form-label">DV (Cálculo DIAN)</label>
+            <input type="text" class="form-control" id="modal-client-dv" name="dv" readonly value="${client ? client.dv : "-"}" style="background: #f1f5f9; font-weight: bold;">
+          </div>
+        </div>
+
+        <div class="card p-3 mb-3" style="background: rgba(0, 113, 227, 0.04); border: 1px solid rgba(0, 113, 227, 0.2);">
+          <div class="d-flex justify-between items-center mb-2">
+            <label class="form-label font-bold" style="color: var(--brand-primary); margin: 0;">\uD83E\uDD1D Vendedor Freelance Asignado</label>
+            <span class="badge badge-info" style="font-size: 10px;">Comisiones Automáticas</span>
+          </div>
+          <select class="form-select" name="vendedorFreelanceId" id="modal-client-freelancer" style="font-weight: 700;">
+            <option value="">-- Sin vendedor freelance (Venta Directa de Fábrica) --</option>
+            ${(freelancers || []).map((fl) => `
+              <option value="${fl.id}" ${client && client.vendedorFreelanceId === fl.id ? "selected" : ""}>
+                \uD83E\uDD1D ${esc(fl.nombre)} ${fl.zona ? "(" + fl.zona + ")" : ""}
+              </option>
+            `).join("")}
+          </select>
+          <span class="text-xs text-muted mt-1">Al facturar en POS a este cliente, la venta y su comisión en $$ se asignarán automáticamente a este vendedor.</span>
+        </div>
+
+        <div class="form-row mb-1">
+          <div class="form-group">
+            <label class="form-label font-bold">Tipo / Segmento Comercial</label>
+            <select class="form-select" name="tipoCliente" id="modal-client-segment">
+              <option value="Consumidor Final" ${client && client.tipoCliente === "Consumidor Final" ? "selected" : ""}>Consumidor Final (P1 - Público)</option>
+              <option value="Taller / Detailing" ${!client || client.tipoCliente === "Taller / Detailing" ? "selected" : ""}>Taller / Detailing (P2 - Taller)</option>
+              <option value="Mayorista" ${client && client.tipoCliente === "Mayorista" ? "selected" : ""}>Mayorista (P3 - Docenas/Cajas)</option>
+              <option value="Distribuidor" ${client && client.tipoCliente === "Distribuidor" ? "selected" : ""}>Distribuidor (P4 - Distribuidor)</option>
+              <option value="Flotas / Convenios" ${client && client.tipoCliente === "Flotas / Convenios" ? "selected" : ""}>Flotas / Convenios (P5 - Especial)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label font-bold">Lista de Precios Asignada</label>
+            <select class="form-select" name="listaPreciosId" id="modal-client-pricelist">
+              ${priceLists.map((pl) => `
+                <option value="${pl.id}" ${client && client.listaPreciosId === pl.id ? "selected" : ""}>${esc(pl.nombre)}</option>
+              `).join("")}
+            </select>
+          </div>
+        </div>
+
+        <!-- GUÍA DE REQUISITOS Y CONDICIONES POR SEGMENTO -->
+        <div id="modal-segment-guide" class="mb-3" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; font-size: 11.5px; line-height: 1.4;">
+          <div style="font-weight: 700; color: var(--brand-primary); margin-bottom: 2px;" id="modal-seg-title">
+            ${CLIENT_SEGMENTS[client?.tipoCliente || "Taller / Detailing"]?.titulo || "Condiciones Comerciales"}
+          </div>
+          <div style="color: var(--text-secondary);" id="modal-seg-requisitos">
+            <strong>Requisitos Comerciales:</strong> ${CLIENT_SEGMENTS[client?.tipoCliente || "Taller / Detailing"]?.requisitos || ""}
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Teléfono Fijo / Móvil</label>
+            <input type="text" class="form-control" name="telefono" value="${client ? client.telefono : ""}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">WhatsApp (Notificaciones)</label>
+            <input type="text" class="form-control" name="whatsapp" value="${client ? client.whatsapp : ""}" placeholder="+573001234567">
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Correo Electrónico</label>
+            <input type="email" class="form-control" name="email" value="${client ? client.email : ""}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ciudad / Municipio</label>
+            <input type="text" class="form-control" name="ciudad" value="${client ? client.ciudad : "Medellín"}">
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Dirección de Entrega</label>
+            <input type="text" class="form-control" name="direccion" value="${client ? client.direccion : ""}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Barrio / Sector</label>
+            <input type="text" class="form-control" name="barrio" value="${client ? client.barrio : ""}">
+          </div>
+        </div>
+
+        <!-- CONFIGURACIÓN TRIBUTARIA Y FACTURACIÓN ELECTRÓNICA -->
+        <div class="card p-3 mb-3" style="background: rgba(0, 113, 227, 0.04); border: 1px solid rgba(0, 113, 227, 0.15);">
+          <div style="font-size: 13px; font-weight: 700; color: var(--brand-primary); margin-bottom: 8px;">
+            ⚖️ Configuración Tributaria & Facturación
+          </div>
+          <div class="form-row">
+            <div class="form-group mb-0">
+              <label class="form-label font-bold">¿Facturar Electrónicamente?</label>
+              <select class="form-select" name="facturaElectronica" id="modal-client-fe">
+                <option value="SI" ${!client || client.facturaElectronica !== false ? "selected" : ""}>⚡ Sí - Factura Electrónica DIAN</option>
+                <option value="NO" ${client && client.facturaElectronica === false ? "selected" : ""}>\uD83D\uDCC4 No - Remisión / Venta Interna (Sin FE)</option>
+              </select>
+              <span class="form-help">Para clientes que aún no requieren o no reciben FE formal.</span>
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label font-bold">¿Liquidar con IVA (19%)?</label>
+              <select class="form-select" name="aplicaIva" id="modal-client-iva">
+                <option value="SI" ${!client || client.aplicaIva !== false ? "selected" : ""}>✓ Sí - Liquidar IVA (19%)</option>
+                <option value="NO" ${client && client.aplicaIva === false ? "selected" : ""}>✕ No - Sin IVA / Exento (0% Etapa Inicial)</option>
+              </select>
+              <span class="form-help">Ideal para empresas en etapa inicial o tratos comerciales netos.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Cupo de Crédito ($ COP)</label>
+            <input type="number" class="form-control" name="cupoCredito" value="${client ? client.cupoCredito : 0}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Días de Crédito Plazo</label>
+            <input type="number" class="form-control" name="diasCredito" value="${client ? client.diasCredito : 0}">
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label">Observaciones Comerciales</label>
+          <textarea class="form-control" name="observaciones" rows="2">${client ? client.observaciones || "" : ""}</textarea>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: isEdit ? `Editar Cliente: ${client.nombre}` : "Crear Nuevo Cliente",
+        content,
+        size: "lg",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: isEdit ? "Guardar Cambios" : "Crear Cliente",
+            class: "btn-primary",
+            onClick: async () => {
+              const form = dialog.querySelector("#client-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              const formData = new FormData(form);
+              const nitCc = formData.get("nitCc").replace(/\D/g, "");
+              const calculatedDv = DianDV.calculate(nitCc);
+              const preciosEspeciales = {};
+              dialog.querySelectorAll(".special-price-input").forEach((inp) => {
+                const pid = inp.getAttribute("data-product-id");
+                const val = Number(inp.value);
+                if (pid && val > 0)
+                  preciosEspeciales[pid] = val;
+              });
+              if (nitCc && nitCc !== "222222222222") {
+                const dup = (await DB.getAll(STORES.CUSTOMERS, tenantId)).find((c) => String(c.nitCc || "").replace(/\D/g, "") === nitCc && (!client || c.id !== client.id));
+                if (dup) {
+                  Toast.warning(`Ya existe un cliente con ese NIT/CC: ${dup.nombre}.`);
+                  return;
+                }
+              }
+              const hasSpecialInputs = dialog.querySelectorAll(".special-price-input").length > 0;
+              const payload = {
+                ...client || {},
+                tenantId,
+                codigo: formData.get("codigo"),
+                tipoPersona: formData.get("tipoPersona"),
+                nombre: formData.get("nombre"),
+                nitCc,
+                dv: calculatedDv !== null ? calculatedDv : 0,
+                vendedorFreelanceId: formData.get("vendedorFreelanceId") || null,
+                tipoCliente: formData.get("tipoCliente"),
+                listaPreciosId: formData.get("listaPreciosId"),
+                facturaElectronica: formData.get("facturaElectronica") === "SI",
+                aplicaIva: formData.get("aplicaIva") === "SI",
+                telefono: formData.get("telefono"),
+                whatsapp: formData.get("whatsapp"),
+                email: formData.get("email"),
+                direccion: formData.get("direccion"),
+                ciudad: formData.get("ciudad"),
+                barrio: formData.get("barrio"),
+                cupoCredito: Number(formData.get("cupoCredito") || 0),
+                diasCredito: Number(formData.get("diasCredito") || 0),
+                observaciones: formData.get("observaciones"),
+                preciosEspeciales: hasSpecialInputs ? preciosEspeciales : client ? client.preciosEspeciales || {} : {},
+                estado: client && client.estado || "ACTIVO"
+              };
+              if (isEdit) {
+                payload.id = client.id;
+                payload.saldoPendiente = client.saldoPendiente || 0;
+                payload.totalComprado = client.totalComprado || 0;
+                payload.numeroCompras = client.numeroCompras || 0;
+                await DB.update(STORES.CUSTOMERS, payload);
+                await AuditService.log({
+                  modulo: "Clientes",
+                  accion: "MODIFICAR",
+                  registroId: payload.codigo,
+                  campoModificado: "Datos Generales",
+                  valorAnterior: client.nombre,
+                  valorNuevo: payload.nombre
+                });
+                Toast.success("Cliente actualizado correctamente.");
+              } else {
+                payload.saldoPendiente = 0;
+                payload.totalComprado = 0;
+                payload.numeroCompras = 0;
+                const saved = await DB.add(STORES.CUSTOMERS, payload);
+                await AuditService.log({
+                  modulo: "Clientes",
+                  accion: "CREAR",
+                  registroId: payload.codigo,
+                  campoModificado: "Cliente Nuevo",
+                  valorAnterior: "-",
+                  valorNuevo: payload.nombre
+                });
+                Toast.success("Cliente registrado exitosamente.");
+                Modal.close();
+                if (onSaved)
+                  onSaved(saved || payload);
+                return;
+              }
+              Modal.close();
+              if (onSaved)
+                onSaved(payload);
+            }
+          }
+        ]
+      });
+      const nitInput = dialog.querySelector("#modal-client-nit");
+      const dvInput = dialog.querySelector("#modal-client-dv");
+      nitInput.addEventListener("input", (e) => {
+        const clean = e.target.value.replace(/\D/g, "");
+        const dv = DianDV.calculate(clean);
+        dvInput.value = dv !== null ? dv : "-";
+      });
+      const segSelect = dialog.querySelector("#modal-client-segment");
+      const plSelect = dialog.querySelector("#modal-client-pricelist");
+      const segTitle = dialog.querySelector("#modal-seg-title");
+      const segReq = dialog.querySelector("#modal-seg-requisitos");
+      const cupoInp = dialog.querySelector('input[name="cupoCredito"]');
+      const diasInp = dialog.querySelector('input[name="diasCredito"]');
+      if (segSelect && plSelect) {
+        segSelect.addEventListener("change", (e) => {
+          const segKey = e.target.value;
+          const segData = CLIENT_SEGMENTS[segKey];
+          if (segData) {
+            if (segTitle)
+              segTitle.textContent = segData.titulo;
+            if (segReq)
+              segReq.innerHTML = `<strong>Requisitos Comerciales:</strong> ${segData.requisitos}`;
+            const matchingPl = priceLists.find((p) => p.orden === segData.priceListOrder) || priceLists[segData.priceListOrder - 1];
+            if (matchingPl) {
+              plSelect.value = matchingPl.id;
+            }
+            if (!isEdit && cupoInp && diasInp) {
+              cupoInp.value = segData.cupoRecomendado;
+              diasInp.value = segData.diasCredito;
+            }
+          }
+        });
+      }
+    },
+    openClientProfileModal(client, clientSales = [], priceLists, clientCxc = [], clientShipments = []) {
+      const list = priceLists.find((p) => p.id === client.listaPreciosId);
+      const listName = list ? list.nombre : "Precio Público";
+      const totalComprado = clientSales.reduce((acc, s) => acc + Number(s.total || 0), client.totalComprado || 0);
+      const numCompras = Math.max(clientSales.length, client.numeroCompras || 0);
+      const ticketPromedio = numCompras > 0 ? Math.round(totalComprado / numCompras) : 0;
+      const content = `
+      <div class="mb-4" style="background: rgba(0, 113, 227, 0.03); padding: 18px; border-radius: 16px; border: 1px solid rgba(0, 113, 227, 0.12);">
+        <div class="d-flex justify-between items-center mb-2">
+          <div>
+            <h2 style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">${esc(client.nombre)}</h2>
+            <div class="text-xs text-muted" style="margin-top: 2px;">NIT/CC: <strong>${DianDV.formatWithDV(client.nitCc)}</strong> • Segmento: <span class="badge badge-neutral" style="font-size: 11px;">${esc(client.tipoCliente)}</span></div>
+          </div>
+          <span class="badge ${client.estado === "ACTIVO" ? "badge-success" : "badge-danger"}">${esc(client.estado)}</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 14px;">
+          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
+            <div class="text-xs text-muted">Total Comprado</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--color-success);">${Formatters.currency(totalComprado)}</div>
+          </div>
+          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
+            <div class="text-xs text-muted">Saldo en Cartera</div>
+            <div style="font-size: 16px; font-weight: 700; color: ${client.saldoPendiente > 0 ? "var(--color-danger)" : "var(--color-success)"};">
+              ${Formatters.currency(client.saldoPendiente || 0)}
+            </div>
+          </div>
+          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
+            <div class="text-xs text-muted">Cupo Disponible</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--brand-primary);">
+              ${Formatters.currency(Math.max(0, (client.cupoCredito || 0) - (client.saldoPendiente || 0)))}
+            </div>
+          </div>
+          <div style="background: var(--bg-surface-solid); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
+            <div class="text-xs text-muted">Ticket Promedio</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--text-main);">${Formatters.currency(ticketPromedio)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex flex-col gap-2 mb-4 text-xs" style="color: var(--text-main); background: var(--bg-surface-solid); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+        <div>\uD83D\uDCCD <strong>Dirección de Entrega:</strong> ${esc(client.direccion || "-")}, ${esc(client.barrio || "")} (${esc(client.ciudad || "-")}, ${esc(client.departamento || "")})</div>
+        <div>\uD83D\uDCDE <strong>Contacto Comercial:</strong> ${esc(client.telefono || "-")} | <strong>WhatsApp:</strong> ${esc(client.whatsapp || "-")} | <strong>Email:</strong> ${esc(client.email || "-")}</div>
+        <div>\uD83C\uDFF7️ <strong>Lista de Precios Predilecta:</strong> <span class="badge badge-info" style="font-size: 11px;">${listName}</span></div>
+        <div>⚡ <strong>Régimen de Facturación:</strong> 
+          <span class="badge ${client.facturaElectronica !== false ? "badge-success" : "badge-neutral"}" style="font-size: 11px;">
+            ${client.facturaElectronica !== false ? "Facturación Electrónica DIAN" : "Documento Interno / Sin FE"}
+          </span>
+          <span class="badge ${client.aplicaIva !== false ? "badge-info" : "badge-warning"}" style="font-size: 11px; margin-left: 6px;">
+            ${client.aplicaIva !== false ? "Liquida IVA (19%)" : "Exento de IVA / Etapa Inicial (0%)"}
+          </span>
+        </div>
+        <div>⏱️ <strong>Condición de Crédito:</strong> ${client.diasCredito > 0 ? `${client.diasCredito} Días plazo (Cupo Total: ${Formatters.currency(client.cupoCredito)})` : "Contado inmediato"}</div>
+        ${client.observaciones ? `<div style="background: rgba(245, 158, 11, 0.08); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #f59e0b; margin-top: 4px;">\uD83D\uDCDD <strong>Notas Internas:</strong> ${esc(client.observaciones)}</div>` : ""}
+      </div>
+
+      <!-- SECCIÓN CARTERA & ABONOS HISTÓRICOS -->
+      ${clientCxc.length > 0 ? `
+        <div class="mb-4">
+          <h4 class="text-sm font-bold mb-2" style="color: var(--text-main);">\uD83D\uDCD1 Estado de Cartera & Conciliación de Pagos</h4>
+          <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+            <table class="data-table" style="font-size: 12px;">
+              <thead>
+                <tr>
+                  <th>Doc. Cartera</th>
+                  <th>Emisión / Venc.</th>
+                  <th class="text-right">Valor Inicial</th>
+                  <th class="text-right">Abonos Aplicados</th>
+                  <th class="text-right">Saldo Actual</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${clientCxc.map((c) => `
+                  <tr>
+                    <td><strong>${esc(c.documento)}</strong><br><span class="text-xs text-muted">${esc(c.observaciones || "")}</span></td>
+                    <td>${Formatters.date(c.fechaEmision)}<br><span class="text-xs text-muted">Vence: ${Formatters.date(c.fechaVencimiento)}</span></td>
+                    <td class="text-right font-medium">${Formatters.currency(c.valorTotal)}</td>
+                    <td class="text-right font-medium" style="color: var(--color-success);">- ${Formatters.currency(c.abonos || 0)}</td>
+                    <td class="text-right font-bold" style="color: var(--color-danger);">${Formatters.currency(c.saldo)}</td>
+                    <td><span class="badge ${c.saldo === 0 ? "badge-success" : "badge-warning"}">${esc(c.estado)}</span></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : ""}
+
+      <h4 class="text-sm font-bold mb-2" style="color: var(--text-main);">\uD83D\uDED2 Historial de Facturas & Ventas</h4>
+      <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+        <table class="data-table" style="font-size: 12px;">
+          <thead>
+            <tr>
+              <th>Consecutivo</th>
+              <th>Fecha</th>
+              <th>Medio Pago</th>
+              <th class="text-right">Total</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${clientSales.length > 0 ? clientSales.map((s) => `
+              <tr>
+                <td><strong>${esc(s.consecutivo)}</strong></td>
+                <td>${Formatters.date(s.fecha)}</td>
+                <td>${esc(s.metodoPago)}</td>
+                <td class="text-right font-bold">${Formatters.currency(s.total)}</td>
+                <td><span class="badge ${s.estado === "PAGADA" ? "badge-success" : "badge-warning"}">${esc(s.estado)}</span></td>
+              </tr>
+            `).join("") : `
+              <tr><td colspan="5" class="text-center text-muted" style="padding: 15px;">Sin compras registradas aún.</td></tr>
+            `}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- DESPACHOS RECIENTES -->
+      ${clientShipments.length > 0 ? `
+        <div class="mt-4">
+          <h4 class="text-sm font-bold mb-2" style="color: var(--text-main);">\uD83D\uDCE6 Envíos y Guías de Carga Registradas</h4>
+          <div class="table-responsive" style="max-height: 160px; overflow-y: auto;">
+            <table class="data-table" style="font-size: 12px;">
+              <thead>
+                <tr>
+                  <th>No. Guía</th>
+                  <th>Transportadora</th>
+                  <th>Cajas / Bultos</th>
+                  <th>Contenido</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${clientShipments.map((sh) => `
+                  <tr>
+                    <td><strong>${esc(sh.numeroGuia)}</strong></td>
+                    <td>${esc(sh.transportadora)}</td>
+                    <td>${sh.cajasTotal || 1} Cajas</td>
+                    <td class="text-xs">${esc(sh.contenidoDescripcion || "-")}</td>
+                    <td><span class="badge ${sh.estadoCiclo === "ENTREGADO" ? "badge-success" : "badge-info"}">${sh.estadoCiclo}</span></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : ""}
+    `;
+      Modal.show({
+        title: `Ficha 360° del Cliente: ${client.nombre}`,
+        content,
+        size: "lg",
+        footerButtons: [
+          { label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }
+        ]
+      });
+    }
+  };
+
+  // js/modules/products.js
+  init_formatters();
+  var ProductsModule = {
+    async render(container) {
+      const tenant = TenantServiceInstance.getActiveTenant();
+      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      const [products, priceLists, warehouses] = await Promise.all([
+        DB.getAll(STORES.PRODUCTS, tenantId),
+        DB.getAll(STORES.PRICE_LISTS, tenantId),
+        DB.getAll(STORES.WAREHOUSES, tenantId)
+      ]);
+      container.innerHTML = `
+            <div class="view-header">
+        <div class="view-title-wrap">
+          <h1>Catálogo de Productos & Insumos</h1>
+          <p>Control de materias primas, productos terminados, 5 listas de precios y niveles de stock</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-export-products">\uD83D\uDCCA Exportar</button>
+          <button class="btn btn-primary btn-sm" id="btn-new-product">➕ Nuevo Producto</button>
+        </div>
+      </div>
+
+      <!-- FILTROS DE TIPO -->
+      <div class="card mb-3" style="padding: 10px 16px;">
+        <div class="d-flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-bold text-muted">FILTRAR POR TIPO:</span>
+          <button class="btn btn-secondary btn-sm filter-type-btn active" data-type="ALL">Todos (${products.length})</button>
+          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="PRODUCTO_TERMINADO">⚡ Terminados Fabricados (${products.filter((p) => p.tipoItem === "PRODUCTO_TERMINADO").length})</button>
+          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="MATERIA_PRIMA">\uD83E\uDDEA Materias Primas Químicas (${products.filter((p) => p.tipoItem === "MATERIA_PRIMA").length})</button>
+          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="MERCANCIA">\uD83D\uDECD️ Mercancía Reventa (${products.filter((p) => p.tipoItem === "MERCANCIA").length})</button>
+        </div>
+      </div>
+
+      <div id="products-table-container"></div>
+    `;
+      let currentFiltered = [...products];
+      const dataTable = new DataTable({
+        containerId: "products-table-container",
+        data: currentFiltered,
+        columns: [
+          {
+            key: "sku",
+            title: "SKU / Código",
+            width: "120px",
+            render: (val, row) => `
+            <div>
+              <strong style="color: var(--brand-primary);">${val || row.codigoInterno}</strong>
+              <div class="text-xs text-muted">${esc(row.codigoBarras || "")}</div>
+            </div>
+          `
+          },
+          {
+            key: "nombre",
+            title: "Descripción / Presentación",
+            render: (val, row) => `
+            <div>
+              <div class="font-bold">${esc(val)}</div>
+              <div class="text-xs text-muted">${esc(row.categoria)} • ${row.presentacion || row.unidadMedida}</div>
+            </div>
+          `
+          },
+          {
+            key: "tipoItem",
+            title: "Tipo",
+            render: (val) => {
+              const map = {
+                PRODUCTO_TERMINADO: { label: "Terminado", class: "badge-info" },
+                MATERIA_PRIMA: { label: "Materia Prima", class: "badge-warning" },
+                MERCANCIA: { label: "Mercancía", class: "badge-neutral" },
+                SERVICIO: { label: "Servicio", class: "badge-success" }
+              };
+              const item = map[val] || { label: val, class: "badge-neutral" };
+              return `<span class="badge ${item.class}">${item.label}</span>`;
+            }
+          },
+          {
+            key: "stock",
+            title: "Existencias",
+            render: (val, row) => {
+              const stock = Number(val || 0);
+              const min = Number(row.stockMinimo || 10);
+              let badge = "badge-success";
+              if (stock <= 0)
+                badge = "badge-danger";
+              else if (stock <= min)
+                badge = "badge-warning";
+              return `
+              <div>
+                <span class="badge ${badge}">${stock} ${esc(row.unidadMedida)}</span>
+                <div class="text-xs text-muted" style="margin-top: 2px;">Mín: ${min} | Máx: ${row.stockMaximo || 100}</div>
+              </div>
+            `;
+            }
+          },
+          {
+            key: "costoPromedio",
+            title: "Costo Promedio",
+            render: (val) => Formatters.currency(val, 2)
+          },
+          {
+            key: "precios",
+            title: "Precio 1 (Público)",
+            render: (val, row) => {
+              const p1 = PricingService.priceFor(row, (PricingService.findByCode(priceLists, "P1") || {}).id);
+              return `<strong>${Formatters.currency(p1)}</strong>`;
+            }
+          },
+          {
+            key: "estado",
+            title: "Estado",
+            render: (val) => `<span class="badge ${val === "ACTIVO" ? "badge-success" : "badge-danger"}">${esc(val)}</span>`
+          }
+        ],
+        actions: (row) => `
+        <button class="btn btn-secondary btn-sm btn-edit-product" data-id="${esc(row.id)}" title="Editar">✏️ Editar</button>
+      `
+      });
+      container.querySelectorAll(".filter-type-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          container.querySelectorAll(".filter-type-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const type = btn.getAttribute("data-type");
+          if (type === "ALL") {
+            currentFiltered = [...products];
+          } else {
+            currentFiltered = products.filter((p) => p.tipoItem === type);
+          }
+          dataTable.updateData(currentFiltered);
+        });
+      });
+      const exportProdBtn = container.querySelector("#btn-export-products");
+      if (exportProdBtn) {
+        exportProdBtn.addEventListener("click", async () => {
+          await Promise.resolve().then(() => init_export_service());
+          ExportService.exportToCSV(products, "Catalogo_Productos_RayoPro");
+        });
+      }
+      const newProdBtn = container.querySelector("#btn-new-product");
+      if (newProdBtn) {
+        newProdBtn.addEventListener("click", () => {
+          this.openProductModal(null, tenantId, priceLists, warehouses, () => this.render(container));
+        });
+      }
+      bindOnce(container, "products-click", "click", (e) => {
+        const editBtn = e.target.closest(".btn-edit-product");
+        if (editBtn) {
+          const id = editBtn.getAttribute("data-id");
+          const product = products.find((p) => p.id === id);
+          this.openProductModal(product, tenantId, priceLists, warehouses, () => this.render(container));
+        }
+      });
+    },
+    openProductModal(product = null, tenantId, priceLists, warehouses, onSaved) {
+      const isEdit = !!product;
+      const content = `
+      <form id="product-form">
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Tipo de Ítem</label>
+            <select class="form-select" name="tipoItem">
+              <option value="PRODUCTO_TERMINADO" ${product && product.tipoItem === "PRODUCTO_TERMINADO" ? "selected" : ""}>Producto Terminado (Fabricado)</option>
+              <option value="MATERIA_PRIMA" ${product && product.tipoItem === "MATERIA_PRIMA" ? "selected" : ""}>Materia Prima / Químico / Insumo</option>
+              <option value="MERCANCIA" ${product && product.tipoItem === "MERCANCIA" ? "selected" : ""}>Mercancía para Reventa</option>
+              <option value="SERVICIO" ${product && product.tipoItem === "SERVICIO" ? "selected" : ""}>Servicio</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">SKU / Referencia</label>
+            <input type="text" class="form-control" name="sku" required value="${esc(product ? product.sku : "")}" placeholder="Ej: RAYO-SHAMP-1G">
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label">Nombre Comercial del Producto</label>
+            <input type="text" class="form-control" name="nombre" required value="${esc(product ? product.nombre : "")}" placeholder="Ej: Shampoo Automotriz pH Neutro 1 Galón">
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Categoría</label>
+            <input type="text" class="form-control" name="categoria" required value="${esc(product ? product.categoria : "")}" placeholder="Ej: Lavado Exterior">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unidad de Medida</label>
+            <select class="form-select" name="unidadMedida">
+              <option value="Unidad" ${product && product.unidadMedida === "Unidad" ? "selected" : ""}>Unidad</option>
+              <option value="Galón" ${product && product.unidadMedida === "Galón" ? "selected" : ""}>Galón (3785 ml)</option>
+              <option value="Litro" ${product && product.unidadMedida === "Litro" ? "selected" : ""}>Litro</option>
+              <option value="Kg" ${product && product.unidadMedida === "Kg" ? "selected" : ""}>Kilogramo (Kg)</option>
+              <option value="Gramo" ${product && product.unidadMedida === "Gramo" ? "selected" : ""}>Gramo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Costo promedio ($ COP, sin IVA)</label>
+            <input type="number" step="any" min="0" class="form-control" name="costoPromedio" id="prod-costo" value="${product ? product.costoPromedio : 0}" ${isEdit && Number(product.stock || 0) !== 0 ? 'readonly title="El costo con existencias se actualiza solo con compras, producción y ajustes (Kardex)."' : ""}>
+            ${isEdit && Number(product.stock || 0) !== 0 ? '<div class="form-help">Con existencias, el costo lo calcula el Kardex.</div>' : ""}
+          </div>
+          <div class="form-group">
+            <label class="form-label">Margen Esperado (%)</label>
+            <input type="number" class="form-control" name="margenEsperado" value="${product ? product.margenEsperado : 50}">
+          </div>
+        </div>
+
+        <!-- 5 LISTAS DE PRECIOS CONFIGURABLES -->
+        <div class="card mb-3" style="background: var(--bg-surface); border: 1px solid var(--border-color);">
+          <div class="card-header" style="padding: 10px 14px; background: rgba(0, 113, 227, 0.06); border-bottom: 1px solid var(--border-color);">
+            <div class="card-title" style="font-size: 13px; font-weight: 700; color: var(--brand-primary);">\uD83D\uDCB0 5 Listas de Precios de Venta (COP)</div>
+          </div>
+          <div class="card-body" style="padding: 14px;">
+            <div class="form-row">
+              ${priceLists.map((pl) => `
+                <div class="form-group mb-2">
+                  <label class="form-label text-xs font-bold" style="color: var(--text-main);">${esc(pl.nombre)} ${pl.incluyeIva ? '<span class="badge badge-info" style="font-size: 9px;">IVA incluido</span>' : '<span class="badge badge-neutral" style="font-size: 9px;">+ IVA</span>'}</label>
+                  <input type="number" min="0" step="100" class="form-control font-bold" name="precio_${pl.id}" value="${product && product.precios && product.precios[pl.id] || 0}" style="color: var(--brand-primary);">
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Stock Mínimo Alerta</label>
+            <input type="number" class="form-control" name="stockMinimo" value="${product ? product.stockMinimo : 15}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bodega Habitual</label>
+            <select class="form-select" name="bodegaId">
+              ${warehouses.map((w) => `
+                <option value="${w.id}" ${product && product.bodegaId === w.id ? "selected" : ""}>${esc(w.nombre)}</option>
+              `).join("")}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label">Descripción Técnica</label>
+          <textarea class="form-control" name="descripcion" rows="2">${esc(product ? product.descripcion || "" : "")}</textarea>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: isEdit ? `Editar Producto: ${product.nombre}` : "Nuevo Producto / Referencia",
+        content,
+        size: "lg",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: isEdit ? "Guardar Cambios" : "Crear Producto",
+            class: "btn-primary",
+            onClick: async () => {
+              const form = dialog.querySelector("#product-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              const formData = new FormData(form);
+              const precios = {};
+              priceLists.forEach((pl) => {
+                precios[pl.id] = Number(formData.get(`precio_${pl.id}`) || 0);
+              });
+              const sku = String(formData.get("sku") || "").trim();
+              const allProducts = await DB.getAll(STORES.PRODUCTS, tenantId);
+              if (allProducts.some((p) => String(p.sku || "").toLowerCase() === sku.toLowerCase() && (!isEdit || p.id !== product.id))) {
+                Toast.warning(`Ya existe un producto con el SKU ${sku}.`);
+                return;
+              }
+              const payload = {
+                ...isEdit ? product : {},
+                tenantId,
+                tipoItem: formData.get("tipoItem"),
+                sku,
+                codigoInterno: sku,
+                nombre: String(formData.get("nombre")).trim(),
+                categoria: formData.get("categoria"),
+                unidadMedida: formData.get("unidadMedida"),
+                costoPromedio: isEdit && Number(product.stock || 0) !== 0 ? Number(product.costoPromedio || 0) : Number(formData.get("costoPromedio") || 0),
+                margenEsperado: Number(formData.get("margenEsperado") || 0),
+                stockMinimo: Number(formData.get("stockMinimo") || 0),
+                bodegaId: formData.get("bodegaId"),
+                descripcion: formData.get("descripcion"),
+                precios: { ...isEdit && product.precios || {}, ...precios },
+                estado: isEdit && product.estado || "ACTIVO"
+              };
+              if (isEdit) {
+                payload.id = product.id;
+                payload.stock = Number(product.stock || 0);
+                await DB.update(STORES.PRODUCTS, payload);
+                await AuditService.log({
+                  modulo: "Productos",
+                  accion: "MODIFICAR",
+                  registroId: payload.sku,
+                  campoModificado: "Ficha y Precios",
+                  valorAnterior: product.nombre,
+                  valorNuevo: `${payload.nombre} · precios: ${Object.values(precios).join(" / ")}`
+                });
+                Toast.success("Producto actualizado con éxito.");
+              } else {
+                payload.stock = 0;
+                await DB.add(STORES.PRODUCTS, payload);
+                await AuditService.log({
+                  modulo: "Productos",
+                  accion: "CREAR",
+                  registroId: payload.sku,
+                  campoModificado: "Producto Creado",
+                  valorAnterior: "-",
+                  valorNuevo: payload.nombre
+                });
+                Toast.success("Producto registrado exitosamente.");
+              }
+              Modal.close();
+              if (onSaved)
+                onSaved();
+            }
+          }
+        ]
+      });
+    }
+  };
+
+  // js/modules/inventory.js
+  init_formatters();
+  var InventoryModule = {
+    async render(container) {
+      const tenant = TenantServiceInstance.getActiveTenant();
+      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      const [products, warehouses, movements] = await Promise.all([
+        DB.getAll(STORES.PRODUCTS, tenantId),
+        DB.getAll(STORES.WAREHOUSES, tenantId),
+        KardexService.getMovements(tenantId)
+      ]);
+      container.innerHTML = `
+            <div class="view-header">
+        <div class="view-title-wrap">
+          <h1>Inventario & Kardex Multibodega</h1>
+          <p>Trazabilidad completa de entradas, salidas, consumos de producción y traslados</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-inventory-adjustment">⚖️ Ajuste Manual</button>
+          <button class="btn btn-primary btn-sm" id="btn-inventory-transfer">\uD83D\uDD04 Traslado de Bodega</button>
+        </div>
+      </div>
+
+      <!-- RESUMEN DE BODEGAS -->
+      <div class="kpi-grid mb-4">
+        ${warehouses.map((w) => {
+        const prodsInWh = products.filter((p) => p.bodegaId === w.id);
+        const totalStock = prodsInWh.reduce((acc, p) => acc + (p.stock || 0), 0);
+        return `
+            <div class="kpi-card">
+              <div class="kpi-card-header">
+                <span class="kpi-label">${esc(w.codigo)}</span>
+                <span class="badge badge-info">${w.esPrincipal ? "Principal" : "Secundaria"}</span>
+              </div>
+              <div class="kpi-value" style="font-size: 18px;">${esc(w.nombre)}</div>
+              <div class="kpi-footer">
+                <span><strong>${prodsInWh.length}</strong> referencias • <strong>${totalStock}</strong> unidades físicas</span>
+              </div>
+            </div>
+          `;
+      }).join("")}
+      </div>
+
+      <!-- TABS: KARDEX VS EXISTENCIAS -->
+      <div class="card mb-3" style="padding: 6px 14px;">
+        <div class="d-flex gap-2">
+          <button class="btn btn-secondary btn-sm tab-btn active" data-tab="kardex">\uD83D\uDCD1 Movimientos de Kardex (${movements.length})</button>
+          <button class="btn btn-secondary btn-sm tab-btn" data-tab="stocks">\uD83D\uDCE6 Existencias Actuales (${products.length})</button>
+        </div>
+      </div>
+
+      <div id="inventory-content-area"></div>
+    `;
+      const renderKardexTable = () => {
+        const target = container.querySelector("#inventory-content-area");
+        target.innerHTML = '<div id="kardex-table-container"></div>';
+        new DataTable({
+          containerId: "kardex-table-container",
+          data: movements,
+          columns: [
+            {
+              key: "fecha",
+              title: "Fecha y Hora",
+              render: (val) => Formatters.dateTime(val)
+            },
+            {
+              key: "productoNombre",
+              title: "Producto / Insumo",
+              render: (val, row) => `
+              <div>
+                <strong>${esc(val)}</strong>
+                <div class="text-xs text-muted">SKU: ${esc(row.sku || "-")}</div>
+              </div>
+            `
+            },
+            {
+              key: "bodegaNombre",
+              title: "Bodega",
+              render: (val) => `<span class="badge badge-neutral">${esc(val)}</span>`
+            },
+            {
+              key: "documentoTipo",
+              title: "Tipo Movimiento",
+              render: (val, row) => {
+                const meta = MOVEMENT_TYPES[val] || { label: val, type: "OTHER" };
+                const badgeClass = meta.type === "IN" ? "badge-success" : meta.type === "OUT" ? "badge-danger" : "badge-warning";
+                return `
+                <div>
+                  <span class="badge ${badgeClass}">${meta.label}</span>
+                  <div class="text-xs text-muted">Doc: ${esc(row.documentoNumero)}</div>
+                </div>
+              `;
+              }
+            },
+            {
+              key: "cantidadEntrada",
+              title: "Entrada",
+              render: (val) => val > 0 ? `<strong class="text-success">+${esc(val)}</strong>` : "-"
+            },
+            {
+              key: "cantidadSalida",
+              title: "Salida",
+              render: (val) => val > 0 ? `<strong class="text-danger">-${esc(val)}</strong>` : "-"
+            },
+            {
+              key: "saldoCantidad",
+              title: "Saldo Final",
+              render: (val) => `<strong>${esc(val)}</strong>`
+            },
+            {
+              key: "costoUnitario",
+              title: "Costo Unit.",
+              render: (val) => Formatters.currency(val)
+            },
+            {
+              key: "observacion",
+              title: "Observaciones",
+              render: (val) => `<span class="text-xs text-muted">${esc(val || "-")}</span>`
+            }
+          ]
+        });
+      };
+      const renderStocksTable = () => {
+        const target = container.querySelector("#inventory-content-area");
+        target.innerHTML = '<div id="stocks-table-container"></div>';
+        new DataTable({
+          containerId: "stocks-table-container",
+          data: products,
+          columns: [
+            {
+              key: "sku",
+              title: "SKU",
+              render: (val) => `<strong>${esc(val)}</strong>`
+            },
+            {
+              key: "nombre",
+              title: "Nombre Producto",
+              render: (val, row) => `${esc(val)} <span class="text-xs text-muted">(${esc(row.unidadMedida)})</span>`
+            },
+            {
+              key: "stock",
+              title: "Existencia Actual",
+              render: (val, row) => {
+                const stock = Number(val || 0);
+                const min = Number(row.stockMinimo || 10);
+                let cls = "badge-success";
+                if (stock <= 0)
+                  cls = "badge-danger";
+                else if (stock <= min)
+                  cls = "badge-warning";
+                return `<span class="badge ${cls}">${stock} ${esc(row.unidadMedida)}</span>`;
+              }
+            },
+            {
+              key: "costoPromedio",
+              title: "Costo Promedio",
+              render: (val) => Formatters.currency(val)
+            },
+            {
+              key: "stock",
+              title: "Valor Total Stock",
+              render: (val, row) => Formatters.currency(Number(val || 0) * Number(row.costoPromedio || 0))
+            },
+            {
+              key: "ubicacionBodega",
+              title: "Ubicación",
+              render: (val) => val || "No especificada"
+            }
+          ]
+        });
+      };
+      renderKardexTable();
+      container.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          container.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const tab = btn.getAttribute("data-tab");
+          if (tab === "kardex")
+            renderKardexTable();
+          else
+            renderStocksTable();
+        });
+      });
+      container.querySelector("#btn-inventory-adjustment").addEventListener("click", () => {
+        this.openAdjustmentModal(tenantId, products, warehouses, () => this.render(container));
+      });
+      container.querySelector("#btn-inventory-transfer").addEventListener("click", () => {
+        this.openTransferModal(tenantId, products, warehouses, () => this.render(container));
+      });
+    },
+    openAdjustmentModal(tenantId, products, warehouses, onComplete) {
+      const content = `
+      <form id="adjustment-form">
+        <div class="form-group mb-3">
+          <label class="form-label">Seleccionar Producto o Insumo</label>
+          <select class="form-select" name="productoId" required>
+            ${products.map((p) => `
+              <option value="${p.id}">${esc(p.nombre)} (SKU: ${esc(p.sku)} | Stock: ${p.stock} ${esc(p.unidadMedida)})</option>
+            `).join("")}
+          </select>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Tipo de Ajuste</label>
+            <select class="form-select" name="documentoTipo" required>
+              <option value="AJUSTE_POS">Ajuste Positivo (+) Entrada física encontrada</option>
+              <option value="AJUSTE_NEG">Ajuste Negativo (-) Salida o faltante</option>
+              <option value="MERMA">Baja por Merma Técnica (-)</option>
+              <option value="DANO">Baja por Daño / Vencimiento (-)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cantidad a Ajustar</label>
+            <input type="number" step="any" min="0.01" class="form-control" name="cantidad" required placeholder="Ej: 5">
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label">Bodega Afectada</label>
+          <select class="form-select" name="bodegaId">
+            ${warehouses.map((w) => `<option value="${w.id}">${esc(w.nombre)}</option>`).join("")}
+          </select>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label">Motivo o Justificación del Ajuste</label>
+          <textarea class="form-control" name="observacion" required rows="2" placeholder="Ej: Conteo físico fin de mes o frasco quebrado en estiba"></textarea>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: "Registrar Ajuste Manual de Inventario",
+        content,
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: "Aplicar Ajuste a Kardex",
+            class: "btn-primary",
+            onClick: async () => {
+              const form = dialog.querySelector("#adjustment-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              const formData = new FormData(form);
+              const productoId = formData.get("productoId");
+              const cantidad = Number(formData.get("cantidad"));
+              const tipo = formData.get("documentoTipo");
+              const bodegaId = formData.get("bodegaId");
+              const observacion = formData.get("observacion");
+              try {
+                await DB.runTransaction([...KARDEX_TX_STORES, STORES.SYSTEM_PARAMS], async (tx) => {
+                  const n = await tx.nextSequence(tenantId, "AJUSTE");
+                  await KardexService.applyMovement(tx, {
+                    tenantId,
+                    productoId,
+                    bodegaId,
+                    documentoTipo: tipo,
+                    documentoNumero: `AJ-${String(n).padStart(6, "0")}`,
+                    cantidad,
+                    observacion
+                  });
+                });
+              } catch (err) {
+                Toast.error(err.message);
+                return;
+              }
+              Toast.success("Ajuste de inventario registrado en Kardex.");
+              Modal.close();
+              if (onComplete)
+                onComplete();
+            }
+          }
+        ]
+      });
+    },
+    openTransferModal(tenantId, products, warehouses, onComplete) {
+      const content = `
+      <div class="alert alert-info text-xs mb-3">El inventario se controla como una sola existencia por producto. El traslado deja trazabilidad de la ubicación en el Kardex pero no cambia el stock total.</div>
+      <form id="transfer-form">
+        <div class="form-group mb-3">
+          <label class="form-label">Producto a Trasladar</label>
+          <select class="form-select" name="productoId" required>
+            ${products.map((p) => `
+              <option value="${p.id}">${esc(p.nombre)} (Stock: ${p.stock} ${esc(p.unidadMedida)})</option>
+            `).join("")}
+          </select>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Bodega Origen</label>
+            <select class="form-select" name="bodegaOrigenId" required>
+              ${warehouses.map((w) => `<option value="${w.id}">${esc(w.nombre)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bodega Destino</label>
+            <select class="form-select" name="bodegaDestinoId" required>
+              ${warehouses.map((w, idx) => `<option value="${w.id}" ${idx === 1 ? "selected" : ""}>${esc(w.nombre)}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label">Cantidad a Trasladar</label>
+          <input type="number" step="any" min="0.01" class="form-control" name="cantidad" required placeholder="Ej: 10">
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label">Observaciones</label>
+          <textarea class="form-control" name="observacion" rows="2" placeholder="Reabastecimiento de punto de venta"></textarea>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: "Traslado de mercancía entre bodegas",
+        content,
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: "Ejecutar Traslado",
+            class: "btn-primary",
+            onClick: async () => {
+              const form = dialog.querySelector("#transfer-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              const formData = new FormData(form);
+              const productoId = formData.get("productoId");
+              const origenId = formData.get("bodegaOrigenId");
+              const destinoId = formData.get("bodegaDestinoId");
+              const cantidad = Number(formData.get("cantidad"));
+              const obs = formData.get("observacion") || "Traslado entre bodegas";
+              if (origenId === destinoId) {
+                Toast.warning("La bodega de origen y destino no pueden ser la misma.");
+                return;
+              }
+              try {
+                await DB.runTransaction([...KARDEX_TX_STORES, STORES.SYSTEM_PARAMS], async (tx) => {
+                  const n = await tx.nextSequence(tenantId, "TRASLADO");
+                  const docNum = `TR-${String(n).padStart(6, "0")}`;
+                  await KardexService.applyMovement(tx, { tenantId, productoId, bodegaId: origenId, documentoTipo: "TRASLADO_SALIDA", documentoNumero: docNum, cantidad, observacion: `Salida por traslado. ${obs}` });
+                  await KardexService.applyMovement(tx, { tenantId, productoId, bodegaId: destinoId, documentoTipo: "TRASLADO_ENTRADA", documentoNumero: docNum, cantidad, observacion: `Entrada por traslado. ${obs}` });
+                });
+              } catch (err) {
+                Toast.error(err.message);
+                return;
+              }
+              Toast.success("Traslado registrado (trazabilidad entre bodegas).");
+              Modal.close();
+              if (onComplete)
+                onComplete();
+            }
+          }
+        ]
+      });
+    }
+  };
+
+  // js/modules/production.js
+  init_formatters();
+
+  // js/services/production-service.js
+  var ProductionService = {
+    async calculateEstimatedCost(recetaId, cantidadAProducir) {
+      const receta = await DB.getById(STORES.RECIPES_BOM, recetaId);
+      if (!receta)
+        throw new Error("Receta no encontrada.");
+      const factor = cantidadAProducir / (Number(receta.rendimientoLote || receta.cantidadProducir) || 1);
+      let costoTotalInsumos = 0;
+      const desgloseInsumos = [];
+      for (const insumo of receta.insumos || []) {
+        const mpId = insumo.materiaPrimaId || insumo.productoId;
+        if (!mpId)
+          continue;
+        const prod = await DB.getById(STORES.PRODUCTS, mpId);
+        const cantRequerida = insumo.cantidad * factor;
+        const cantConMerma = cantRequerida * (1 + (insumo.mermaEsperada || 0) / 100);
+        const costoUnitario = prod ? prod.costoPromedio || 0 : 0;
+        const costoInsumo = cantConMerma * costoUnitario;
+        costoTotalInsumos += costoInsumo;
+        desgloseInsumos.push({
+          materiaPrimaId: mpId,
+          nombre: prod ? prod.nombre : "Insumo no encontrado",
+          sku: prod ? prod.sku : "-",
+          cantidadBase: insumo.cantidad,
+          cantidadRequerida: Math.round(cantConMerma * 100) / 100,
+          unidadMedida: insumo.unidadMedida,
+          stockDisponible: prod ? prod.stock : 0,
+          costoUnitario,
+          costoTotal: Math.round(costoInsumo),
+          stockSuficiente: prod ? prod.stock >= cantConMerma : false
+        });
+      }
+      const costosIndirectos = (receta.costosIndirectosEstimados || 0) * factor;
+      const costoTotalEstimado = Math.round(costoTotalInsumos + costosIndirectos);
+      const costoUnitarioEstimado = Math.round(costoTotalEstimado / cantidadAProducir);
+      return {
+        receta,
+        cantidadAProducir,
+        desgloseInsumos,
+        costoTotalInsumos: Math.round(costoTotalInsumos),
+        costosIndirectos: Math.round(costosIndirectos),
+        costoTotalEstimado,
+        costoUnitarioEstimado,
+        todosConStock: desgloseInsumos.every((i) => i.stockSuficiente)
+      };
+    },
+    async executeProductionOrder({
+      tenantId,
+      recetaId,
+      productoTerminadoId,
+      cantidadProducida,
+      loteCodigo,
+      costosIndirectosReales = 0,
+      observaciones
+    }) {
+      const cant = Number(cantidadProducida);
+      if (!Number.isFinite(cant) || cant <= 0)
+        throw new Error("La cantidad a producir debe ser mayor a cero.");
+      const stores = [...new Set([...KARDEX_TX_STORES, STORES.RECIPES_BOM, STORES.PRODUCTION_ORDERS, STORES.SYSTEM_PARAMS])];
+      return DB.runTransaction(stores, async (tx) => {
+        const pt = await tx.get(STORES.PRODUCTS, productoTerminadoId);
+        if (!pt)
+          throw new Error("Producto terminado no encontrado.");
+        const receta = await tx.get(STORES.RECIPES_BOM, recetaId);
+        if (!receta)
+          throw new Error("Receta no encontrada.");
+        const insumos = (receta.insumos || []).filter((i) => i.materiaPrimaId || i.productoId);
+        if (insumos.length === 0)
+          throw new Error("La receta no tiene insumos configurados.");
+        const n = await tx.nextSequence(tenantId, "PRODUCCION");
+        const numeroOrden = `OP-${String(n).padStart(6, "0")}`;
+        const lote = loteCodigo || `LOTE-${String(pt.sku || "PT").substring(0, 6)}-${String(n).padStart(4, "0")}`;
+        const factor = cant / (Number(receta.rendimientoLote || receta.cantidadProducir) || 1);
+        let costoMP = 0;
+        const insumosConsumidos = [];
+        for (const insumo of insumos) {
+          const mpId = insumo.materiaPrimaId || insumo.productoId;
+          const cantConsumida = Math.round(Number(insumo.cantidad) * factor * (1 + (Number(insumo.mermaEsperada) || 0) / 100) * 1000) / 1000;
+          if (cantConsumida <= 0)
+            continue;
+          const mov = await KardexService.applyMovement(tx, {
+            tenantId,
+            productoId: mpId,
+            bodegaId: null,
+            documentoTipo: "CONSUMO_PRODUCCION",
+            documentoNumero: numeroOrden,
+            cantidad: cantConsumida,
+            observacion: `Consumo para ${cant} ${pt.unidadMedida || ""} de ${pt.nombre} (Lote ${lote})`
+          });
+          costoMP += mov.costoTotal;
+          insumosConsumidos.push({
+            materiaPrimaId: mpId,
+            nombre: mov.productoNombre,
+            sku: mov.sku,
+            cantidad: cantConsumida,
+            unidadMedida: insumo.unidadMedida || "",
+            costoUnitario: mov.costoUnitario,
+            costoTotal: Math.round(mov.costoTotal)
+          });
+        }
+        const costoRealTotal = Math.round(costoMP + Number(costosIndirectosReales || 0));
+        const costoUnitarioReal = Math.round(costoRealTotal / cant * 100) / 100;
+        await KardexService.applyMovement(tx, {
+          tenantId,
+          productoId: pt.id,
+          bodegaId: null,
+          documentoTipo: "PRODUCCION_ENTRADA",
+          documentoNumero: numeroOrden,
+          cantidad: cant,
+          costoUnitario: costoUnitarioReal,
+          observacion: `Producto terminado. Lote ${lote}`
+        });
+        const ahora = new Date().toISOString();
+        const orden = await tx.put(STORES.PRODUCTION_ORDERS, {
+          tenantId,
+          numeroOrden,
+          recetaId,
+          recetaNombre: receta.nombreReceta || receta.nombreFormula || "-",
+          productoTerminadoId: pt.id,
+          productoTerminadoNombre: pt.nombre,
+          loteCodigo: lote,
+          fechaProgramada: ahora.split("T")[0],
+          fechaInicio: ahora,
+          fechaFin: ahora,
+          cantidadPlanificada: cant,
+          cantidadProducida: cant,
+          costoEstimadoTotal: costoRealTotal,
+          costoRealTotal,
+          costoUnitarioReal,
+          costosIndirectosReales: Number(costosIndirectosReales || 0),
+          insumosConsumidos,
+          estado: "COMPLETADA",
+          responsableId: Session.userId(),
+          responsableNombre: Session.userName(),
+          observaciones: observaciones || ""
+        });
+        await AuditService.logTx(tx, {
+          tenantId,
+          modulo: "Producción",
+          accion: "CREAR",
+          registroId: numeroOrden,
+          campoModificado: "Orden ejecutada",
+          valorNuevo: `${cant} ${pt.unidadMedida || ""} de ${pt.nombre} (Lote ${lote}) - Costo unit. $ ${costoUnitarioReal}`
+        });
+        return orden;
+      });
+    }
+  };
+
+  // js/modules/production.js
+  init_export_service();
+
+  // js/components/print-template.js
+  init_formatters();
+  var LEGAL_NOTE = "Documento interno — no válido como factura electrónica de venta.";
+  function tenantOrBlank() {
+    return TenantServiceInstance.getActiveTenant() || {
+      nombreComercial: "Empresa",
+      razonSocial: "Empresa",
+      nit: "",
+      dv: "",
+      direccion: "",
+      ciudad: "",
+      telefono: "",
+      email: ""
+    };
+  }
+  var PrintTemplates = {
+    getHeader(docTitle, docNumber, docDate) {
+      const tenant = tenantOrBlank();
+      if (tenant.membreteUrl) {
+        return `
+        <div class="doc-header" style="display: block; margin-bottom: 16px;">
+          <img src="${esc(tenant.membreteUrl)}" alt="${esc(tenant.nombreComercial)}" style="width: 100%; max-height: 100px; object-fit: contain; margin-bottom: 10px; border-radius: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: 6px;">
+            <div>
+              <div class="doc-badge">${esc(docTitle)}</div>
+              <div style="font-size: 16px; font-weight: 800; color: #1d1d1f; margin: 4px 0 0 0;">No. ${esc(docNumber)}</div>
+            </div>
+            <div style="text-align: right; font-size: 11.5px; color: #444;">
+              <div><strong>Fecha:</strong> ${esc(Formatters.dateTime(docDate))}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      }
+      const logoSrc = TenantServiceInstance.getHorizontalLogo(tenant, false);
+      return `
+      <div class="doc-header">
+        <div class="doc-brand">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+            <img src="${esc(logoSrc)}" alt="${esc(tenant.nombreComercial)}" style="height: 48px; max-width: 180px; object-fit: contain; display: block; border-radius: 4px;" onerror="this.style.display='none'">
+          </div>
+          <div style="font-size: 13px; font-weight: 700; color: #1d1d1f; line-height: 1.2;">${esc(tenant.razonSocial || tenant.nombreComercial)}</div>
+          <p><strong>NIT:</strong> ${esc(tenant.nit)}${tenant.dv !== undefined && tenant.dv !== null && tenant.dv !== "" ? "-" + esc(tenant.dv) : ""} | <strong>Régimen:</strong> ${esc(tenant.regimen || "-")}</p>
+          <p>${esc(tenant.direccion || "")}${tenant.ciudad ? " • " + esc(tenant.ciudad) : ""}</p>
+          <p>${tenant.telefono ? "<strong>Tel:</strong> " + esc(tenant.telefono) : ""}${tenant.email ? " | <strong>Email:</strong> " + esc(tenant.email) : ""}</p>
+        </div>
+        <div class="doc-meta">
+          <div class="doc-badge">${esc(docTitle)}</div>
+          <div style="font-size: 16px; font-weight: 800; color: #1d1d1f; margin: 4px 0;">No. ${esc(docNumber)}</div>
+          <div style="font-size: 12px; color: #6e6e73;"><strong>Fecha:</strong> ${esc(Formatters.dateTime(docDate))}</div>
+        </div>
+      </div>
+    `;
+    },
+    shippingBoxLabel(shipping) {
+      const tenant = tenantOrBlank();
+      const qr = tenant.qrResenaUrl ? `<div style="position: absolute; top: 10px; right: 10px; text-align: center; width: 70px;">
+           <img src="${esc(tenant.qrResenaUrl)}" alt="QR" style="width: 55px; height: 55px; display: block; margin: 0 auto;">
+           <div style="font-size: 8px; line-height: 1.2; margin-top: 4px; font-weight: bold; color: #444;">${esc(tenant.qrResenaTexto || "DÉJANOS UNA RESEÑA")}</div>
+         </div>` : "";
+      return `
+      <div style="flex: 1; min-height: 225px; border: 2px solid #000; border-radius: 8px; display: flex; flex-direction: column; padding: 8px; box-sizing: border-box; position: relative; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px;">
+          <div style="font-weight: 900; font-size: 14px;">${esc(tenant.nombreComercial)}</div>
+          <div style="text-align: right;">
+            <div style="background: #000; color: #fff; padding: 2px 8px; font-weight: bold; border-radius: 4px; font-size: 11px; display: inline-block;">
+              ${esc(shipping.transportadora || "Transportadora por definir")}
+            </div>
+            <div style="font-size: 10px; font-weight: bold; margin-top: 4px;">GUÍA: ${esc(shipping.numeroGuia || "PENDIENTE")} · DOC: ${esc(shipping.documentoNumero || "-")}</div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex: 1; gap: 12px;">
+          <div style="flex: 1; border: 2px solid #000; padding: 6px; border-radius: 4px; font-size: 10px; line-height: 1.2; display: flex; flex-direction: column;">
+            <div style="color: #444; margin-bottom: 4px; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 2px;">DE (REMITENTE):</div>
+            <div style="font-weight: 900; font-size: 11px;">${esc(tenant.razonSocial || tenant.nombreComercial)}</div>
+            <div>NIT: ${esc(tenant.nit)}${tenant.dv !== undefined && tenant.dv !== "" ? "-" + esc(tenant.dv) : ""}</div>
+            <div>${esc(tenant.direccion || "")}</div>
+            <div>${esc(tenant.ciudad || "")}</div>
+            <div>Tel: ${esc(tenant.telefono || "")}</div>
+          </div>
+
+          <div style="flex: 2; border: 2px solid #000; padding: 6px; ${qr ? "padding-right: 90px;" : ""} border-radius: 4px; font-size: 11px; line-height: 1.2; display: flex; flex-direction: column; background: #fffdf0; position: relative;">
+            <div style="font-weight: 900; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">PARA (DESTINATARIO):</div>
+            <div style="font-weight: 900; font-size: 13px;">${esc(shipping.clienteNombre)}</div>
+            <div><strong>NIT/CC:</strong> ${esc(shipping.nitCc || "-")}</div>
+            <div><strong>Dirección:</strong> ${esc(shipping.direccion || "-")}${shipping.barrio ? " (" + esc(shipping.barrio) + ")" : ""}</div>
+            <div><strong>Destino:</strong> ${esc(shipping.ciudad || "-")} ${shipping.departamento ? "- " + esc(shipping.departamento) : ""}</div>
+            <div><strong>Tel:</strong> ${esc(shipping.telefono || "-")}</div>
+            <div style="margin-top: 2px; padding-top: 2px; border-top: 1px dashed #999; font-weight: 600;">
+              Contenido: ${esc(shipping.contenidoDescripcion || "Mercancía")} - ${esc(shipping.cajasTotal || 1)} CAJA(S)
+            </div>
+            ${qr}
+          </div>
+        </div>
+      </div>
+    `;
+    },
+    batchShippingLabels(shippings) {
+      if (!shippings || shippings.length === 0)
+        return "";
+      let html = "";
+      const perPage = 4;
+      for (let i = 0;i < shippings.length; i += perPage) {
+        const chunk = shippings.slice(i, i + perPage);
+        html += `<div style="box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; ${i + perPage < shippings.length ? "page-break-after: always;" : ""}">`;
+        chunk.forEach((s) => {
+          html += this.shippingBoxLabel(s);
+        });
+        for (let j = chunk.length;j < perPage; j++)
+          html += '<div style="flex: 1;"></div>';
+        html += "</div>";
+      }
+      return html;
+    },
+    saleInvoice(sale, items = []) {
+      const tipo = sale.tipoDoc;
+      const anulada = sale.estado === "ANULADA";
+      const esCotizacion = tipo === "COTIZACION" || sale.estado === "COTIZACION";
+      const esCredito = tipo === "VENTA_CREDITO" || sale.metodoPago === "Crédito";
+      const conIva = Number(sale.impuestos || 0) > 0;
+      let docTitle = "DOCUMENTO INTERNO DE VENTA";
+      if (esCotizacion)
+        docTitle = "COTIZACIÓN";
+      else if (esCredito)
+        docTitle = "VENTA A CRÉDITO (DOC. INTERNO)";
+      const header = this.getHeader(docTitle, sale.consecutivo, sale.fecha);
+      const rows = (items || []).map((it, idx) => `
+      <tr style="font-size: 11px;">
+        <td class="text-center" style="padding: 4px;">${idx + 1}</td>
+        <td style="padding: 4px;"><strong>${esc(it.sku || "-")}</strong></td>
+        <td style="padding: 4px;">${esc(it.nombre)}</td>
+        <td class="text-center" style="padding: 4px;"><strong>${esc(it.cantidad)}</strong></td>
+        <td class="text-right" style="padding: 4px;">${Formatters.currency(it.precioUnitario)}</td>
+        <td class="text-right" style="padding: 4px;"><strong>${Formatters.currency(it.total !== undefined ? it.total : it.cantidad * it.precioUnitario)}</strong></td>
+      </tr>
+    `).join("");
+      const validez = esCotizacion ? `<p style="margin-top: 2px;">Cotización válida por ${esc(tenantOrBlank().diasValidezCotizacion || 15)} días. Precios sujetos a disponibilidad de inventario.</p>` : "";
+      return `
+      <div style="position: relative;">
+      ${anulada ? `<div style="position: absolute; top: 35%; left: 0; right: 0; text-align: center; font-size: 72px; font-weight: 900; color: rgba(220, 38, 38, 0.18); transform: rotate(-18deg); pointer-events: none;">ANULADA</div>` : ""}
+      ${header}
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; background: #fbfbfd; padding: 8px; border-radius: 6px; border: 1px solid #e5e5ea; line-height: 1.3;">
+        <div>
+          <div style="font-size: 10px; text-transform: uppercase; color: #86868b; font-weight: 700;">Cliente</div>
+          <div style="font-size: 12px; font-weight: 700; color: #1d1d1f; margin: 2px 0;">${esc(sale.clienteNombre)}</div>
+          <div style="font-size: 11px; color: #424245;"><strong>NIT/CC:</strong> ${esc(sale.clienteNit || "-")}</div>
+          ${esCotizacion ? "" : `<div style="font-size: 11px; color: #424245;"><strong>Forma de pago:</strong> ${esc(sale.metodoPago || "-")}</div>`}
+        </div>
+        <div>
+          <div style="font-size: 10px; text-transform: uppercase; color: #86868b; font-weight: 700;">Información</div>
+          <div style="font-size: 11px; color: #424245;"><strong>Atendió:</strong> ${esc(sale.vendedorNombre || "-")}</div>
+          ${sale.freelancerNombre ? `<div style="font-size: 11px; color: #424245;"><strong>Asesor comercial:</strong> ${esc(sale.freelancerNombre)}</div>` : ""}
+          <div style="font-size: 11px; color: #424245;"><strong>Estado:</strong> ${esc(sale.estado)}</div>
+          <div style="font-size: 10px; color: #86868b; margin-top: 2px;">${conIva ? "Incluye IVA discriminado" : "Sin IVA liquidado"}</div>
+        </div>
+      </div>
+
+      <table style="margin-bottom: 10px;">
+        <thead>
+          <tr style="font-size: 11px;">
+            <th class="text-center" style="width: 30px; padding: 4px;">#</th>
+            <th style="width: 100px; padding: 4px;">SKU</th>
+            <th style="padding: 4px;">Descripción</th>
+            <th class="text-center" style="width: 50px; padding: 4px;">Cant.</th>
+            <th class="text-right" style="width: 90px; padding: 4px;">V. Unit</th>
+            <th class="text-right" style="width: 100px; padding: 4px;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      <div class="doc-totals" style="margin-top: 5px;">
+        <div class="total-row" style="padding: 2px 0;"><span>Base (antes de IVA):</span><span>${Formatters.currency(sale.subtotal)}</span></div>
+        ${Number(sale.descuentos) > 0 ? `<div class="total-row" style="padding: 2px 0; color: #ff3b30;"><span>Descuentos:</span><span>-${Formatters.currency(sale.descuentos)}</span></div>` : ""}
+        <div class="total-row" style="padding: 2px 0;"><span>IVA:</span><span>${Formatters.currency(sale.impuestos || 0)}</span></div>
+        <div class="total-row grand-total" style="padding-top: 4px; margin-top: 4px;"><span>TOTAL:</span><span>${Formatters.currency(sale.total)}</span></div>
+        ${!esCotizacion && !esCredito && Number(sale.cambio) > 0 ? `<div class="total-row" style="padding: 2px 0; font-size: 11px;"><span>Recibido / Cambio:</span><span>${Formatters.currency(sale.pagoRecibido)} / ${Formatters.currency(sale.cambio)}</span></div>` : ""}
+      </div>
+
+      ${anulada && sale.anulacion ? `<div style="margin-top: 10px; padding: 8px; border: 1px solid #fca5a5; border-radius: 6px; font-size: 11px; color: #991b1b;"><strong>Anulada</strong> el ${esc(Formatters.dateTime(sale.anulacion.fecha))} por ${esc(sale.anulacion.usuarioNombre)}. Motivo: ${esc(sale.anulacion.motivo)}</div>` : ""}
+
+      <div class="doc-footer" style="margin-top: 15px; padding-top: 10px; font-size: 10px; line-height: 1.3;">
+        ${tenantOrBlank().piePaginaDocumentos ? `<p>${esc(tenantOrBlank().piePaginaDocumentos)}</p>` : "<p>Gracias por su compra.</p>"}
+        ${validez}
+        <p style="margin-top: 4px; font-size: 9px; font-weight: 700;">${LEGAL_NOTE}</p>
+      </div>
+      </div>
+    `;
+    },
+    productionOrder(order) {
+      const tenant = tenantOrBlank();
+      const header = this.getHeader("ORDEN DE FABRICACIÓN", order.numeroOrden, order.fechaInicio || order.fechaProgramada);
+      const rows = (order.insumosConsumidos || []).map((ins, idx) => `
+      <tr>
+        <td class="text-center">${idx + 1}</td>
+        <td><strong>${esc(ins.sku || "-")}</strong></td>
+        <td>${esc(ins.nombre)}</td>
+        <td class="text-center font-bold">${esc(ins.cantidad)} ${esc(ins.unidadMedida || "")}</td>
+        <td class="text-right">${Formatters.currency(ins.costoUnitario, 2)}</td>
+        <td class="text-right"><strong>${Formatters.currency(ins.costoTotal)}</strong></td>
+      </tr>
+    `).join("");
+      return `
+      ${header}
+      <div style="background: #fbfbfd; border: 1px solid #e5e5ea; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="font-size: 11px; font-weight: 700; color: #0071e3; text-transform: uppercase;">Producto fabricado</div>
+        <div style="font-size: 17px; font-weight: 800; color: #1d1d1f; margin: 4px 0;">${esc(order.productoTerminadoNombre)}</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 12px; margin-top: 8px;">
+          <div><strong>Lote:</strong> ${esc(order.loteCodigo)}</div>
+          <div><strong>Cantidad:</strong> ${esc(order.cantidadProducida)}</div>
+          <div><strong>Estado:</strong> ${esc(order.estado)}</div>
+          <div><strong>Responsable:</strong> ${esc(order.responsableNombre || "-")}</div>
+        </div>
+      </div>
+
+      <h4 style="font-size: 13px; margin-bottom: 8px; color: #1d1d1f;">Insumos y empaques consumidos</h4>
+      <table>
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 40px;">#</th>
+            <th style="width: 120px;">SKU</th>
+            <th>Descripción</th>
+            <th class="text-center" style="width: 100px;">Consumo</th>
+            <th class="text-right" style="width: 120px;">Costo unit.</th>
+            <th class="text-right" style="width: 130px;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      <div class="doc-totals">
+        <div class="total-row"><span>Costos indirectos (CIF):</span><span>${Formatters.currency(order.costosIndirectosReales || 0)}</span></div>
+        <div class="total-row grand-total"><span>COSTO TOTAL LOTE:</span><span>${Formatters.currency(order.costoRealTotal)}</span></div>
+        <div class="total-row" style="font-weight: 700; color: #0071e3; margin-top: 4px;"><span>Costo unitario real:</span><span>${Formatters.currency(order.costoUnitarioReal, 2)}</span></div>
+      </div>
+
+      <div style="margin-top: 50px; display: flex; justify-content: space-around; align-items: flex-end;">
+        <div style="width: 220px; text-align: center;">
+          ${tenant.firmaUrl ? `<img src="${esc(tenant.firmaUrl)}" alt="Firma" style="height: 60px; object-fit: contain; margin-bottom: -10px;" onerror="this.style.display='none'">` : '<div style="height: 60px;"></div>'}
+          <div style="border-top: 1px solid #1d1d1f; font-size: 11px; padding-top: 4px; font-weight: bold;">${esc(tenant.firmaNombre || "Responsable de planta")}</div>
+          <div style="font-size: 10px; color: #6e6e73;">${esc(tenant.firmaCargo || "Operaciones y planta")}</div>
+        </div>
+        <div style="width: 220px; text-align: center;">
+          <div style="height: 60px;"></div>
+          <div style="border-top: 1px solid #1d1d1f; font-size: 11px; padding-top: 4px; font-weight: bold;">Control de calidad</div>
+          <div style="font-size: 10px; color: #6e6e73;">Inspección pH, viscosidad y sello</div>
+        </div>
+      </div>
+    `;
+    },
+    commercialQuote(quote, items = []) {
+      return this.saleInvoice({ ...quote, tipoDoc: "COTIZACION" }, items);
+    }
+  };
+
+  // js/modules/production.js
+  var ProductionModule = {
+    async render(container) {
+      const tenant = TenantServiceInstance.getActiveTenant();
+      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      const [recipes, orders, rawMaterials, finishedGoods] = await Promise.all([
+        DB.getAll(STORES.RECIPES_BOM, tenantId),
+        DB.getAll(STORES.PRODUCTION_ORDERS, tenantId),
+        (await DB.getAll(STORES.PRODUCTS, tenantId)).filter((p) => p.tipoItem === "MATERIA_PRIMA"),
+        (await DB.getAll(STORES.PRODUCTS, tenantId)).filter((p) => p.tipoItem === "PRODUCTO_TERMINADO")
+      ]);
+      container.innerHTML = `
+      <div class="view-header">
+        <div class="view-title-wrap">
+          <div class="d-flex items-center gap-2">
+            <h1>Módulo de Producción & Fórmulas (BOM)</h1>
+            <span class="badge-demo">FABRICACIÓN AUTOMOTRIZ</span>
+          </div>
+          <p>Control de recetas químicas, explosión de insumos, costeo por lote y fabricación en planta</p>
+        </div>
+        <div class="view-actions">
+          <a href="#formulas-vault" class="btn btn-secondary btn-sm" id="btn-new-recipe" style="text-decoration: none;">\uD83E\uDDEA Nueva fórmula (en la Bóveda)</a>
+          <button class="btn btn-primary btn-sm" id="btn-execute-production">⚡ Ejecutar Orden de Producción</button>
+        </div>
+      </div>
+
+      <!-- TABS: ÓRDENES REALIZADAS VS FÓRMULAS ACTIVAS + BÓVEDA + COSTOS -->
+      <div class="card mb-3" style="padding: 6px 14px;">
+        <div class="d-flex justify-between items-center" style="flex-wrap: wrap; gap: 8px;">
+          <div class="d-flex gap-2">
+            <button class="btn btn-secondary btn-sm tab-prod-btn active" data-tab="orders">\uD83D\uDCCB Órdenes de Producción (${orders.length})</button>
+            <button class="btn btn-secondary btn-sm tab-prod-btn" data-tab="recipes">\uD83E\uDDEA Fórmulas Maestras BOM (${recipes.length})</button>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="#formulas-vault" class="btn btn-secondary btn-sm" style="border-color: #6366f1; color: #6366f1; text-decoration: none;">\uD83D\uDD12 Bóveda de Fórmulas</a>
+            <a href="#pricing-calculator" class="btn btn-secondary btn-sm" style="border-color: var(--brand-primary); color: var(--brand-primary); text-decoration: none;">\uD83D\uDCA1 Costos & Precios IA</a>
+          </div>
+        </div>
+      </div>
+
+      <div id="production-content-area"></div>
+    `;
+      const renderOrdersTable = () => {
+        const target = container.querySelector("#production-content-area");
+        target.innerHTML = '<div id="orders-table-container"></div>';
+        new DataTable({
+          containerId: "orders-table-container",
+          data: orders.sort((a, b) => new Date(b.fechaInicio || b.fechaProgramada) - new Date(a.fechaInicio || a.fechaProgramada)),
+          columns: [
+            {
+              key: "numeroOrden",
+              title: "No. Orden / Lote",
+              render: (val, row) => `
+              <div>
+                <strong style="color: var(--brand-primary);">${esc(val)}</strong>
+                <div class="text-xs text-muted">Lote: <strong>${esc(row.loteCodigo)}</strong></div>
+              </div>
+            `
+            },
+            {
+              key: "productoTerminadoNombre",
+              title: "Producto Fabricado",
+              render: (val, row) => `
+              <div>
+                <div class="font-bold">${esc(val)}</div>
+                <div class="text-xs text-muted">Cant: <strong>${esc(row.cantidadProducida)} unidades</strong></div>
+              </div>
+            `
+            },
+            {
+              key: "fechaInicio",
+              title: "Fecha Fabricación",
+              render: (val) => Formatters.date(val)
+            },
+            {
+              key: "costoRealTotal",
+              title: "Costo Total Lote",
+              render: (val) => Formatters.currency(val)
+            },
+            {
+              key: "costoUnitarioReal",
+              title: "Costo Unit. Real",
+              render: (val) => `<strong class="text-success">${Formatters.currency(val)}</strong>`
+            },
+            {
+              key: "responsableNombre",
+              title: "Responsable",
+              render: (val) => `<span class="badge badge-neutral">${esc(val || "Planta")}</span>`
+            },
+            {
+              key: "estado",
+              title: "Estado",
+              render: (val) => `<span class="badge badge-success">${esc(val)}</span>`
+            }
+          ],
+          actions: (row) => `
+          <button class="btn btn-secondary btn-sm btn-print-order" data-id="${esc(row.id)}" title="Imprimir Orden">\uD83D\uDDA8️ Imprimir</button>
+        `
+        });
+      };
+      const renderRecipesTable = () => {
+        const target = container.querySelector("#production-content-area");
+        target.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Fórmulas Químicas y Estructura de Materiales (BOM)</div>
+          </div>
+          <div class="card-body">
+            <div class="d-flex flex-col gap-3">
+              ${recipes.map((r) => {
+          const pt = finishedGoods.find((p) => p.id === r.productoTerminadoId);
+          return `
+                  <div class="card" style="border: 1px solid var(--border-color); margin-bottom: 0;">
+                    <div class="card-header">
+                      <div>
+                        <strong style="color: var(--brand-primary); font-size: 15px;">${esc(r.nombreReceta || r.nombreFormula)}</strong>
+                        <div class="text-xs text-muted">Producto resultante: <strong>${esc(pt ? pt.nombre : "Sin producto vinculado")}</strong> | Rendimiento por lote: <strong>${esc(r.rendimientoLote || r.cantidadProducir)} ${esc(r.unidadMedidaLote || r.unidadMedida || "")}</strong></div>
+                      </div>
+                      <button class="btn btn-primary btn-sm btn-quick-produce" data-receta-id="${r.id}">⚡ Fabricar Este Lote</button>
+                    </div>
+                    <div class="card-body" style="padding: 12px 16px;">
+                      <div class="text-xs font-bold text-muted mb-2">INSUMOS Y MATERIAS PRIMAS CONSUMIDAS POR LOTE:</div>
+                      <div class="table-responsive">
+                        <table class="data-table" style="font-size: 12px;">
+                          <thead>
+                            <tr>
+                              <th>Materia Prima / Insumo</th>
+                              <th class="text-center">Cant. Lote</th>
+                              <th class="text-center">Unidad</th>
+                              <th class="text-center">Merma Esp.</th>
+                              <th class="text-right">Stock Disponible</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${(r.insumos || []).map((ins) => {
+            const mp = rawMaterials.find((m) => m.id === (ins.materiaPrimaId || ins.productoId));
+            const stock = mp ? mp.stock : 0;
+            const isSufficient = stock >= ins.cantidad;
+            return `
+                                <tr>
+                                  <td><strong>${esc(mp ? mp.nombre : "Insumo no encontrado")}</strong> <span class="text-xs text-muted">(${esc(mp ? mp.sku : "-")})</span></td>
+                                  <td class="text-center font-bold">${ins.cantidad}</td>
+                                  <td class="text-center">${esc(ins.unidadMedida || "")}</td>
+                                  <td class="text-center">${ins.mermaEsperada || 0}%</td>
+                                  <td class="text-right">
+                                    <span class="badge ${isSufficient ? "badge-success" : "badge-danger"}">
+                                      ${esc(stock)} ${esc(ins.unidadMedida || "")}
+                                    </span>
+                                  </td>
+                                </tr>
+                              `;
+          }).join("")}
+                          </tbody>
+                        </table>
+                      </div>
+                      ${r.observaciones ? `<div class="text-xs text-muted mt-2"><strong>Notas:</strong> ${esc(r.observaciones)}</div>` : ""}
+                    </div>
+                  </div>
+                `;
+        }).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+      };
+      renderOrdersTable();
+      container.querySelectorAll(".tab-prod-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          container.querySelectorAll(".tab-prod-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const tab = btn.getAttribute("data-tab");
+          if (tab === "orders")
+            renderOrdersTable();
+          else
+            renderRecipesTable();
+        });
+      });
+      container.querySelector("#btn-execute-production").addEventListener("click", () => {
+        this.openExecuteProductionModal(tenantId, recipes, finishedGoods, rawMaterials, () => this.render(container));
+      });
+      bindOnce(container, "production-click", "click", (e) => {
+        const quickBtn = e.target.closest(".btn-quick-produce");
+        if (quickBtn) {
+          const recetaId = quickBtn.getAttribute("data-receta-id");
+          this.openExecuteProductionModal(tenantId, recipes, finishedGoods, rawMaterials, () => this.render(container), recetaId);
+          return;
+        }
+        const printBtn = e.target.closest(".btn-print-order");
+        if (printBtn) {
+          const orderId = printBtn.getAttribute("data-id");
+          const order = orders.find((o) => o.id === orderId);
+          if (order) {
+            const html = PrintTemplates.productionOrder(order);
+            ExportService.printDocument(html, `Orden_Produccion_${esc(order.numeroOrden)}`);
+          }
+        }
+      });
+    },
+    openExecuteProductionModal(tenantId, recipes, finishedGoods, rawMaterials, onCompleted, preselectedRecipeId = null) {
+      if (recipes.length === 0) {
+        Toast.warning("No hay recetas BOM registradas. Debe crear una receta primero.");
+        return;
+      }
+      const selectedRecipe = preselectedRecipeId ? recipes.find((r) => r.id === preselectedRecipeId) : recipes[0];
+      const content = `
+      <form id="execute-production-form">
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Seleccionar Fórmula Maestra (BOM)</label>
+            <select class="form-select" id="sel-production-recipe" name="recetaId">
+              ${recipes.map((r) => `
+                <option value="${esc(r.id)}" ${r.id === selectedRecipe.id ? "selected" : ""}>${esc(r.nombreReceta || r.nombreFormula)}</option>
+              `).join("")}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cantidad a Fabricar (Unidades)</label>
+            <input type="number" step="1" min="1" class="form-control" id="inp-prod-qty" name="cantidad" value="${esc(selectedRecipe.rendimientoLote || selectedRecipe.cantidadProducir || 1)}" required>
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Código de Lote</label>
+            <input type="text" class="form-control" name="loteCodigo" value="" placeholder="Vacío = se genera automáticamente">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Costos Indirectos Adicionales (CIF COP)</label>
+            <input type="number" class="form-control" id="inp-prod-cif" name="costosIndirectos" value="${selectedRecipe.costosIndirectosEstimados || 35000}">
+          </div>
+        </div>
+
+        <!-- EXPLOSIÓN DINÁMICA DE INSUMOS -->
+        <div class="card mb-3" style="background: #f8fafc; border: 1px solid var(--border-color);">
+          <div class="card-header" style="padding: 10px 14px;">
+            <div class="card-title" style="font-size: 13px;">\uD83D\uDCA5 Explosión de Insumos & Verificación de Stock</div>
+          </div>
+          <div class="card-body" style="padding: 12px;" id="explosion-preview-area">
+            <div class="text-xs text-muted">Calculando insumos requeridos...</div>
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label">Observaciones / Registro de Calidad</label>
+          <textarea class="form-control" name="observaciones" rows="2" placeholder="Control de pH, viscosidad o densidad verificado"></textarea>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: "Ejecutar Fabricación en Planta",
+        content,
+        size: "lg",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: "Fabricar & Ingresar a Inventario",
+            class: "btn-primary",
+            id: "btn-confirm-production",
+            onClick: async () => {
+              const form = dialog.querySelector("#execute-production-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              const formData = new FormData(form);
+              const recetaId = formData.get("recetaId");
+              const cantidad = Number(formData.get("cantidad"));
+              const loteCodigo = formData.get("loteCodigo");
+              const cif = Number(formData.get("costosIndirectos") || 0);
+              const observaciones = formData.get("observaciones");
+              const receta = recipes.find((r) => r.id === recetaId);
+              try {
+                dialog.querySelector("#btn-confirm-production").disabled = true;
+                dialog.querySelector("#btn-confirm-production").textContent = "Procesando fabricación...";
+                await ProductionService.executeProductionOrder({
+                  tenantId,
+                  recetaId,
+                  productoTerminadoId: receta.productoTerminadoId,
+                  cantidadProducida: cantidad,
+                  loteCodigo,
+                  costosIndirectosReales: cif,
+                  observaciones
+                });
+                Toast.success("Orden de producción registrada: se consumieron los insumos e ingresó el producto terminado.");
+                Modal.close();
+                if (onCompleted)
+                  onCompleted();
+              } catch (err) {
+                console.error(err);
+                Toast.error(`Error al procesar la producción: ${err.message}`);
+                dialog.querySelector("#btn-confirm-production").disabled = false;
+                dialog.querySelector("#btn-confirm-production").textContent = "Fabricar & Ingresar a Inventario";
+              }
+            }
+          }
+        ]
+      });
+      const updateExplosion = async () => {
+        const recId = dialog.querySelector("#sel-production-recipe").value;
+        const qty = Number(dialog.querySelector("#inp-prod-qty").value) || 1;
+        const previewArea = dialog.querySelector("#explosion-preview-area");
+        const submitBtn = dialog.querySelector("#btn-confirm-production");
+        try {
+          const est = await ProductionService.calculateEstimatedCost(recId, qty);
+          previewArea.innerHTML = `
+          <div class="table-responsive mb-2">
+            <table class="data-table" style="font-size: 11px;">
+              <thead>
+                <tr>
+                  <th>Insumo Químico / Empaque</th>
+                  <th class="text-center">Requerido</th>
+                  <th class="text-right">Stock Disponible</th>
+                  <th class="text-right">Costo Estimado</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${est.desgloseInsumos.map((ins) => `
+                  <tr>
+                    <td><strong>${esc(ins.nombre)}</strong></td>
+                    <td class="text-center font-bold">${ins.cantidadRequerida} ${esc(ins.unidadMedida)}</td>
+                    <td class="text-right">
+                      <span class="badge ${ins.stockSuficiente ? "badge-success" : "badge-danger"}">
+                        ${ins.stockDisponible} ${esc(ins.unidadMedida)}
+                      </span>
+                    </td>
+                    <td class="text-right">${Formatters.currency(ins.costoTotal)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-between items-center text-xs mt-2" style="border-top: 1px dashed #cbd5e1; padding-top: 8px;">
+            <div>
+              <span>Costo Total Estimado: <strong>${Formatters.currency(est.costoTotalEstimado)}</strong></span>
+              <span class="ml-2 text-muted">| Costo Unitario: <strong class="text-success">${Formatters.currency(est.costoUnitarioEstimado)} / un</strong></span>
+            </div>
+            ${!est.todosConStock ? `
+              <span class="badge badge-danger">⚠️ Stock insuficiente en uno o más insumos</span>
+            ` : `
+              <span class="badge badge-success">✓ Stock disponible para producir</span>
+            `}
+          </div>
+        `;
+          if (!est.todosConStock) {
+            submitBtn.disabled = true;
+            submitBtn.title = "Insumos insuficientes en bodega";
+          } else {
+            submitBtn.disabled = false;
+          }
+        } catch (e) {
+          previewArea.innerHTML = `<div class="text-danger text-xs">${e.message}</div>`;
+        }
+      };
+      dialog.querySelector("#sel-production-recipe").addEventListener("change", updateExplosion);
+      dialog.querySelector("#inp-prod-qty").addEventListener("input", updateExplosion);
+      updateExplosion();
+    }
+  };
+
+  // js/modules/purchases.js
+  init_formatters();
+
+  // js/services/purchase-service.js
+  var PURCHASE_TERMS = {
+    CONTADO_BANCO: "Contado (transferencia / banco)",
+    CONTADO_CAJA: "Contado (efectivo de caja)",
+    CREDITO: "Crédito (genera cuenta por pagar)"
+  };
+  var PurchaseService = {
+    async registerPurchase({ tenantId, proveedorId, facturaProveedor, bodegaId, condicion, items }) {
+      if (!proveedorId)
+        throw new Error("Seleccione un proveedor.");
+      if (!items || items.length === 0)
+        throw new Error("Agregue al menos un ítem a la compra.");
+      for (const it of items) {
+        if (!(Number(it.cantidad) > 0))
+          throw new Error(`Cantidad inválida para ${it.nombre}.`);
+        if (!(Number(it.costoUnitario) >= 0))
+          throw new Error(`Costo inválido para ${it.nombre}.`);
+      }
+      if (!PURCHASE_TERMS[condicion])
+        throw new Error("Seleccione la forma de pago.");
+      const total = Math.round(items.reduce((a, i) => a + Number(i.cantidad) * Number(i.costoUnitario), 0) * 100) / 100;
+      const stores = [...new Set([
+        ...KARDEX_TX_STORES,
+        STORES.PURCHASES,
+        STORES.SUPPLIERS,
+        STORES.PAYABLES_CXP,
+        STORES.CASH_SHIFTS,
+        STORES.CASH_MOVEMENTS,
+        STORES.SYSTEM_PARAMS
+      ])];
+      const res = await DB.runTransaction(stores, async (tx) => {
+        const supp = await tx.get(STORES.SUPPLIERS, proveedorId);
+        if (!supp)
+          throw new Error("Proveedor no encontrado.");
+        const fac = String(facturaProveedor || "").trim();
+        if (fac) {
+          const prev = (await tx.getAll(STORES.PURCHASES, tenantId)).find((p) => p.proveedorId === proveedorId && String(p.facturaProveedor || p.consecutivo).trim().toLowerCase() === fac.toLowerCase() && p.estado !== "ANULADA");
+          if (prev)
+            throw new Error(`La factura ${fac} de este proveedor ya fue registrada (${prev.consecutivo}).`);
+        }
+        let turno = null;
+        if (condicion === "CONTADO_CAJA") {
+          turno = (await tx.getAll(STORES.CASH_SHIFTS, tenantId)).find((s) => s.estado === "ABIERTA");
+          if (!turno)
+            throw new Error("Para pagar en efectivo de caja debe haber un turno abierto.");
+        }
+        const n = await tx.nextSequence(tenantId, "COMPRA");
+        const consecutivo = `CP-${String(n).padStart(6, "0")}`;
+        const nombreProv = supp.razonSocial || supp.nombre || "Proveedor";
+        const compra = await tx.put(STORES.PURCHASES, {
+          tenantId,
+          consecutivo,
+          facturaProveedor: fac || null,
+          proveedorId,
+          proveedorNombre: nombreProv,
+          fecha: new Date().toISOString(),
+          total,
+          condicionPago: condicion === "CREDITO" ? "Crédito" : "Contado",
+          condicionDetalle: PURCHASE_TERMS[condicion],
+          estado: "RECIBIDA",
+          bodegaId: bodegaId || null,
+          items: items.map((i) => ({ productoId: i.productoId, nombre: i.nombre, cantidad: Number(i.cantidad), costoUnitario: Number(i.costoUnitario) })),
+          registradoPorId: Session.userId(),
+          registradoPorNombre: Session.userName()
+        });
+        for (const it of compra.items) {
+          await KardexService.applyMovement(tx, {
+            tenantId,
+            productoId: it.productoId,
+            bodegaId,
+            documentoTipo: "COMPRA",
+            documentoNumero: consecutivo,
+            cantidad: it.cantidad,
+            costoUnitario: it.costoUnitario,
+            observacion: `Compra ${consecutivo}${fac ? " (fac. " + fac + ")" : ""} a ${nombreProv}`
+          });
+        }
+        if (condicion === "CREDITO") {
+          const cxp = await tx.put(STORES.PAYABLES_CXP, {
+            tenantId,
+            compraId: compra.id,
+            documento: fac || consecutivo,
+            proveedorId,
+            proveedorNombre: nombreProv,
+            tipoDocumento: "FACTURA_COMPRA",
+            fechaEmision: new Date().toISOString().split("T")[0],
+            fechaVencimiento: new Date(Date.now() + (Number(supp.diasCredito) || 30) * 86400000).toISOString().split("T")[0],
+            valorTotal: total,
+            abonos: 0,
+            saldo: total,
+            diasMora: 0,
+            estado: "AL_DIA",
+            historialPagos: []
+          });
+          compra.cxpId = cxp.id;
+        } else if (turno) {
+          const mov = await CashService.applyMovementTx(tx, {
+            tenantId,
+            turnoId: turno.id,
+            tipo: "EGRESO",
+            monto: total,
+            concepto: `Compra ${consecutivo} a ${nombreProv}`,
+            tercero: nombreProv,
+            refTipo: "COMPRA",
+            refId: compra.id
+          });
+          compra.movimientoCajaId = mov.id;
+        }
+        await tx.put(STORES.PURCHASES, compra);
+        await AuditService.logTx(tx, {
+          tenantId,
+          modulo: "Compras",
+          accion: "CREAR",
+          registroId: consecutivo,
+          campoModificado: PURCHASE_TERMS[condicion],
+          valorNuevo: `$ ${total} - ${nombreProv}`
+        });
+        return compra;
+      });
+      if (condicion === "CONTADO_CAJA")
+        EventBus.emit("cash:shiftChanged");
+      return res;
+    }
+  };
+
+  // js/modules/purchases.js
+  var PurchasesModule = {
+    async render(container) {
+      const tenant = TenantServiceInstance.getActiveTenant();
+      const tenantId = tenant ? tenant.id : "tenant_rayopro";
+      const [purchases, suppliers, products, warehouses] = await Promise.all([
+        DB.getAll(STORES.PURCHASES, tenantId),
+        DB.getAll(STORES.SUPPLIERS, tenantId),
+        DB.getAll(STORES.PRODUCTS, tenantId),
+        DB.getAll(STORES.WAREHOUSES, tenantId)
+      ]);
+      container.innerHTML = `
+      <div class="view-header">
+        <div class="view-title-wrap">
+          <h1>Compras & Abastecimiento</h1>
+          <p>Recepción de materias primas, insumos de empaque y actualización automática de costos en Kardex</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary btn-sm" id="btn-manage-suppliers">\uD83D\uDC65 Directorio Proveedores</button>
+          <button class="btn btn-primary btn-sm" id="btn-new-purchase">\uD83D\uDECD️ Registrar Compra</button>
+        </div>
+      </div>
+
+      <div id="purchases-table-container"></div>
+    `;
+      new DataTable({
+        containerId: "purchases-table-container",
+        data: purchases,
+        columns: [
+          {
+            key: "consecutivo",
+            title: "Factura / Doc.",
+            render: (val) => `<strong style="color: var(--brand-primary);">${esc(val)}</strong>`
+          },
+          {
+            key: "proveedorNombre",
+            title: "Proveedor",
+            render: (val) => `<strong>${esc(val || "Proveedor General")}</strong>`
+          },
+          {
+            key: "fecha",
+            title: "Fecha Emisión",
+            render: (val) => Formatters.date(val)
+          },
+          {
+            key: "total",
+            title: "Valor Total",
+            render: (val) => `<strong>${Formatters.currency(val)}</strong>`
+          },
+          {
+            key: "condicionPago",
+            title: "Condición",
+            render: (val) => `<span class="badge ${val === "Crédito" ? "badge-warning" : "badge-success"}">${esc(val || "Contado")}</span>`
+          },
+          {
+            key: "estado",
+            title: "Estado Recepción",
+            render: (val) => `<span class="badge badge-success">${esc(val || "RECIBIDA")}</span>`
+          }
+        ]
+      });
+      container.querySelector("#btn-new-purchase").addEventListener("click", () => {
+        this.openPurchaseModal(tenantId, suppliers, products, warehouses, () => this.render(container));
+      });
+      container.querySelector("#btn-manage-suppliers").addEventListener("click", () => {
+        this.openSuppliersModal(tenantId, suppliers, () => this.render(container));
+      });
+    },
+    openPurchaseModal(tenantId, suppliers, products, warehouses, onSaved) {
+      let purchaseItems = [];
+      const content = `
+      <form id="purchase-form">
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Proveedor</label>
+            <select class="form-select" id="purch-supplier" name="proveedorId" required>
+              ${suppliers.map((s) => `<option value="${s.id}">${esc(s.razonSocial)} (NIT: ${esc(s.nitCc)}-${s.dv || 0})</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">No. factura o remisión del proveedor</label>
+            <input type="text" class="form-control" name="consecutivo" placeholder="Ej: FE-12345 (recomendado)">
+          </div>
+        </div>
+
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Bodega Destino de Almacenamiento</label>
+            <select class="form-select" name="bodegaDestinoId">
+              ${warehouses.map((w) => `<option value="${w.id}">${esc(w.nombre)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Forma de Pago</label>
+            <select class="form-select" name="condicionPago" id="purch-payment-term">
+              ${Object.entries(PURCHASE_TERMS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+
+        <!-- AGREGAR ÍTEMS A LA COMPRA -->
+        <div class="card mb-3" style="border: 1px solid var(--border-color);">
+          <div class="card-header" style="padding: 10px 14px;">
+            <div class="card-title" style="font-size: 13px;">\uD83D\uDCE6 Ítems Comprados / Materias Primas</div>
+          </div>
+          <div class="card-body" style="padding: 12px;">
+            <div class="form-row mb-2">
+              <div class="form-group mb-0" style="flex: 2;">
+                <select class="form-select" id="purch-item-prod">
+                  ${products.map((p) => `<option value="${p.id}" data-cost="${p.costoPromedio}">${esc(p.nombre)} (${esc(p.unidadMedida)})</option>`).join("")}
+                </select>
+              </div>
+              <div class="form-group mb-0">
+                <input type="number" step="any" min="0.1" class="form-control" id="purch-item-qty" placeholder="Cantidad" value="10">
+              </div>
+              <div class="form-group mb-0">
+                <input type="number" step="any" min="0" class="form-control" id="purch-item-cost" placeholder="Costo unit. (sin IVA)">
+              </div>
+              <div class="form-group mb-0">
+                <button type="button" class="btn btn-secondary" id="btn-add-purch-item">➕ Añadir</button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" style="font-size: 11px;">
+                <thead>
+                  <tr>
+                    <th>Ítem</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-right">Costo Unit.</th>
+                    <th class="text-right">Total</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="purch-items-tbody">
+                  <tr><td colspan="5" class="text-center text-muted" style="padding: 12px;">Sin ítems agregados.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="d-flex justify-between items-center text-xs mt-2" style="border-top: 1px solid #cbd5e1; padding-top: 6px;">
+              <span class="font-bold">TOTAL COMPRA:</span>
+              <strong id="purch-total-lbl" style="font-size: 15px; color: var(--brand-primary);">$ 0</strong>
+            </div>
+          </div>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: "Registrar Entrada de Mercancía / Compra",
+        content,
+        size: "lg",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: "Ingresar Compra a Kardex",
+            class: "btn-primary",
+            onClick: async (dlg, ev) => {
+              const form = dialog.querySelector("#purchase-form");
+              const fd = new FormData(form);
+              ev.target.disabled = true;
+              try {
+                const compra = await PurchaseService.registerPurchase({
+                  tenantId,
+                  proveedorId: fd.get("proveedorId"),
+                  facturaProveedor: fd.get("consecutivo"),
+                  bodegaId: fd.get("bodegaDestinoId"),
+                  condicion: fd.get("condicionPago"),
+                  items: purchaseItems
+                });
+                Toast.success(`Compra ${compra.consecutivo} registrada. Inventario y costos actualizados.`);
+                Modal.close();
+                if (onSaved)
+                  onSaved();
+              } catch (err) {
+                Toast.error(err.message);
+                ev.target.disabled = false;
+              }
+            }
+          }
+        ]
+      });
+      const updatePurchTable = () => {
+        const tbody = dialog.querySelector("#purch-items-tbody");
+        const totalLbl = dialog.querySelector("#purch-total-lbl");
+        if (purchaseItems.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 12px;">Sin ítems agregados.</td></tr>`;
+          totalLbl.textContent = "$ 0";
+          return;
+        }
+        let total = 0;
+        tbody.innerHTML = purchaseItems.map((it, idx) => {
+          const sub = it.cantidad * it.costoUnitario;
+          total += sub;
+          return `
+          <tr>
+            <td><strong>${esc(it.nombre)}</strong></td>
+            <td class="text-center">${it.cantidad}</td>
+            <td class="text-right">${Formatters.currency(it.costoUnitario)}</td>
+            <td class="text-right"><strong>${Formatters.currency(sub)}</strong></td>
+            <td class="text-right"><button type="button" class="btn btn-danger btn-sm purch-del-item" data-idx="${idx}">&times;</button></td>
+          </tr>
+        `;
+        }).join("");
+        totalLbl.textContent = Formatters.currency(total);
+      };
+      const prodSelect = dialog.querySelector("#purch-item-prod");
+      const costInput = dialog.querySelector("#purch-item-cost");
+      const setCostFromSelect = () => {
+        const selected = prodSelect.options[prodSelect.selectedIndex];
+        costInput.value = selected.getAttribute("data-cost") || 0;
+      };
+      prodSelect.addEventListener("change", setCostFromSelect);
+      setCostFromSelect();
+      dialog.querySelector("#btn-add-purch-item").addEventListener("click", () => {
+        const pId = prodSelect.value;
+        const prod = products.find((p) => p.id === pId);
+        const qty = Number(dialog.querySelector("#purch-item-qty").value);
+        const cost = Number(costInput.value);
+        if (!prod)
+          return;
+        if (!(qty > 0)) {
+          Toast.warning("La cantidad debe ser mayor a cero.");
+          return;
+        }
+        if (!(cost >= 0) || costInput.value === "") {
+          Toast.warning("Indique el costo unitario.");
+          return;
+        }
+        purchaseItems.push({
+          productoId: pId,
+          nombre: prod.nombre,
+          cantidad: qty,
+          costoUnitario: cost
+        });
+        updatePurchTable();
+      });
+      dialog.querySelector("#purch-items-tbody").addEventListener("click", (e) => {
+        if (e.target.classList.contains("purch-del-item")) {
+          const idx = Number(e.target.getAttribute("data-idx"));
+          purchaseItems.splice(idx, 1);
+          updatePurchTable();
+        }
+      });
+    },
+    openSuppliersModal(tenantId, suppliers, onUpdated) {
+      const content = `
+      <div class="d-flex justify-between items-center mb-3">
+        <h4 class="text-sm font-bold">Directorio de Proveedores Comerciales</h4>
+        <button class="btn btn-primary btn-sm" id="btn-add-supplier-inner">➕ Nuevo Proveedor</button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" style="font-size: 12px;">
+          <thead>
+            <tr>
+              <th>Razón Social</th>
+              <th>NIT</th>
+              <th>Contacto</th>
+              <th>Días Crédito</th>
+              <th>Categoría</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${suppliers.map((s) => `
+              <tr>
+                <td><strong>${esc(s.razonSocial)}</strong></td>
+                <td>${esc(s.nitCc)}-${s.dv || 0}</td>
+                <td>${esc(s.contacto || "-")} (${esc(s.telefono || "-")})</td>
+                <td>${s.diasCredito || 0} días</td>
+                <td><span class="badge badge-neutral">${esc(s.categoria || "Insumos")}</span></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+      const suppDialog = Modal.show({
+        title: "Gestión de Proveedores",
+        content,
+        size: "lg",
+        footerButtons: [{ label: "Cerrar", class: "btn-secondary", onClick: () => Modal.close() }]
+      });
+      const btnAddInner = suppDialog.querySelector("#btn-add-supplier-inner");
+      if (btnAddInner) {
+        btnAddInner.addEventListener("click", () => {
+          this.openAddSupplierForm(tenantId, async () => {
+            const updatedSuppliers = await DB.getAll(STORES.SUPPLIERS, tenantId);
+            Modal.close();
+            this.openSuppliersModal(tenantId, updatedSuppliers, onUpdated);
+            if (onUpdated)
+              onUpdated();
+          });
+        });
+      }
+    },
+    openAddSupplierForm(tenantId, onSaved) {
+      const content = `
+      <form id="new-supplier-form">
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Razón Social / Nombre *</label>
+            <input type="text" class="form-control" name="razonSocial" required placeholder="Ej: Distribuidora Química S.A.S">
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIT / Cédula</label>
+            <input type="text" class="form-control" name="nitCc" placeholder="Ej: 900123456">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Persona de Contacto</label>
+            <input type="text" class="form-control" name="contacto" placeholder="Ej: María González">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono / WhatsApp</label>
+            <input type="text" class="form-control" name="telefono" placeholder="3001234567">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" name="email" placeholder="proveedor@empresa.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ciudad</label>
+            <input type="text" class="form-control" name="ciudad" value="Medellín">
+          </div>
+        </div>
+        <div class="form-row mb-3">
+          <div class="form-group">
+            <label class="form-label">Categoría de Insumos</label>
+            <select class="form-select" name="categoria">
+              <option value="Insumos Químicos">Insumos Químicos</option>
+              <option value="Empaque y Envases">Empaque y Envases</option>
+              <option value="Materias Primas">Materias Primas</option>
+              <option value="Servicios">Servicios</option>
+              <option value="Logística">Logística</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Días de Crédito</label>
+            <input type="number" class="form-control" name="diasCredito" value="30" min="0">
+          </div>
+        </div>
+      </form>
+    `;
+      const dialog = Modal.show({
+        title: "➕ Nuevo Proveedor",
+        content,
+        size: "md",
+        footerButtons: [
+          { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+          {
+            label: "Guardar Proveedor",
+            class: "btn-primary",
+            onClick: async () => {
+              const form = dialog.querySelector("#new-supplier-form");
+              if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+              }
+              const fd = new FormData(form);
+              const payload = {
+                tenantId,
+                razonSocial: fd.get("razonSocial"),
+                nitCc: fd.get("nitCc") || "0",
+                dv: "0",
+                contacto: fd.get("contacto"),
+                telefono: fd.get("telefono"),
+                email: fd.get("email"),
+                ciudad: fd.get("ciudad"),
+                categoria: fd.get("categoria"),
+                diasCredito: Number(fd.get("diasCredito")) || 30,
+                estado: "ACTIVO",
+                creadoEn: new Date().toISOString()
+              };
+              await DB.add(STORES.SUPPLIERS, payload);
+              Toast.success(`Proveedor "${payload.razonSocial}" registrado.`);
+              Modal.close();
+              if (onSaved)
+                onSaved();
+            }
+          }
+        ]
+      });
+    }
+  };
+
   // js/modules/sales-pos.js
+  init_formatters();
+  init_export_service();
   var MOSTRADOR_NIT = "222222222222";
   var SalesPosModule = {
     cart: [],
@@ -7939,8 +8105,8 @@ Generado por Nexa ERP.`;
             title: "Guía / Transportadora",
             render: (val, row) => `
             <div>
-              <strong style="color: var(--brand-primary);">${val || "POR ASIGNAR"}</strong>
-              <div class="text-xs text-muted">${row.transportadora}</div>
+              <strong style="color: var(--brand-primary);">${esc(val || "POR ASIGNAR")}</strong>
+              <div class="text-xs text-muted">${esc(row.transportadora)}</div>
             </div>
           `
           },
@@ -7949,8 +8115,8 @@ Generado por Nexa ERP.`;
             title: "Destinatario",
             render: (val, row) => `
             <div>
-              <div class="font-bold">${val}</div>
-              <div class="text-xs text-muted">\uD83D\uDCCD ${row.direccion || "-"}</div>
+              <div class="font-bold">${esc(val)}</div>
+              <div class="text-xs text-muted">\uD83D\uDCCD ${esc(row.direccion || "-")}</div>
             </div>
           `
           },
@@ -7979,8 +8145,8 @@ Generado por Nexa ERP.`;
           }
         ],
         actions: (row) => `
-          <button class="btn btn-primary btn-sm btn-print-label" data-id="${row.id}" title="Añadir a Cola de Impresión">➕ Encolar</button>
-          <button class="btn btn-secondary btn-sm btn-update-ship-status" data-id="${row.id}">\uD83D\uDD04 Estado</button>
+          <button class="btn btn-primary btn-sm btn-print-label" data-id="${esc(row.id)}" title="Añadir a Cola de Impresión">➕ Encolar</button>
+          <button class="btn btn-secondary btn-sm btn-update-ship-status" data-id="${esc(row.id)}">\uD83D\uDD04 Estado</button>
         `
       });
       container.querySelector("#btn-new-shipping").addEventListener("click", () => {
@@ -7999,7 +8165,7 @@ Generado por Nexa ERP.`;
       }
       if (!this._hasBoundClick) {
         this._hasBoundClick = true;
-        container.addEventListener("click", (e) => {
+        bindOnce(container, "shipping-click", "click", (e) => {
           const printLabelBtn = e.target.closest(".btn-print-label");
           if (printLabelBtn) {
             const id = printLabelBtn.getAttribute("data-id");
@@ -8037,7 +8203,7 @@ Generado por Nexa ERP.`;
           <div class="form-group">
             <label class="form-label">Cliente Destinatario</label>
             <select class="form-select" name="clienteId" id="ship-client-select" required>
-              ${clients.map((c) => `<option value="${c.id}" data-addr="${c.direccion || ""}">${c.nombre} (${c.ciudad || ""})</option>`).join("")}
+              ${clients.map((c) => `<option value="${c.id}" data-addr="${esc(c.direccion || "")}">${esc(c.nombre)} (${esc(c.ciudad || "")})</option>`).join("")}
             </select>
           </div>
           <div class="form-group">
@@ -8124,7 +8290,7 @@ Generado por Nexa ERP.`;
                 fechaDespacho: formData.get("fechaDespacho"),
                 fechaEntregaEstimada: new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0],
                 estadoCiclo: formData.get("estadoCiclo"),
-                responsable: "Valentina Restrepo",
+                responsable: Session.userName(),
                 cajasTotal: 1,
                 contenidoDescripcion: "Productos de mantenimiento y embellecimiento automotriz",
                 observaciones: formData.get("observaciones") || "Manejar con precaución. Productos de mantenimiento y embellecimiento automotriz."
@@ -8146,8 +8312,8 @@ Generado por Nexa ERP.`;
     openUpdateStatusModal(ship, onUpdated) {
       const content = `
       <div class="form-group mb-3">
-        <label class="form-label">Guía de Transporte: <strong>${ship.numeroGuia}</strong> (${ship.transportadora})</label>
-        <div class="text-xs text-muted mb-2">Destinatario: ${ship.clienteNombre}</div>
+        <label class="form-label">Guía de Transporte: <strong>${esc(ship.numeroGuia)}</strong> (${esc(ship.transportadora)})</label>
+        <div class="text-xs text-muted mb-2">Destinatario: ${esc(ship.clienteNombre)}</div>
       </div>
       <div class="form-group mb-3">
         <label class="form-label">Seleccionar Nuevo Estado del Ciclo:</label>
@@ -8883,6 +9049,193 @@ Generado por Nexa ERP.`;
 
   // js/modules/cxc.js
   init_formatters();
+
+  // js/services/payments-service.js
+  var RECEIPT_METHODS = ["Efectivo", "Transferencia", "Nequi", "Daviplata", "Tarjeta", "Cheque"];
+  var PAYOUT_METHODS = ["Transferencia bancaria", "Nequi / Daviplata", "Efectivo de caja", "Cheque"];
+  var CASH_PAYOUT = "Efectivo de caja";
+  var TX = [
+    STORES.RECEIVABLES_CXC,
+    STORES.PAYABLES_CXP,
+    STORES.CUSTOMERS,
+    STORES.SALES,
+    STORES.SUPPLIERS,
+    STORES.CASH_SHIFTS,
+    STORES.CASH_MOVEMENTS,
+    STORES.SYSTEM_PARAMS,
+    STORES.ATTACHMENTS,
+    STORES.AUDIT_LOGS
+  ];
+  async function openShift(tx, tenantId) {
+    const t = (await tx.getAll(STORES.CASH_SHIFTS, tenantId)).find((s) => s.estado === "ABIERTA");
+    if (!t)
+      throw new Error("Para operaciones en efectivo debe haber un turno de caja abierto.");
+    return t;
+  }
+  function validAmount(monto, saldo) {
+    const v = Math.round(Number(monto) * 100) / 100;
+    if (!Number.isFinite(v) || v <= 0)
+      throw new Error("El valor debe ser mayor a cero.");
+    if (v > Number(saldo) + 0.009)
+      throw new Error(`El valor supera el saldo pendiente (${saldo}).`);
+    return v;
+  }
+  var PaymentsService = {
+    async receivePayment({ tenantId, cxcId, monto, metodo, referencia, comprobanteDataUrl }) {
+      if (!RECEIPT_METHODS.includes(metodo))
+        throw new Error("Seleccione un medio de pago válido.");
+      const res = await DB.runTransaction(TX, async (tx) => {
+        const cxc = await tx.get(STORES.RECEIVABLES_CXC, cxcId);
+        if (!cxc)
+          throw new Error("Cuenta por cobrar no encontrada.");
+        if (cxc.estado === "ANULADA")
+          throw new Error("La cuenta por cobrar está anulada.");
+        const valor = validAmount(monto, cxc.saldo);
+        const n = await tx.nextSequence(tenantId, "RECIBO_CAJA");
+        const recibo = `RC-${String(n).padStart(6, "0")}`;
+        let comprobanteId = null;
+        if (comprobanteDataUrl) {
+          const att = await tx.put(STORES.ATTACHMENTS, { tenantId, refTipo: "ABONO_CXC", refId: cxc.id, descripcion: `${recibo} ${cxc.documento}`, dataUrl: comprobanteDataUrl });
+          comprobanteId = att.id;
+        }
+        let movId = null;
+        if (metodo === "Efectivo") {
+          const turno = await openShift(tx, tenantId);
+          const mov = await CashService.applyMovementTx(tx, {
+            tenantId,
+            turnoId: turno.id,
+            tipo: "INGRESO",
+            monto: valor,
+            concepto: `${recibo} abono ${cxc.documento}`,
+            tercero: cxc.clienteNombre,
+            refTipo: "ABONO_CXC",
+            refId: cxc.id
+          });
+          movId = mov.id;
+        }
+        cxc.abonos = Number(cxc.abonos || 0) + valor;
+        cxc.saldo = Math.max(0, Math.round((Number(cxc.saldo) - valor) * 100) / 100);
+        if (cxc.saldo === 0)
+          cxc.estado = "PAGADA";
+        cxc.historialPagos = cxc.historialPagos || [];
+        cxc.historialPagos.push({
+          recibo,
+          fecha: new Date().toISOString(),
+          monto: valor,
+          metodo,
+          observacion: referencia || "",
+          comprobanteId,
+          movimientoCajaId: movId,
+          usuarioId: Session.userId(),
+          usuarioNombre: Session.userName()
+        });
+        await tx.put(STORES.RECEIVABLES_CXC, cxc);
+        const cli = cxc.clienteId ? await tx.get(STORES.CUSTOMERS, cxc.clienteId) : null;
+        if (cli) {
+          cli.saldoPendiente = Math.max(0, Number(cli.saldoPendiente || 0) - valor);
+          await tx.put(STORES.CUSTOMERS, cli);
+        }
+        const sale = cxc.ventaId ? await tx.get(STORES.SALES, cxc.ventaId) : null;
+        if (sale) {
+          sale.saldoCredito = cxc.saldo;
+          if (cxc.saldo === 0) {
+            sale.estado = "PAGADA";
+            sale.fechaPagoTotal = new Date().toISOString();
+          }
+          await tx.put(STORES.SALES, sale);
+        }
+        await AuditService.logTx(tx, {
+          tenantId,
+          modulo: "Cartera",
+          accion: "ABONO",
+          registroId: cxc.documento,
+          campoModificado: `${recibo} (${metodo})`,
+          valorAnterior: `Saldo ${cxc.saldo + valor}`,
+          valorNuevo: `Saldo ${cxc.saldo}`
+        });
+        return { cxc, recibo };
+      });
+      if (metodo === "Efectivo")
+        EventBus.emit("cash:shiftChanged");
+      return res;
+    },
+    async payPayable({ tenantId, cxpId, monto, metodo, referencia }) {
+      return (await this.payPayables({ tenantId, pagos: [{ cxpId, monto }], metodo, referencia }))[0];
+    },
+    async payPayables({ tenantId, pagos, metodo, referencia }) {
+      if (!PAYOUT_METHODS.includes(metodo))
+        throw new Error("Seleccione un medio de pago válido.");
+      if (!pagos || pagos.length === 0)
+        throw new Error("No hay cuentas por pagar seleccionadas.");
+      const res = await DB.runTransaction(TX, async (tx) => {
+        const out = [];
+        const turno = metodo === CASH_PAYOUT ? await openShift(tx, tenantId) : null;
+        for (const p of pagos) {
+          const cxp = await tx.get(STORES.PAYABLES_CXP, p.cxpId);
+          if (!cxp)
+            throw new Error("Cuenta por pagar no encontrada.");
+          if (cxp.estado === "ANULADA")
+            throw new Error(`La cuenta ${cxp.documento} está anulada.`);
+          const valor = validAmount(p.monto, cxp.saldo);
+          const n = await tx.nextSequence(tenantId, "COMPROBANTE_EGRESO");
+          const egreso = `CE-${String(n).padStart(6, "0")}`;
+          let movId = null;
+          if (turno) {
+            const mov = await CashService.applyMovementTx(tx, {
+              tenantId,
+              turnoId: turno.id,
+              tipo: "EGRESO",
+              monto: valor,
+              concepto: `${egreso} pago ${cxp.documento}`,
+              tercero: cxp.proveedorNombre,
+              refTipo: "PAGO_CXP",
+              refId: cxp.id
+            });
+            movId = mov.id;
+          }
+          cxp.abonos = Number(cxp.abonos || 0) + valor;
+          cxp.saldo = Math.max(0, Math.round((Number(cxp.saldo) - valor) * 100) / 100);
+          if (cxp.saldo === 0)
+            cxp.estado = "PAGADA";
+          cxp.historialPagos = cxp.historialPagos || [];
+          cxp.historialPagos.push({
+            egreso,
+            fecha: new Date().toISOString(),
+            monto: valor,
+            metodo,
+            referencia: referencia || "",
+            movimientoCajaId: movId,
+            usuarioId: Session.userId(),
+            usuarioNombre: Session.userName()
+          });
+          await tx.put(STORES.PAYABLES_CXP, cxp);
+          if (cxp.tipoDocumento === "COMISION_FREELANCE" && cxp.proveedorId) {
+            const fl = await tx.get(STORES.SUPPLIERS, cxp.proveedorId);
+            if (fl) {
+              fl.comisionesTotalesPagadas = Number(fl.comisionesTotalesPagadas || 0) + valor;
+              await tx.put(STORES.SUPPLIERS, fl);
+            }
+          }
+          await AuditService.logTx(tx, {
+            tenantId,
+            modulo: "Cuentas por pagar",
+            accion: "PAGO",
+            registroId: cxp.documento,
+            campoModificado: `${egreso} (${metodo})`,
+            valorAnterior: `Saldo ${cxp.saldo + valor}`,
+            valorNuevo: `Saldo ${cxp.saldo}`
+          });
+          out.push({ cxp, egreso });
+        }
+        return out;
+      });
+      if (metodo === CASH_PAYOUT)
+        EventBus.emit("cash:shiftChanged");
+      return res;
+    }
+  };
+
+  // js/modules/cxc.js
   var CxcModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -8941,12 +9294,12 @@ Generado por Nexa ERP.`;
           {
             key: "documento",
             title: "Factura / Documento",
-            render: (val) => `<strong style="color: var(--brand-primary);">${val}</strong>`
+            render: (val) => `<strong style="color: var(--brand-primary);">${esc(val)}</strong>`
           },
           {
             key: "clienteNombre",
             title: "Cliente Deudor",
-            render: (val) => `<strong>${val}</strong>`
+            render: (val) => `<strong>${esc(val)}</strong>`
           },
           {
             key: "fechaEmision",
@@ -8990,13 +9343,13 @@ Generado por Nexa ERP.`;
         ],
         actions: (row) => `
         <div class="d-flex items-center gap-1 flex-wrap">
-          <button class="btn btn-primary btn-sm btn-cxc-payment" data-id="${row.id}" title="Registrar Abono">\uD83D\uDCB5 Abono</button>
-          <button class="btn btn-sm btn-cxc-whatsapp" data-id="${row.id}" style="background: #25d366; border-color: #25d366; color: #ffffff; font-weight: 700; padding: 3px 8px; font-size: 11px;" title="Enviar cobro por WhatsApp">\uD83D\uDCF2 WhatsApp</button>
-          <button class="btn btn-secondary btn-sm btn-cxc-calendar" data-id="${row.id}" title="Programar recordatorio en Google Calendar">\uD83D\uDCC5 Recordatorio</button>
+          <button class="btn btn-primary btn-sm btn-cxc-payment" data-id="${esc(row.id)}" title="Registrar Abono">\uD83D\uDCB5 Abono</button>
+          <button class="btn btn-sm btn-cxc-whatsapp" data-id="${esc(row.id)}" style="background: #25d366; border-color: #25d366; color: #ffffff; font-weight: 700; padding: 3px 8px; font-size: 11px;" title="Enviar cobro por WhatsApp">\uD83D\uDCF2 WhatsApp</button>
+          <button class="btn btn-secondary btn-sm btn-cxc-calendar" data-id="${esc(row.id)}" title="Programar recordatorio en Google Calendar">\uD83D\uDCC5 Recordatorio</button>
         </div>
       `
       });
-      container.addEventListener("click", (e) => {
+      bindOnce(container, "cxc-click", "click", (e) => {
         const payBtn = e.target.closest(".btn-cxc-payment");
         if (payBtn) {
           const id = payBtn.getAttribute("data-id");
@@ -9023,8 +9376,8 @@ Generado por Nexa ERP.`;
     openPaymentModal(cxcItem, tenantId, clients, onSaved) {
       const content = `
       <div class="mb-3" style="background: var(--bg-surface-solid); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-        <div class="text-xs text-muted">Abono a Documento: <strong>${cxcItem.documento}</strong></div>
-        <div style="font-size: 16px; font-weight: 700; color: var(--text-main); margin: 2px 0;">${cxcItem.clienteNombre}</div>
+        <div class="text-xs text-muted">Abono a Documento: <strong>${esc(cxcItem.documento)}</strong></div>
+        <div style="font-size: 16px; font-weight: 700; color: var(--text-main); margin: 2px 0;">${esc(cxcItem.clienteNombre)}</div>
         <div class="d-flex justify-between items-center text-xs mt-2">
           <span>Saldo Actual Pendiente:</span>
           <strong class="text-danger" style="font-size: 15px;">${Formatters.currency(cxcItem.saldo)}</strong>
@@ -9034,17 +9387,13 @@ Generado por Nexa ERP.`;
       <form id="cxc-payment-form">
         <div class="form-group mb-3">
           <label class="form-label">Monto del Abono ($ COP)</label>
-          <input type="number" step="any" min="1" max="${cxcItem.saldo}" class="form-control" name="montoAbono" value="${cxcItem.saldo}" required>
+          <input type="number" step="any" min="1" max="${esc(cxcItem.saldo)}" class="form-control" name="montoAbono" value="${esc(cxcItem.saldo)}" required>
         </div>
 
         <div class="form-group mb-3">
           <label class="form-label">Forma de Pago del Recaudo</label>
           <select class="form-select" name="metodoPago">
-            <option value="Efectivo">Efectivo (Ingresa a Caja Abierta)</option>
-            <option value="Transferencia Bancolombia">Transferencia Bancolombia</option>
-            <option value="Nequi">Nequi</option>
-            <option value="Daviplata">Daviplata</option>
-            <option value="Cheque">Cheque</option>
+            ${RECEIPT_METHODS.map((m) => `<option value="${m}">${m === "Efectivo" ? "Efectivo (ingresa a la caja abierta)" : m}</option>`).join("")}
           </select>
         </div>
 
@@ -9070,42 +9419,21 @@ Generado por Nexa ERP.`;
               }
               const formData = new FormData(form);
               const abono = Number(formData.get("montoAbono"));
-              const metodo = formData.get("metodoPago");
-              const compB64 = formData.get("comprobanteBase64");
-              const observacion = formData.get("reciboCaja");
-              cxcItem.abonos = (cxcItem.abonos || 0) + abono;
-              cxcItem.saldo = Math.max(0, cxcItem.saldo - abono);
-              if (cxcItem.saldo === 0)
-                cxcItem.estado = "PAGADA";
-              cxcItem.historialPagos = cxcItem.historialPagos || [];
-              cxcItem.historialPagos.push({
-                fecha: new Date().toISOString(),
-                monto: abono,
-                metodo,
-                observacion,
-                comprobanteBase64: compB64 || null
-              });
-              await DB.update(STORES.RECEIVABLES_CXC, cxcItem);
-              const client = clients.find((c) => c.id === cxcItem.clienteId);
-              if (client) {
-                client.saldoPendiente = Math.max(0, (client.saldoPendiente || 0) - abono);
-                await DB.update(STORES.CUSTOMERS, client);
+              let res;
+              try {
+                res = await PaymentsService.receivePayment({
+                  tenantId,
+                  cxcId: cxcItem.id,
+                  monto: abono,
+                  metodo: formData.get("metodoPago"),
+                  referencia: formData.get("reciboCaja"),
+                  comprobanteDataUrl: formData.get("comprobanteBase64") || null
+                });
+              } catch (err) {
+                Toast.error(err.message);
+                return;
               }
-              if (metodo === "Efectivo") {
-                const currentShift = await CashService.getCurrentShift(tenantId);
-                if (currentShift) {
-                  await CashService.addMovement({
-                    tenantId,
-                    turnoId: currentShift.id,
-                    tipo: "INGRESO",
-                    monto: abono,
-                    concepto: `Abono Cartera Doc ${cxcItem.documento} de ${cxcItem.clienteNombre}`,
-                    tercero: cxcItem.clienteNombre,
-                    formaPago: "Efectivo"
-                  });
-                }
-              }
-              Toast.success(`Abono por ${Formatters.currency(abono)} registrado con éxito.`);
+              Toast.success(`Abono ${res.recibo} por ${Formatters.currency(abono)} registrado.`);
               Modal.close();
               if (onSaved)
                 onSaved();
@@ -9265,7 +9593,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             render: (val, row) => {
               const isComision = row.tipoDocumento === "COMISION_FREELANCE";
               return `<div>
-              <strong style="color: ${isComision ? "#7c3aed" : "var(--brand-primary)"};">${val}</strong>
+              <strong style="color: ${isComision ? "#7c3aed" : "var(--brand-primary)"};">${esc(val)}</strong>
               ${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">\uD83E\uDD1D Comisión</span>' : ""}
               ${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + "</div>" : ""}
             </div>`;
@@ -9274,7 +9602,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           {
             key: "proveedorNombre",
             title: "Proveedor",
-            render: (val) => `<strong>${val}</strong>`
+            render: (val) => `<strong>${esc(val)}</strong>`
           },
           {
             key: "fechaEmision",
@@ -9299,11 +9627,11 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           {
             key: "estado",
             title: "Estado",
-            render: (val) => `<span class="badge ${val === "AL_DIA" ? "badge-success" : "badge-danger"}">${val}</span>`
+            render: (val) => `<span class="badge ${val === "AL_DIA" ? "badge-success" : "badge-danger"}">${esc(val)}</span>`
           }
         ],
         actions: (row) => `
-        <button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">\uD83D\uDCB3 Pagar a Proveedor</button>
+        <button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${esc(row.id)}">\uD83D\uDCB3 Pagar a Proveedor</button>
       `
       });
       let filtroActivo = "all";
@@ -9323,16 +9651,16 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           columns: [
             { key: "documento", title: "Referencia", render: (val, row) => {
               const isComision = row.tipoDocumento === "COMISION_FREELANCE";
-              return `<div><strong style="color: ${isComision ? "#7c3aed" : "var(--brand-primary)"};">${val}</strong>${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">\uD83E\uDD1D Comisión</span>' : ""}${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + "</div>" : ""}</div>`;
+              return `<div><strong style="color: ${isComision ? "#7c3aed" : "var(--brand-primary)"};">${esc(val)}</strong>${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">\uD83E\uDD1D Comisión</span>' : ""}${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + "</div>" : ""}</div>`;
             } },
-            { key: "proveedorNombre", title: "Proveedor / Vendedor", render: (val) => `<strong>${val}</strong>` },
+            { key: "proveedorNombre", title: "Proveedor / Vendedor", render: (val) => `<strong>${esc(val)}</strong>` },
             { key: "fechaEmision", title: "Emisión", render: (val) => Formatters.date(val) },
             { key: "fechaVencimiento", title: "Vencimiento", render: (val) => Formatters.date(val) },
             { key: "valorTotal", title: "Valor Total", render: (val) => Formatters.currency(val) },
             { key: "saldo", title: "Saldo Pendiente", render: (val) => `<strong class="text-danger">${Formatters.currency(val)}</strong>` },
-            { key: "estado", title: "Estado", render: (val) => `<span class="badge ${val === "AL_DIA" ? "badge-success" : "badge-danger"}">${val}</span>` }
+            { key: "estado", title: "Estado", render: (val) => `<span class="badge ${val === "AL_DIA" ? "badge-success" : "badge-danger"}">${esc(val)}</span>` }
           ],
-          actions: (row) => `<button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">\uD83D\uDCB3 Pagar</button>`
+          actions: (row) => `<button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${esc(row.id)}">\uD83D\uDCB3 Pagar</button>`
         });
         container.querySelectorAll(".btn-cxp-filter").forEach((b) => {
           b.style.fontWeight = b.getAttribute("data-filter") === filtro ? "700" : "400";
@@ -9341,7 +9669,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       container.querySelectorAll(".btn-cxp-filter").forEach((btn) => {
         btn.addEventListener("click", () => renderTable(btn.getAttribute("data-filter")));
       });
-      container.addEventListener("click", (e) => {
+      bindOnce(container, "cxp-click", "click", (e) => {
         const payBtn = e.target.closest(".btn-cxp-pay");
         if (payBtn) {
           const id = payBtn.getAttribute("data-id");
@@ -9352,9 +9680,9 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
     },
     openPaySupplierModal(cxpItem, onSaved) {
       const content = `
-      <div class="mb-3" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-        <div class="text-xs text-muted">Pago a Proveedor: <strong>${cxpItem.proveedorNombre}</strong></div>
-        <div style="font-size: 15px; font-weight: 700; margin: 2px 0;">Factura: ${cxpItem.documento}</div>
+      <div class="mb-3" style="background: var(--bg-surface-solid); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+        <div class="text-xs text-muted">Pago a Proveedor: <strong>${esc(cxpItem.proveedorNombre)}</strong></div>
+        <div style="font-size: 15px; font-weight: 700; margin: 2px 0;">Factura: ${esc(cxpItem.documento)}</div>
         <div class="text-xs text-danger font-bold mt-1">Saldo a Liquidar: ${Formatters.currency(cxpItem.saldo)}</div>
       </div>
 
@@ -9366,15 +9694,12 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         <div class="form-group mb-3">
           <label class="form-label">Cuenta Bancaria de Origen / Medio</label>
           <select class="form-select" name="medio">
-            <option value="Bancolombia Cuenta Corriente">Bancolombia Cuenta Corriente</option>
-            <option value="Davivienda Ahorros">Davivienda Ahorros</option>
-            <option value="Transferencia Nequi">Transferencia Nequi</option>
-            <option value="Efectivo Caja">Efectivo Caja</option>
+            ${PAYOUT_METHODS.map((m) => `<option value="${m}">${m === "Efectivo de caja" ? "Efectivo de caja (sale de la caja abierta)" : m}</option>`).join("")}
           </select>
         </div>
         <div class="form-group mb-3">
           <label class="form-label">Número de Comprobante / Aprobación</label>
-          <input type="text" class="form-control" name="comprobante" required placeholder="Ej: TRANSF-982347">
+          <input type="text" class="form-control" name="comprobante" placeholder="Ej: número de transferencia (opcional)">
         </div>
       </form>
     `;
@@ -9394,11 +9719,18 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
               }
               const formData = new FormData(form);
               const pago = Number(formData.get("monto"));
-              cxpItem.abonos = (cxpItem.abonos || 0) + pago;
-              cxpItem.saldo = Math.max(0, cxpItem.saldo - pago);
-              if (cxpItem.saldo === 0)
-                cxpItem.estado = "PAGADA";
-              await DB.update(STORES.PAYABLES_CXP, cxpItem);
+              try {
+                await PaymentsService.payPayable({
+                  tenantId: cxpItem.tenantId,
+                  cxpId: cxpItem.id,
+                  monto: pago,
+                  metodo: formData.get("medio"),
+                  referencia: formData.get("comprobante")
+                });
+              } catch (err) {
+                Toast.error(err.message);
+                return;
+              }
               Toast.success(`Pago por ${Formatters.currency(pago)} registrado con éxito.`);
               Modal.close();
               if (onSaved)
@@ -9694,19 +10026,19 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             render: (val, row) => `
             <div>
               <strong>${Formatters.date(val)}</strong>
-              <div class="text-xs text-muted">${row.hora || ""}</div>
+              <div class="text-xs text-muted">${esc(row.hora || "")}</div>
             </div>
           `
           },
           {
             key: "usuarioNombre",
             title: "Usuario Operador",
-            render: (val) => `<strong>${val || "Sistema"}</strong>`
+            render: (val) => `<strong>${esc(val || "Sistema")}</strong>`
           },
           {
             key: "modulo",
             title: "Módulo",
-            render: (val) => `<span class="badge badge-info">${val}</span>`
+            render: (val) => `<span class="badge badge-info">${esc(val)}</span>`
           },
           {
             key: "accion",
@@ -9719,28 +10051,28 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 AUTORIZAR: "badge-primary",
                 LOGIN: "badge-neutral"
               };
-              return `<span class="badge ${map[val] || "badge-neutral"}">${val}</span>`;
+              return `<span class="badge ${map[val] || "badge-neutral"}">${esc(val)}</span>`;
             }
           },
           {
             key: "registroId",
             title: "Registro Afectado",
-            render: (val) => `<code>${val || "-"}</code>`
+            render: (val) => `<code>${esc(val || "-")}</code>`
           },
           {
             key: "campoModificado",
             title: "Detalle / Campo",
-            render: (val) => `<strong>${val || "-"}</strong>`
+            render: (val) => `<strong>${esc(val || "-")}</strong>`
           },
           {
             key: "valorAnterior",
             title: "Valor Anterior",
-            render: (val) => `<span class="text-muted" style="text-decoration: line-through;">${val || "-"}</span>`
+            render: (val) => `<span class="text-muted" style="text-decoration: line-through;">${esc(val || "-")}</span>`
           },
           {
             key: "valorNuevo",
             title: "Valor Nuevo",
-            render: (val) => `<strong class="text-primary">${val || "-"}</strong>`
+            render: (val) => `<strong class="text-primary">${esc(val || "-")}</strong>`
           }
         ]
       });
@@ -9951,12 +10283,15 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         ExportService.exportToCSV(customers, "Clientes_Directorio_Excel");
       });
       container.querySelector("#btn-print-executive-report").addEventListener("click", () => {
-        const totalVentas = sales.reduce((a, s) => a + Number(s.total || 0), 0);
-        const totalGastos = expenses.reduce((a, e) => a + Number(e.valor || 0), 0);
-        const invValorizado = products.reduce((a, p) => a + p.stock * p.costoPromedio, 0);
-        const carteraActiva = cxc.reduce((a, c) => a + Number(c.saldo || 0), 0);
-        const margenEst = Math.max(0, totalVentas * 0.45 - totalGastos);
-        const header = PrintTemplates.getHeader("INFORME EJECUTIVO DE GESTIÓN GERENCIAL", "INF-2026-01", new Date().toISOString());
+        const P = FinanceService.periods();
+        const periodo = P.anio;
+        const fin = FinanceService.summarize({ sales, expenses, products, from: periodo.from, to: periodo.to });
+        const totalVentas = fin.ventasNetas;
+        const totalGastos = fin.gastos;
+        const invValorizado = products.reduce((a, p) => a + Number(p.stock || 0) * Number(p.costoPromedio || 0), 0);
+        const carteraActiva = cxc.filter((c) => c.estado !== "ANULADA").reduce((a, c) => a + Number(c.saldo || 0), 0);
+        const margenEst = fin.utilidadOperativa;
+        const header = PrintTemplates.getHeader("INFORME EJECUTIVO DE GESTIÓN", `INF-${new Date().getFullYear()}`, new Date().toISOString());
         const maxVal = Math.max(totalVentas, totalGastos, carteraActiva, 1);
         const wVentas = Math.round(totalVentas / maxVal * 100);
         const wGastos = Math.round(totalGastos / maxVal * 100);
@@ -9966,7 +10301,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
 
           <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
             <h3 style="margin: 0 0 10px 0; color: #0f172a; font-size: 15px;">Resumen Ejecutivo del Período</h3>
-            <p style="margin: 0; color: #475569; font-size: 13px;">Consolidado contable de operaciones, ingresos de venta, flujo de inventario y estado financiero para <strong>${tenant.nombreComercial}</strong>.</p>
+            <p style="margin: 0; color: #475569; font-size: 13px;">Consolidado contable de operaciones, ingresos de venta, flujo de inventario y estado financiero para <strong>${esc(tenant.nombreComercial)}</strong>.</p>
           </div>
 
           <!-- GRÁFICO GERENCIAL INCRUSTADO (HTML/CSS Puro) -->
@@ -9974,7 +10309,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             <h4 style="margin: 0 0 15px 0; font-size: 13px; color: #1d1d1f; border-bottom: 1px solid #eee; padding-bottom: 8px;">Indicadores Financieros - Gráfico Comparativo</h4>
             
             <div style="display: flex; align-items: center; margin-bottom: 10px;">
-              <div style="width: 120px; font-size: 12px; font-weight: bold; color: #0284c7;">Facturación</div>
+              <div style="width: 120px; font-size: 12px; font-weight: bold; color: #0284c7;">Ventas netas</div>
               <div style="flex: 1; background: #e2e8f0; height: 16px; border-radius: 8px; overflow: hidden; margin: 0 10px;">
                 <div style="width: ${wVentas}%; background: #0284c7; height: 100%;"></div>
               </div>
@@ -10008,14 +10343,24 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             </thead>
             <tbody>
               <tr>
-                <td><strong>Facturación Total Bruta</strong></td>
+                <td><strong>Ventas netas (sin IVA)</strong></td>
                 <td class="text-right font-bold" style="color: #0284c7;">${Formatters.currency(totalVentas)}</td>
-                <td>${sales.length} facturas y remisiones emitidas</td>
+                <td>${fin.n} ventas del año (excluye cotizaciones y anuladas). IVA generado: ${Formatters.currency(fin.iva)}</td>
+              </tr>
+              <tr>
+                <td><strong>Costo de la mercancía vendida</strong></td>
+                <td class="text-right font-bold" style="color: #ef4444;">-${Formatters.currency(fin.costoVentas)}</td>
+                <td>${fin.costoEstimado ? "Incluye ventas antiguas con costo estimado al costo promedio actual" : "Costo registrado en Kardex al momento de cada venta"}</td>
+              </tr>
+              <tr>
+                <td><strong>Comisiones freelance</strong></td>
+                <td class="text-right font-bold" style="color: #ef4444;">-${Formatters.currency(fin.comisiones)}</td>
+                <td>Causadas en ventas del año</td>
               </tr>
               <tr>
                 <td><strong>Gastos Operativos & Administrativos</strong></td>
                 <td class="text-right font-bold" style="color: #ef4444;">-${Formatters.currency(totalGastos)}</td>
-                <td>Servicios, nómina, combustible y fletes</td>
+                <td>Gastos registrados en el año</td>
               </tr>
               <tr>
                 <td><strong>Inventario Físico Valorizado</strong></td>
@@ -10027,17 +10372,17 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 <td class="text-right font-bold" style="color: #f59e0b;">${Formatters.currency(carteraActiva)}</td>
                 <td>Créditos comerciales vigentes</td>
               </tr>
-              <tr style="background: #ecfdf5;">
-                <td><strong>Utilidad Operativa Estimada</strong></td>
-                <td class="text-right font-bold" style="color: #059669; font-size: 15px;">${Formatters.currency(margenEst)}</td>
-                <td>Margen bruto estimado ~42% tras egresos</td>
+              <tr style="background: ${margenEst >= 0 ? "#ecfdf5" : "#fef2f2"};">
+                <td><strong>Utilidad operativa del año</strong></td>
+                <td class="text-right font-bold" style="color: ${margenEst >= 0 ? "#059669" : "#dc2626"}; font-size: 15px;">${Formatters.currency(margenEst)}</td>
+                <td>Ventas netas − costo − comisiones − gastos${fin.margenBrutoPct !== null ? ` · margen bruto ${fin.margenBrutoPct.toFixed(1)}%` : ""}</td>
               </tr>
             </tbody>
           </table>
 
           <div class="doc-footer" style="margin-top: 40px;">
           <p>Informe generado confidencialmente para la junta directiva y gerencia general.</p>
-          <p style="margin-top: 4px; font-size: 10px;">Software Nexa ERP Multiempresa • Licenciado para ${tenant.razonSocial}</p>
+          <p style="margin-top: 4px; font-size: 10px;">Cifras de gestión interna; no reemplazan los estados financieros elaborados por el contador.</p>
         </div>
       `;
         ExportService.printDocument(reportHtml, "Informe_Ejecutivo_Nexa");
@@ -10046,6 +10391,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   };
 
   // js/modules/settings.js
+  init_formatters();
   var SettingsModule = {
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
@@ -10070,18 +10416,20 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           <div>
             <div class="text-xs font-bold text-muted">EMPRESA ACTIVA ACTUAL:</div>
             <div style="font-size: 16px; font-weight: 800; color: var(--brand-primary); margin-top: 2px;">
-              ${tenant.nombreComercial} (NIT: ${tenant.nit}-${tenant.dv})
+              ${esc(tenant.nombreComercial)} (NIT: ${esc(tenant.nit)}-${tenant.dv})
             </div>
           </div>
           <div class="d-flex items-center gap-2 flex-wrap">
+            ${isDev ? `
             <label class="text-xs font-bold text-muted">CONMUTAR EMPRESA:</label>
             <select class="form-select" id="sel-switch-tenant" style="width: auto; font-size: 13px; font-weight: 600;">
               ${allTenants.map((t) => `
                 <option value="${t.id}" ${t.id === tenant.id ? "selected" : ""}>
-                  ${t.nombreComercial} (${t.ciudad})
+                  ${esc(t.nombreComercial)} (${esc(t.ciudad)})
                 </option>
               `).join("")}
             </select>
+            ` : ""}
             ${isDev ? `
               <button type="button" class="btn btn-secondary btn-sm" id="btn-create-tenant" title="Crear nueva organización">
                 \uD83C\uDFE2 + Nueva Empresa
@@ -10110,22 +10458,22 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">Nombre Comercial de la Empresa</label>
-                    <input type="text" class="form-control" name="nombreComercial" required value="${tenant.nombreComercial}">
+                    <input type="text" class="form-control" name="nombreComercial" required value="${esc(tenant.nombreComercial)}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Razón Social Legal</label>
-                    <input type="text" class="form-control" name="razonSocial" required value="${tenant.razonSocial}">
+                    <input type="text" class="form-control" name="razonSocial" required value="${esc(tenant.razonSocial)}">
                   </div>
                 </div>
 
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">NIT (Sin dígito de verificación)</label>
-                    <input type="text" class="form-control" id="inp-tenant-nit" name="nit" required value="${tenant.nit}">
+                    <input type="text" class="form-control" id="inp-tenant-nit" name="nit" required value="${esc(tenant.nit)}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Dígito de Verificación (DV DIAN)</label>
-                    <input type="text" class="form-control" id="inp-tenant-dv" name="dv" readonly value="${tenant.dv}" style="background: #f1f5f9; font-weight: bold;">
+                    <input type="text" class="form-control" id="inp-tenant-dv" name="dv" readonly value="${esc(tenant.dv)}" style="font-weight: bold;">
                   </div>
                 </div>
 
@@ -10147,39 +10495,73 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">Dirección Fiscal / Sede Principal</label>
-                    <input type="text" class="form-control" name="direccion" value="${tenant.direccion || ""}">
+                    <input type="text" class="form-control" name="direccion" value="${esc(tenant.direccion || "")}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Ciudad</label>
-                    <input type="text" class="form-control" name="ciudad" value="${tenant.ciudad || ""}">
+                    <input type="text" class="form-control" name="ciudad" value="${esc(tenant.ciudad || "")}">
                   </div>
                 </div>
 
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">Departamento</label>
-                    <input type="text" class="form-control" name="departamento" value="${tenant.departamento || "Antioquia"}">
+                    <input type="text" class="form-control" name="departamento" value="${esc(tenant.departamento || "Antioquia")}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Teléfono Fijo / PBX</label>
-                    <input type="text" class="form-control" name="telefono" value="${tenant.telefono || ""}">
+                    <input type="text" class="form-control" name="telefono" value="${esc(tenant.telefono || "")}">
                   </div>
                 </div>
 
                 <div class="form-row mb-3">
                   <div class="form-group">
                     <label class="form-label">WhatsApp Comercial</label>
-                    <input type="text" class="form-control" name="whatsapp" value="${tenant.whatsapp || ""}">
+                    <input type="text" class="form-control" name="whatsapp" value="${esc(tenant.whatsapp || "")}">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Correo Electrónico Oficial</label>
-                    <input type="email" class="form-control" name="email" value="${tenant.email || ""}">
+                    <input type="email" class="form-control" name="email" value="${esc(tenant.email || "")}">
                   </div>
                 </div>
 
-                <div class="form-group mb-0">
-                  <label class="form-label">Texto de Resolución de Facturación (Pie de Documento)</label>
-                  <input type="text" class="form-control" name="resolucionFacturacion" value="${tenant.resolucionFacturacion || ""}">
+                <div class="form-row mb-3">
+                  <div class="form-group">
+                    <label class="form-label">Prefijo de ventas</label>
+                    <input type="text" class="form-control" name="prefijoVenta" maxlength="6" value="${esc(tenant.prefijoVenta || "")}" placeholder="Ej: RP">
+                    <div class="form-help">Numeración: ${esc(tenant.prefijoVenta || "V")}-000001</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Prefijo de cotizaciones</label>
+                    <input type="text" class="form-control" name="prefijoCotizacion" maxlength="6" value="${esc(tenant.prefijoCotizacion || "COT")}">
+                  </div>
+                </div>
+                <div class="form-row mb-3">
+                  <div class="form-group">
+                    <label class="form-label">WhatsApp de gerencia (reportes de cierre)</label>
+                    <input type="text" class="form-control" name="whatsappGerencia" value="${esc(tenant.whatsappGerencia || "")}" placeholder="Ej: 3001234567">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Días de validez de cotizaciones</label>
+                    <input type="number" min="1" class="form-control" name="diasValidezCotizacion" value="${esc(tenant.diasValidezCotizacion || 15)}">
+                  </div>
+                </div>
+                <div class="form-row mb-3">
+                  <div class="form-group">
+                    <label class="form-label">Firma en órdenes de producción: nombre</label>
+                    <input type="text" class="form-control" name="firmaNombre" value="${esc(tenant.firmaNombre || "")}">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Cargo</label>
+                    <input type="text" class="form-control" name="firmaCargo" value="${esc(tenant.firmaCargo || "")}">
+                  </div>
+                </div>
+                <div class="form-group mb-3">
+                  <label class="form-label">Pie de página de documentos</label>
+                  <input type="text" class="form-control" name="piePaginaDocumentos" value="${esc(tenant.piePaginaDocumentos || "")}" placeholder="Ej: Gracias por su compra. Garantía de 30 días.">
+                </div>
+                <div class="alert alert-info text-xs mb-0">
+                  Los documentos de venta se imprimen como <strong>documento interno</strong>. La facturación electrónica requiere un proveedor tecnológico autorizado por la DIAN (pendiente de integración); por eso no se configura aquí una resolución de facturación.
                 </div>
               </div>
             </div>
@@ -10287,15 +10669,16 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             <!-- NOMBRES CONFIGURABLES DE LAS 5 LISTAS DE PRECIOS -->
             <div class="card" style="margin-bottom: 0;">
               <div class="card-header">
-                <div class="card-title">Personalización de las 5 Listas de Precios</div>
+                <div class="card-title">Listas de precios</div>
               </div>
               <div class="card-body">
-                <p class="text-xs text-muted mb-3">Personalice el nombre comercial de cada una de las 5 listas de precios del sistema según el modelo de negocio.</p>
+                <p class="text-xs text-muted mb-3">Nombre de cada lista y si sus precios <strong>ya incluyen IVA</strong> (el cliente paga el precio de lista y el IVA se discrimina dentro) o si el IVA se <strong>suma</strong> al precio.</p>
                 <div class="d-flex flex-col gap-2">
-                  ${priceLists.map((pl, idx) => `
+                  ${[...priceLists].sort((a, b) => (a.orden || 0) - (b.orden || 0)).map((pl) => `
                     <div class="form-row" style="align-items: center;">
-                      <div style="font-weight: 700; font-size: 12px; color: var(--brand-primary); width: 80px;">Lista ${idx + 1}:</div>
-                      <input type="text" class="form-control" name="plist_name_${pl.id}" value="${pl.nombre}" required style="flex: 1;">
+                      <div style="font-weight: 700; font-size: 12px; color: var(--brand-primary); width: 40px;">${esc(PricingService.codeOf(pl) || "-")}</div>
+                      <input type="text" class="form-control" name="plist_name_${esc(pl.id)}" value="${esc(pl.nombre)}" required style="flex: 1;">
+                      <label class="d-flex items-center gap-1 text-xs" style="white-space: nowrap;"><input type="checkbox" name="plist_iva_${esc(pl.id)}" ${pl.incluyeIva ? "checked" : ""}> IVA incluido</label>
                     </div>
                   `).join("")}
                 </div>
@@ -10348,8 +10731,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   ${warehouses.map((w) => `
                     <div class="d-flex justify-between items-center text-xs" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
                       <div>
-                        <strong>${w.nombre}</strong>
-                        <div class="text-muted">${w.codigo}</div>
+                        <strong>${esc(w.nombre)}</strong>
+                        <div class="text-muted">${esc(w.codigo)}</div>
                       </div>
                       <span class="badge ${w.esPrincipal ? "badge-info" : "badge-neutral"}">${w.esPrincipal ? "Principal" : "Secundaria"}</span>
                     </div>
@@ -10363,11 +10746,13 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         </div>
       </form>
     `;
-      container.querySelector("#sel-switch-tenant").addEventListener("change", async (e) => {
-        await TenantServiceInstance.switchTenant(e.target.value);
-        Toast.success("Empresa conmutada con éxito. Tema e identidad actualizados.");
-        this.render(container);
-      });
+      const selTenant = container.querySelector("#sel-switch-tenant");
+      if (selTenant)
+        selTenant.addEventListener("change", async (e) => {
+          await TenantServiceInstance.switchTenant(e.target.value);
+          Toast.success("Empresa conmutada con éxito. Tema e identidad actualizados.");
+          this.render(container);
+        });
       const btnCreateTenant = container.querySelector("#btn-create-tenant");
       if (btnCreateTenant) {
         btnCreateTenant.addEventListener("click", () => {
@@ -10463,7 +10848,13 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           telefono: formData.get("telefono"),
           whatsapp: formData.get("whatsapp"),
           email: formData.get("email"),
-          resolucionFacturacion: formData.get("resolucionFacturacion"),
+          prefijoVenta: String(formData.get("prefijoVenta") || tenant.prefijoVenta || "V").trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "V",
+          prefijoCotizacion: String(formData.get("prefijoCotizacion") || "COT").trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "COT",
+          whatsappGerencia: String(formData.get("whatsappGerencia") || "").replace(/\D/g, ""),
+          diasValidezCotizacion: Number(formData.get("diasValidezCotizacion")) || 15,
+          firmaNombre: formData.get("firmaNombre"),
+          firmaCargo: formData.get("firmaCargo"),
+          piePaginaDocumentos: formData.get("piePaginaDocumentos"),
           colores: {
             primary: formData.get("colorPrimary"),
             primaryHover: formData.get("colorPrimary"),
@@ -10480,9 +10871,13 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         await TenantServiceInstance.updateTenant(updatedTenant);
         for (const pl of priceLists) {
           const newName = formData.get(`plist_name_${pl.id}`);
-          if (newName && newName !== pl.nombre) {
-            pl.nombre = newName;
+          const incl = !!formData.get(`plist_iva_${pl.id}`);
+          if (newName && newName !== pl.nombre || incl !== !!pl.incluyeIva) {
+            const antes = `${pl.nombre} (${pl.incluyeIva ? "IVA incluido" : "+IVA"})`;
+            pl.nombre = newName || pl.nombre;
+            pl.incluyeIva = incl;
             await DB.update(STORES.PRICE_LISTS, pl);
+            await AuditService.log({ modulo: "Configuración", accion: "MODIFICAR", registroId: pl.id, campoModificado: "Lista de precios", valorAnterior: antes, valorNuevo: `${pl.nombre} (${incl ? "IVA incluido" : "+IVA"})` });
           }
         }
         Toast.success("Configuración empresarial y listas de precios guardadas exitosamente.");
@@ -10510,7 +10905,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           </div>
           <div class="form-group">
             <label class="form-label">DV Calculado</label>
-            <input type="text" class="form-control" id="modal-tenant-dv" name="dv" readonly value="-" style="background: #f1f5f9; font-weight: bold;">
+            <input type="text" class="form-control" id="modal-tenant-dv" name="dv" readonly value="-" style="font-weight: bold;">
           </div>
         </div>
 
@@ -10575,14 +10970,14 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 departamento: formData.get("departamento"),
                 telefono: formData.get("telefono"),
                 whatsapp: formData.get("telefono"),
-                email: `contacto@${formData.get("nombreComercial").toLowerCase().replace(/\s+/g, "")}.com`,
+                email: "",
                 colores: {
                   primary: colorPrim,
                   primaryHover: colorPrim,
                   secondary: "#f59e0b",
                   accent: colorPrim
                 },
-                resolucionFacturacion: "Resolución DIAN No. Pendiente por asignar",
+                resolucionFacturacion: "",
                 moneda: "COP",
                 esDemo: false
               };
@@ -10611,121 +11006,215 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   };
 
   // js/modules/backup.js
+  init_formatters();
   var BackupModule = {
     async render(container) {
+      const lastBackup = await DB.getParam("ultimo_respaldo", null);
       container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
-          <h1>Respaldo y Recuperación de Información</h1>
-          <p>Generación de copias de seguridad portables (JSON) y restauración segura de bases de datos</p>
+          <h1>Respaldo y Restauración</h1>
+          <p>Copias de seguridad completas en formato JSON</p>
         </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        
-        <!-- EXPORTAR COPIA DE SEGURIDAD -->
+      <div class="alert alert-info mb-3" style="font-size: 12px; line-height: 1.5;">
+        ℹ️ NexaAdmin guarda la información <strong>solo en este navegador de este equipo</strong>. Descargue respaldos con frecuencia y guárdelos fuera del computador
+        (memoria USB o nube personal). Los respaldos contienen datos de clientes y deben tratarse como información confidencial.
+        ${lastBackup ? `<br>Último respaldo descargado: <strong>${esc(Formatters.dateTime(lastBackup))}</strong>` : "<br><strong>Aún no se ha descargado ningún respaldo manual en este equipo.</strong>"}
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         <div class="card" style="margin-bottom: 0;">
           <div class="card-header">
-            <div class="card-title">\uD83D\uDCBE Exportar Respaldo Completo</div>
-            <span class="badge badge-success">Seguridad</span>
+            <div class="card-title">\uD83D\uDCBE Descargar respaldo completo</div>
           </div>
           <div class="card-body">
             <p class="text-xs text-muted mb-4" style="line-height: 1.5;">
-              Genera un archivo con formato <code>.json</code> que contiene la totalidad de datos del sistema: clientes, catálogo de productos, inventario Kardex, recetas BOM, ventas, órdenes de producción, cuentas por cobrar, cuentas por pagar y auditoría.
+              Incluye clientes, catálogo, inventario, recetas, ventas, caja, cartera, cuentas por pagar, comprobantes y auditoría.
+              Las contraseñas viajan como hash (no legibles).
             </p>
-            <button class="btn btn-primary" id="btn-export-backup" style="width: 100%; padding: 12px;">
-              ⬇️ Descargar Archivo de Respaldo (.JSON)
-            </button>
+            <button class="btn btn-primary" id="btn-export-backup" style="width: 100%; padding: 12px;">⬇️ Descargar respaldo (.json)</button>
           </div>
         </div>
 
-        <!-- RESTAURAR / SINCRONIZAR COPIA DE SEGURIDAD -->
         <div class="card" style="margin-bottom: 0;">
           <div class="card-header">
-            <div class="card-title">\uD83D\uDCE5 Sincronizar / Restaurar JSON</div>
-            <span class="badge badge-warning">Cuidado</span>
+            <div class="card-title">\uD83D\uDCE5 Restaurar desde un respaldo</div>
+            <span class="badge badge-danger">Reemplaza todo</span>
           </div>
           <div class="card-body">
-            <p class="text-xs text-muted mb-4" style="line-height: 1.5;">
-              Permite cargar un archivo <code>.json</code> previamente generado. <strong>Nota:</strong> Los datos se fusionarán (Upsert); los registros nuevos se añadirán y los existentes se actualizarán si el JSON contiene una versión más reciente.
+            <p class="text-xs text-muted mb-3" style="line-height: 1.5;">
+              <strong>Toda la información actual de este equipo se reemplazará</strong> por la del archivo. Antes de hacerlo se descargará
+              automáticamente un respaldo del estado actual. Úselo para pasar la operación a otro computador o recuperar información.
             </p>
-            
             <div class="form-group mb-3">
-              <label class="form-label text-xs">Seleccionar Archivo JSON de Respaldo:</label>
-              <input type="file" id="inp-restore-file" accept=".json" class="form-control" style="font-size: 12px;">
+              <input type="file" id="inp-restore-file" accept=".json,application/json" class="form-control" style="font-size: 12px;">
             </div>
-
-            <button class="btn btn-secondary" id="btn-restore-backup" style="width: 100%; padding: 12px;" disabled>
-              \uD83D\uDD04 Validar y Restaurar Datos
-            </button>
+            <div id="restore-summary" class="text-xs mb-3"></div>
+            <button class="btn btn-danger" id="btn-restore-backup" style="width: 100%; padding: 12px;" disabled>\uD83D\uDD04 Restaurar (reemplazar información)</button>
           </div>
         </div>
-
-      </div>
-
-      <div class="alert alert-info mt-4" style="font-size: 12px;">
-        \uD83D\uDEE1️ <strong>Directriz de Seguridad:</strong> Por diseño de seguridad, este software no incluye opciones de "Borrar Todo" ni "Restablecimiento de Fábrica" para prevenir eliminaciones masivas accidentales o pérdidas irrecuperables de información contable.
       </div>
     `;
       container.querySelector("#btn-export-backup").addEventListener("click", async () => {
-        try {
-          Toast.info("Generando copia de respaldo íntegra...");
-          const backupData = await DB.exportBackup();
-          const jsonStr = JSON.stringify(backupData, null, 2);
-          const blob = new Blob([jsonStr], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const currentUser = AuthServiceInstance.getCurrentUser()?.nombre.replace(/\\s+/g, "") || "Usuario";
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `NexaERP_Sync_${currentUser}_${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          Toast.success("Copia de respaldo descargada con éxito.");
-        } catch (err) {
-          Toast.error("Error al generar respaldo: " + err.message);
+        const ok = await DB.downloadAutoBackup(`Manual_${AuthServiceInstance.getCurrentUser()?.usuario || "usuario"}`);
+        if (ok) {
+          await DB.setParam("ultimo_respaldo", new Date().toISOString());
+          await AuditService.log({ modulo: "Respaldo", accion: "EXPORTAR", campoModificado: "Respaldo completo", valorNuevo: "Descargado" });
+          Toast.success("Respaldo descargado.");
+          this.render(container);
+        } else {
+          Toast.error("No se pudo generar el respaldo.");
         }
       });
       const fileInp = container.querySelector("#inp-restore-file");
       const restoreBtn = container.querySelector("#btn-restore-backup");
+      const summary = container.querySelector("#restore-summary");
+      let parsed = null;
       fileInp.addEventListener("change", () => {
-        restoreBtn.disabled = !fileInp.files || fileInp.files.length === 0;
-      });
-      restoreBtn.addEventListener("click", () => {
+        parsed = null;
+        restoreBtn.disabled = true;
+        summary.innerHTML = "";
         const file = fileInp.files[0];
         if (!file)
           return;
         const reader = new FileReader;
-        reader.onload = async (e) => {
+        reader.onload = (e) => {
           try {
             const data = JSON.parse(e.target.result);
-            if (!data || !data.stores) {
-              throw new Error("El archivo seleccionado no corresponde a un formato de respaldo válido de Nexa ERP.");
-            }
-            Modal.confirm({
-              title: "Confirmación de Restauración",
-              message: `Está a punto de cargar un respaldo generado el <strong>${data.timestamp || "Fecha desconocida"}</strong> con <strong>${Object.keys(data.stores).length}</strong> tablas de información. ¿Desea proceder?`,
-              confirmText: "Sí, Restaurar Información",
-              cancelText: "Cancelar",
-              onConfirm: async () => {
-                try {
-                  await DB.restoreBackup(data);
-                  Toast.success("Información restaurada con éxito. Recargando parámetros...");
-                  setTimeout(() => window.location.reload(), 1200);
-                } catch (restErr) {
-                  Toast.error("Error al restaurar: " + restErr.message);
-                }
-              }
-            });
-          } catch (parseErr) {
-            Toast.error("Archivo corrupto o inválido: " + parseErr.message);
+            const info = DB.validateBackup(data);
+            parsed = data;
+            const t = data.stores;
+            summary.innerHTML = `
+            <div class="card p-2" style="margin: 0;">
+              <div>Fecha del respaldo: <strong>${esc(data.timestamp ? Formatters.dateTime(data.timestamp) : "desconocida")}</strong> · versión ${esc(data.version || "?")}</div>
+              <div>${info.registros} registros en ${info.tablas.length} tablas · Empresas: ${(t[STORES.TENANTS] || []).length} · Productos: ${(t[STORES.PRODUCTS] || []).length} · Ventas: ${(t[STORES.SALES] || []).length} · Usuarios: ${(t[STORES.USERS] || []).length}</div>
+            </div>`;
+            restoreBtn.disabled = false;
+          } catch (err) {
+            summary.innerHTML = `<span class="text-danger">Archivo inválido: ${esc(err.message)}</span>`;
           }
         };
         reader.readAsText(file);
       });
+      restoreBtn.addEventListener("click", () => {
+        if (!parsed)
+          return;
+        Modal.show({
+          title: "Confirmar restauración",
+          size: "sm",
+          content: `
+          <p class="text-xs mb-2">Se reemplazará <strong>toda</strong> la información actual por la del respaldo del
+          <strong>${esc(parsed.timestamp ? Formatters.dateTime(parsed.timestamp) : "archivo seleccionado")}</strong>.
+          Primero se descargará un respaldo del estado actual.</p>
+          <p class="text-xs mb-2">Escriba <strong>RESTAURAR</strong> para confirmar:</p>
+          <input class="form-control" id="restore-confirm-text" autocomplete="off">
+          <p class="text-xs text-muted mt-2">Después de restaurar deberá iniciar sesión con un usuario del respaldo.</p>`,
+          footerButtons: [
+            { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
+            {
+              label: "Restaurar",
+              class: "btn-danger",
+              onClick: async (dlg, ev) => {
+                if (dlg.querySelector("#restore-confirm-text").value.trim().toUpperCase() !== "RESTAURAR") {
+                  Toast.warning("Escriba RESTAURAR para confirmar.");
+                  return;
+                }
+                ev.target.disabled = true;
+                const pre = await DB.downloadAutoBackup("AntesDeRestaurar");
+                if (!pre) {
+                  Toast.error("No se pudo descargar el respaldo previo. Restauración cancelada.");
+                  ev.target.disabled = false;
+                  return;
+                }
+                try {
+                  await DB.restoreBackup(parsed);
+                  localStorage.removeItem("nexa_session");
+                  Toast.success("Información restaurada. Recargando...");
+                  setTimeout(() => window.location.reload(), 1200);
+                } catch (err) {
+                  Toast.error("Error al restaurar (no se modificó nada): " + err.message);
+                  ev.target.disabled = false;
+                }
+              }
+            }
+          ]
+        });
+      });
     }
   };
+
+  // js/modules/importer.js
+  init_formatters();
+
+  // js/utils/csv.js
+  function parseCSV(text) {
+    const src = String(text || "").replace(/^﻿/, "");
+    const firstLine = src.split(/\r?\n/, 1)[0] || "";
+    const delim = (firstLine.match(/;/g) || []).length >= (firstLine.match(/,/g) || []).length ? ";" : ",";
+    const rows = [];
+    let row = [];
+    let field = "";
+    let inQuotes = false;
+    for (let i = 0;i < src.length; i++) {
+      const c = src[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (src[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += c;
+        }
+      } else if (c === '"') {
+        inQuotes = true;
+      } else if (c === delim) {
+        row.push(field);
+        field = "";
+      } else if (c === `
+` || c === "\r") {
+        if (c === "\r" && src[i + 1] === `
+`)
+          i++;
+        row.push(field);
+        field = "";
+        if (row.some((v) => v.trim() !== ""))
+          rows.push(row);
+        row = [];
+      } else {
+        field += c;
+      }
+    }
+    row.push(field);
+    if (row.some((v) => v.trim() !== ""))
+      rows.push(row);
+    if (rows.length === 0)
+      return { headers: [], rows: [] };
+    const headers = rows[0].map((h) => h.trim());
+    const data = rows.slice(1).map((cols) => {
+      const o = {};
+      headers.forEach((h, i) => {
+        o[h] = (cols[i] !== undefined ? cols[i] : "").trim();
+      });
+      return o;
+    });
+    return { headers, rows: data, delimiter: delim };
+  }
+  function parseNumber(v) {
+    if (v === null || v === undefined || v === "")
+      return 0;
+    let s = String(v).replace(/[^\d,.-]/g, "");
+    if (s.includes(",") && s.includes("."))
+      s = s.replace(/\./g, "").replace(",", ".");
+    else if (s.includes(","))
+      s = s.replace(",", ".");
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
 
   // js/modules/importer.js
   var ImporterModule = {
@@ -10735,7 +11224,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
-          <h1>Importación Masiva de Datos (CSV / Excel)</h1>
+          <h1>Importación Masiva de Datos (CSV)</h1>
           <p>Carga ágil de catálogos maestros de clientes, productos y proveedores mediante hojas de cálculo</p>
         </div>
       </div>
@@ -10808,8 +11297,9 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       let pendingImportType = null;
       let pendingImportRows = [];
       const downloadCSVTemplate = (filename, headers, sampleRow) => {
-        const csv = "\uFEFF" + headers.join(";") + `\r
-` + sampleRow.join(";") + `\r
+        const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+        const csv = "\uFEFF" + headers.map(q).join(";") + `\r
+` + sampleRow.map(q).join(";") + `\r
 `;
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -10825,7 +11315,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         downloadCSVTemplate("Plantilla_Clientes_Nexa", ["Codigo", "Nombre", "NIT_CC", "TipoCliente", "Telefono", "Ciudad", "Direccion", "CupoCredito", "DiasCredito"], ["CLI-101", "AutoLavado El Diamante", "901234567", "Taller / Detailing", "3001234567", "Medellín", "Carrera 50 # 30-20", "3000000", "30"]);
       });
       container.querySelector("#btn-dl-template-products").addEventListener("click", () => {
-        downloadCSVTemplate("Plantilla_Productos_Nexa", ["SKU", "Nombre", "TipoItem", "Categoria", "UnidadMedida", "CostoPromedio", "Precio1", "StockInicial", "StockMinimo"], ["RAYO-LIMP-500", "Limpiador Cristales Antiempañante 500ml", "PRODUCTO_TERMINADO", "Visibilidad", "Unidad", "6500", "18000", "40", "10"]);
+        downloadCSVTemplate("Plantilla_Productos_Nexa", ["SKU", "Nombre", "TipoItem", "Categoria", "UnidadMedida", "CostoPromedio", "Precio1", "Precio2", "Precio3", "Precio4", "Precio5", "StockInicial", "StockMinimo"], ["RAYO-LIMP-500", "Limpiador Cristales Antiempañante 500ml", "PRODUCTO_TERMINADO", "Visibilidad", "Unidad", "6500", "18000", "16000", "14000", "12500", "", "40", "10"]);
       });
       container.querySelector("#btn-dl-template-suppliers").addEventListener("click", () => {
         downloadCSVTemplate("Plantilla_Proveedores_Nexa", ["Codigo", "RazonSocial", "NIT", "Contacto", "Telefono", "Ciudad", "Categoria", "DiasCredito"], ["PROV-050", "Envases Químicos de Antioquia SAS", "900444555", "Pedro Restrepo", "4441234", "Itagüí", "Material de Empaque", "30"]);
@@ -10842,23 +11332,12 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
             return;
           const reader = new FileReader;
           reader.onload = (e) => {
-            const text = e.target.result;
-            const lines = text.split(/\r\n|\n/).filter((l) => l.trim().length > 0);
-            if (lines.length < 2) {
+            const parsed = parseCSV(e.target.result);
+            const headers = parsed.headers;
+            const rows = parsed.rows;
+            if (rows.length === 0) {
               Toast.warning("El archivo seleccionado no contiene filas de datos.");
               return;
-            }
-            const headers = lines[0].split(";").map((h) => h.replace(/"/g, "").trim());
-            const rows = [];
-            for (let i = 1;i < lines.length; i++) {
-              const cols = lines[i].split(";").map((c) => c.replace(/"/g, "").trim());
-              if (cols.length >= headers.length) {
-                const rowObj = {};
-                headers.forEach((h, idx) => {
-                  rowObj[h] = cols[idx];
-                });
-                rows.push(rowObj);
-              }
             }
             pendingImportType = type;
             pendingImportRows = rows;
@@ -10876,9 +11355,9 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
         const tbody = container.querySelector("#importer-preview-table tbody");
         const title = container.querySelector("#importer-preview-title");
         title.textContent = `Previsualización de Importación: ${rows.length} registros listos (${type})`;
-        thead.innerHTML = `<tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>`;
+        thead.innerHTML = `<tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>`;
         tbody.innerHTML = rows.slice(0, 10).map((r) => `
-        <tr>${headers.map((h) => `<td>${r[h] || "-"}</td>`).join("")}</tr>
+        <tr>${headers.map((h) => `<td>${esc(r[h] || "-")}</td>`).join("")}</tr>
       `).join("");
         card.style.display = "block";
         card.scrollIntoView({ behavior: "smooth" });
@@ -10886,70 +11365,134 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       container.querySelector("#btn-confirm-import").addEventListener("click", async () => {
         if (!pendingImportType || pendingImportRows.length === 0)
           return;
+        const btnConfirm = container.querySelector("#btn-confirm-import");
+        btnConfirm.disabled = true;
         try {
           let inserted = 0;
+          const skipped = [];
           if (pendingImportType === "CUSTOMERS") {
+            const existing = await DB.getAll(STORES.CUSTOMERS, tenantId);
+            const nits = new Set(existing.map((c) => String(c.nitCc || "").replace(/\D/g, "")).filter(Boolean));
             for (const r of pendingImportRows) {
               const cleanNit = (r.NIT_CC || "").replace(/\D/g, "");
+              if (!r.Nombre) {
+                skipped.push("fila sin nombre");
+                continue;
+              }
+              if (cleanNit && nits.has(cleanNit)) {
+                skipped.push(`${r.Nombre} (NIT ya existe)`);
+                continue;
+              }
               await DB.add(STORES.CUSTOMERS, {
                 tenantId,
-                codigo: r.Codigo || `CLI-${Math.floor(100 + Math.random() * 900)}`,
-                nombre: r.Nombre || "Cliente Importado",
+                codigo: r.Codigo || "",
+                nombre: r.Nombre,
                 nitCc: cleanNit,
-                dv: DianDV.calculate(cleanNit) || 0,
-                tipoCliente: r.TipoCliente || "Taller / Detailing",
+                dv: DianDV.calculate(cleanNit),
+                tipoCliente: r.TipoCliente || "Consumidor Final",
                 telefono: r.Telefono || "",
-                ciudad: r.Ciudad || "Medellín",
+                ciudad: r.Ciudad || "",
                 direccion: r.Direccion || "",
-                cupoCredito: Number(r.CupoCredito || 0),
-                diasCredito: Number(r.DiasCredito || 0),
+                cupoCredito: parseNumber(r.CupoCredito),
+                diasCredito: parseNumber(r.DiasCredito),
                 saldoPendiente: 0,
                 estado: "ACTIVO"
               });
+              if (cleanNit)
+                nits.add(cleanNit);
               inserted++;
             }
           } else if (pendingImportType === "PRODUCTS") {
+            const existing = await DB.getAll(STORES.PRODUCTS, tenantId);
+            const priceLists = await DB.getAll(STORES.PRICE_LISTS, tenantId);
+            const skus = new Set(existing.map((p) => String(p.sku || "").toLowerCase()));
             for (const r of pendingImportRows) {
-              await DB.add(STORES.PRODUCTS, {
+              const sku = String(r.SKU || "").trim();
+              if (!sku || !r.Nombre) {
+                skipped.push(`${r.Nombre || sku || "fila"} (falta SKU o nombre)`);
+                continue;
+              }
+              if (skus.has(sku.toLowerCase())) {
+                skipped.push(`${sku} (SKU ya existe)`);
+                continue;
+              }
+              const precios = {};
+              [1, 2, 3, 4, 5].forEach((n) => {
+                const pl = PricingService.findByCode(priceLists, `P${n}`);
+                const v = parseNumber(r[`Precio${n}`]);
+                if (pl && v > 0)
+                  precios[pl.id] = v;
+              });
+              const prod = await DB.add(STORES.PRODUCTS, {
                 tenantId,
-                sku: r.SKU || `SKU-${Date.now()}`,
-                codigoInterno: r.SKU || "",
-                nombre: r.Nombre || "Producto Importado",
+                sku,
+                codigoInterno: sku,
+                nombre: r.Nombre,
                 tipoItem: r.TipoItem || "PRODUCTO_TERMINADO",
                 categoria: r.Categoria || "General",
                 unidadMedida: r.UnidadMedida || "Unidad",
-                costoPromedio: Number(r.CostoPromedio || 0),
-                stock: Number(r.StockInicial || 0),
-                stockMinimo: Number(r.StockMinimo || 10),
-                precios: { plist_1: Number(r.Precio1 || 0) },
+                costoPromedio: parseNumber(r.CostoPromedio),
+                stock: 0,
+                stockMinimo: parseNumber(r.StockMinimo),
+                precios,
                 estado: "ACTIVO"
               });
+              const stockInicial = parseNumber(r.StockInicial);
+              if (stockInicial > 0) {
+                await KardexService.registerMovement({
+                  tenantId,
+                  productoId: prod.id,
+                  documentoTipo: "AJUSTE_POS",
+                  documentoNumero: "INV-INICIAL",
+                  cantidad: stockInicial,
+                  costoUnitario: prod.costoPromedio,
+                  observacion: "Inventario inicial (importación CSV)"
+                });
+              }
+              skus.add(sku.toLowerCase());
               inserted++;
             }
           } else if (pendingImportType === "SUPPLIERS") {
+            const existing = await DB.getAll(STORES.SUPPLIERS, tenantId);
+            const nits = new Set(existing.map((c) => String(c.nitCc || "").replace(/\D/g, "")).filter(Boolean));
             for (const r of pendingImportRows) {
               const cleanNit = (r.NIT || "").replace(/\D/g, "");
+              if (!r.RazonSocial) {
+                skipped.push("fila sin razón social");
+                continue;
+              }
+              if (cleanNit && nits.has(cleanNit)) {
+                skipped.push(`${r.RazonSocial} (NIT ya existe)`);
+                continue;
+              }
               await DB.add(STORES.SUPPLIERS, {
                 tenantId,
-                codigo: r.Codigo || `PROV-${Math.floor(100 + Math.random() * 900)}`,
-                razonSocial: r.RazonSocial || "Proveedor Importado",
+                codigo: r.Codigo || "",
+                razonSocial: r.RazonSocial,
                 nitCc: cleanNit,
-                dv: DianDV.calculate(cleanNit) || 0,
+                dv: DianDV.calculate(cleanNit),
                 contacto: r.Contacto || "",
                 telefono: r.Telefono || "",
-                ciudad: r.Ciudad || "Medellín",
+                ciudad: r.Ciudad || "",
                 categoria: r.Categoria || "Materias Primas",
-                diasCredito: Number(r.DiasCredito || 30),
+                diasCredito: parseNumber(r.DiasCredito) || 30,
                 estado: "ACTIVO"
               });
+              if (cleanNit)
+                nits.add(cleanNit);
               inserted++;
             }
           }
-          Toast.success(`¡Se importaron ${inserted} registros con éxito!`);
+          await AuditService.log({ modulo: "Importador", accion: "CREAR", campoModificado: pendingImportType, valorNuevo: `${inserted} importados, ${skipped.length} omitidos` });
+          if (skipped.length)
+            Toast.warning(`Omitidos ${skipped.length}: ${skipped.slice(0, 5).join("; ")}${skipped.length > 5 ? "…" : ""}`);
+          Toast.success(`Se importaron ${inserted} registros.`);
           container.querySelector("#importer-preview-card").style.display = "none";
           pendingImportRows = [];
         } catch (err) {
           Toast.error("Error durante la importación: " + err.message);
+        } finally {
+          btnConfirm.disabled = false;
         }
       });
     }
@@ -11088,6 +11631,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   };
 
   // js/modules/documents.js
+  init_formatters();
   init_export_service();
   var DocumentsModule = {
     async render(container) {
@@ -11165,7 +11709,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       <div class="view-header">
         <div class="view-title-wrap">
           <h1>Visor de Documentos & Plantillas Membretadas</h1>
-          <p>Plantillas dinámicas que adoptan automáticamente la identidad corporativa de <strong>${tenant.nombreComercial}</strong></p>
+          <p>Plantillas dinámicas que adoptan automáticamente la identidad corporativa de <strong>${esc(tenant.nombreComercial)}</strong></p>
         </div>
         <div class="view-actions">
           <button class="btn btn-primary btn-sm" id="btn-print-active-doc">\uD83D\uDDA8️ Imprimir / Descargar PDF</button>
@@ -11202,7 +11746,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       });
       container.querySelector("#btn-print-active-doc").addEventListener("click", () => {
         const html = getPreviewHtml(activeDocType);
-        ExportService.printDocument(html, `Documento_${activeDocType}_${tenant.nombreComercial}`);
+        ExportService.printDocument(html, `Documento_${activeDocType}_${esc(tenant.nombreComercial)}`);
       });
     }
   };
@@ -11210,71 +11754,103 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
   // js/modules/formulas-vault.js
   init_formatters();
   var FormulasVaultModule = {
-    isUnlocked: false,
+    _pin: null,
     async render(container) {
       const tenant = TenantServiceInstance.getActiveTenant();
       const tenantId = tenant ? tenant.id : "tenant_rayopro";
-      if (!this.isUnlocked) {
-        this.renderLockScreen(container);
+      if (!this._pin) {
+        const hasPin = !!await DB.getParam(this.pinParam(tenantId), null);
+        this.renderLockScreen(container, tenantId, hasPin);
         return;
       }
       await this.renderVault(container, tenantId);
     },
-    renderLockScreen(container) {
+    pinParam(tenantId) {
+      return `vault_pin_${tenantId}`;
+    },
+    async sealRecipe(r, pin) {
+      const secret = { instruccionesFases: r.instruccionesFases || "", especificaciones: r.especificaciones || {} };
+      const out = { ...r, secreto: await CryptoUtil.encryptJSON(secret, pin) };
+      delete out.instruccionesFases;
+      delete out.especificaciones;
+      return out;
+    },
+    async openRecipe(r, pin) {
+      if (!r.secreto)
+        return r;
+      const sec = await CryptoUtil.decryptJSON(r.secreto, pin);
+      return { ...r, instruccionesFases: sec.instruccionesFases, especificaciones: sec.especificaciones };
+    },
+    async sealLegacy(tenantId, pin) {
+      const recipes = await DB.getAll(STORES.RECIPES_BOM, tenantId);
+      for (const r of recipes) {
+        if (!r.secreto && (r.instruccionesFases || r.especificaciones)) {
+          await DB.update(STORES.RECIPES_BOM, await this.sealRecipe(r, pin));
+        }
+      }
+    },
+    renderLockScreen(container, tenantId, hasPin) {
       container.innerHTML = `
       <div class="d-flex items-center justify-center" style="min-height: 70vh;">
-        <div class="card" style="max-width: 420px; width: 100%; padding: 32px; text-align: center; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.06);">
+        <div class="card" style="max-width: 440px; width: 100%; padding: 32px; text-align: center; border-radius: 16px;">
           <div style="font-size: 40px; margin-bottom: 12px;">\uD83D\uDD12</div>
-          <h2 style="font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Bóveda Privada de Recetas</h2>
-          <span class="badge badge-warning mb-3" style="display: inline-block;">SECRETO DE FABRICACIÓN</span>
-          
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.4;">
-            Aquí se guardan las recetas secretas y las proporciones de tus productos. Ingresa tu clave para abrir la bóveda.
+          <h2 style="font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Bóveda de recetas</h2>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.45;">
+            ${hasPin ? "El protocolo de mezcla y las especificaciones están cifrados. Ingrese la clave de la bóveda." : "Defina la clave de la bóveda. Con ella se cifran el protocolo de mezcla y las especificaciones de cada receta."}
           </p>
-
-          <form id="vault-pin-form">
-            <div class="form-group mb-3">
-              <input type="password" id="vault-pin-inp" class="form-control text-center font-bold" placeholder="Escribe tu clave aquí" required autofocus style="font-size: 18px; letter-spacing: 3px; height: 45px;">
-            </div>
-
+          <form id="vault-pin-form" autocomplete="off">
+            <input type="password" id="vault-pin-inp" class="form-control text-center font-bold mb-2" placeholder="${hasPin ? "Clave de la bóveda" : "Nueva clave (mínimo 6 caracteres)"}" required autofocus style="font-size: 16px; height: 44px;">
+            ${hasPin ? "" : '<input type="password" id="vault-pin-inp2" class="form-control text-center font-bold mb-2" placeholder="Repetir clave" required style="font-size: 16px; height: 44px;">'}
             <div id="vault-pin-err" class="alert alert-danger mb-3 text-xs" style="display: none; padding: 8px;"></div>
-
-            <button type="submit" class="btn btn-primary w-100 font-bold" style="height: 42px; font-size: 14px;">
-              \uD83D\uDD13 Abrir mi Bóveda de Recetas
-            </button>
+            ${hasPin ? "" : '<div class="alert alert-warning text-xs mb-3" style="text-align: left;">⚠️ Si olvida esta clave, el texto cifrado de las recetas <strong>no se puede recuperar</strong> (ni siquiera el desarrollador). Anótela en un lugar seguro. Las cantidades de insumos no se cifran porque Producción las necesita.</div>'}
+            <button type="submit" class="btn btn-primary w-100 font-bold" style="height: 42px;">${hasPin ? "\uD83D\uDD13 Abrir bóveda" : "\uD83D\uDD10 Crear clave y abrir"}</button>
           </form>
-
-          <div class="text-xs text-muted mt-3 pt-3" style="border-top: 1px solid var(--border-color);">
-            Clave inicial por defecto: <strong>1234</strong>
-          </div>
         </div>
       </div>
     `;
       const form = container.querySelector("#vault-pin-form");
-      const inp = container.querySelector("#vault-pin-inp");
       const err = container.querySelector("#vault-pin-err");
-      form.addEventListener("submit", (e) => {
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const val = (inp.value || "").trim();
-        const realPin = localStorage.getItem("nexa_vault_pin") || "1234";
-        if (val === realPin || val === "NEXA_RESCUE_999") {
-          this.isUnlocked = true;
-          Toast.success("¡Bóveda abierta con éxito!");
+        err.style.display = "none";
+        const val = container.querySelector("#vault-pin-inp").value;
+        try {
+          if (hasPin) {
+            const stored = await DB.getParam(this.pinParam(tenantId), null);
+            if (!await CryptoUtil.verifyPassword(val, stored))
+              throw new Error("Clave incorrecta.");
+          } else {
+            if (val.length < 6)
+              throw new Error("La clave debe tener al menos 6 caracteres.");
+            if (val !== container.querySelector("#vault-pin-inp2").value)
+              throw new Error("Las claves no coinciden.");
+            await DB.setParam(this.pinParam(tenantId), await CryptoUtil.hashPassword(val), tenantId);
+            await AuditService.log({ modulo: "Bóveda", accion: "CREAR", campoModificado: "Clave de bóveda", valorNuevo: "Definida" });
+          }
+          this._pin = val;
+          await this.sealLegacy(tenantId, val);
+          Toast.success("Bóveda abierta.");
           this.render(container);
-        } else {
-          err.textContent = "Clave incorrecta. Intenta nuevamente.";
+        } catch (ex) {
+          err.textContent = ex.message;
           err.style.display = "block";
-          inp.value = "";
-          inp.focus();
         }
       });
     },
     async renderVault(container, tenantId) {
-      const [recipes, rawMaterials, finishedGoods] = await Promise.all([
+      const [sealed, rawMaterials, finishedGoods] = await Promise.all([
         DB.getAll(STORES.RECIPES_BOM, tenantId),
         (await DB.getAll(STORES.PRODUCTS, tenantId)).filter((p) => p.tipoItem === "MATERIA_PRIMA"),
         (await DB.getAll(STORES.PRODUCTS, tenantId)).filter((p) => p.tipoItem === "PRODUCTO_TERMINADO")
       ]);
+      const recipes = [];
+      for (const r of sealed) {
+        try {
+          recipes.push(await this.openRecipe(r, this._pin));
+        } catch (e) {
+          recipes.push({ ...r, instruccionesFases: "⚠️ No se pudo descifrar con la clave actual." });
+        }
+      }
       container.innerHTML = `
       <div class="view-header mb-3" style="padding-bottom: 8px;">
         <div class="view-title-wrap">
@@ -11366,10 +11942,10 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   <div>
                     <div class="d-flex items-center gap-2">
                       <span style="font-size: 20px;">\uD83E\uDDEA</span>
-                      <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">${r.nombreFormula}</h4>
+                      <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">${esc(r.nombreFormula)}</h4>
                     </div>
                     <div class="text-xs text-muted mt-1">
-                      Producto: <strong>${fg.nombre || "No asignado"}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${r.unidadMedida || "Litros"}</strong>
+                      Producto: <strong>${esc(fg.nombre || "No asignado")}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${esc(r.unidadMedida || "Litros")}</strong>
                     </div>
                   </div>
 
@@ -11430,7 +12006,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 ${r.instruccionesFases ? `
                   <div class="p-2 mt-1" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 11.5px;">
                     <strong>\uD83D\uDC68‍\uD83D\uDD2C Protocolo de Mezcla:</strong>
-                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.35;">${r.instruccionesFases}</div>
+                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.35;">${esc(r.instruccionesFases)}</div>
                   </div>
                 ` : ""}
               </div>
@@ -11440,12 +12016,12 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
       </div>
     `;
       container.querySelector("#btn-lock-now").addEventListener("click", () => {
-        this.isUnlocked = false;
+        this._pin = null;
         Toast.info("Bóveda cerrada");
         this.render(container);
       });
       container.querySelector("#btn-change-pin").addEventListener("click", () => {
-        this.openChangePin();
+        this.openChangePin(tenantId, () => this.render(container));
       });
       const btnNew = container.querySelector("#btn-nueva-receta-asistente");
       if (btnNew)
@@ -11469,7 +12045,8 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           const id = btn.getAttribute("data-id");
           const r = recipes.find((rec) => rec.id === id);
           if (r) {
-            sessionStorage.setItem("nexa_target_pricing_formula", JSON.stringify(r));
+            const { instruccionesFases, especificaciones, secreto, ...publica } = r;
+            sessionStorage.setItem("nexa_target_pricing_formula", JSON.stringify(publica));
             window.location.hash = "#pricing-calculator";
           }
         });
@@ -11537,7 +12114,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           <div class="nexa-grid-2 mb-3">
             <div>
               <label class="font-bold text-xs">Nombre de la Receta Maestra:</label>
-              <input type="text" id="wiz-rec-name" class="form-control font-bold" value="${wiz.nombreFormula}" placeholder="Ej: Desengrasante Pesado Industrial" required>
+              <input type="text" id="wiz-rec-name" class="form-control font-bold" value="${esc(wiz.nombreFormula)}" placeholder="Ej: Desengrasante Pesado Industrial" required>
             </div>
             <div>
               <label class="font-bold text-xs">¿A qué Producto Terminado corresponde?</label>
@@ -11545,7 +12122,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 <option value="">-- Sin vincular aún (Solo fórmula) --</option>
                 ${finishedGoods.map((fg) => `
                   <option value="${fg.id}" ${wiz.productoTerminadoId === fg.id ? "selected" : ""}>
-                    ${fg.nombre} (${fg.sku || "-"})
+                    ${esc(fg.nombre)} (${esc(fg.sku || "-")})
                   </option>
                 `).join("")}
               </select>
@@ -11593,7 +12170,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                   <th>Materia Prima</th>
                   <th style="width: 140px;">Momento</th>
                   <th style="width: 90px;" class="text-center">%</th>
-                  <th style="width: 110px;" class="text-center">Cantidad (${wiz.unidadMedida})</th>
+                  <th style="width: 110px;" class="text-center">Cantidad (${esc(wiz.unidadMedida)})</th>
                   <th style="width: 40px;"></th>
                 </tr>
               </thead>
@@ -11605,7 +12182,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                         <option value="" disabled ${!item.productoId ? "selected" : ""}>Elegir insumo...</option>
                         ${rawMaterials.map((rm) => `
                           <option value="${rm.id}" ${item.productoId === rm.id ? "selected" : ""}>
-                            ${rm.nombre} (${Formatters.currency(rm.costo || rm.precioCompra || 0)}/u)
+                            ${esc(rm.nombre)} (${Formatters.currency(rm.costo || rm.precioCompra || 0)}/u)
                           </option>
                         `).join("")}
                       </select>
@@ -11668,7 +12245,7 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
                 Insertar Plantilla Guía
               </button>
             </div>
-            <textarea id="wiz-rec-steps" rows="6" class="form-control text-xs" style="font-size: 12px; line-height: 1.4;" placeholder="Paso 1: Llenar el tanque con el agua base y encender el agitador a media velocidad...&#10;Paso 2: Agregar el químico activo lentamente para evitar salpicaduras...&#10;Paso 3: Incorporar el color y la fragancia hasta homogenizar...&#10;Paso 4: Tomar muestra de pH antes del envasado.">${wiz.instruccionesFases}</textarea>
+            <textarea id="wiz-rec-steps" rows="6" class="form-control text-xs" style="font-size: 12px; line-height: 1.4;" placeholder="Paso 1: Llenar el tanque con el agua base y encender el agitador a media velocidad...&#10;Paso 2: Agregar el químico activo lentamente para evitar salpicaduras...&#10;Paso 3: Incorporar el color y la fragancia hasta homogenizar...&#10;Paso 4: Tomar muestra de pH antes del envasado.">${esc(wiz.instruccionesFases)}</textarea>
           </div>
         `;
         } else if (wiz.step === 4) {
@@ -11681,9 +12258,9 @@ Contacto: ${client.telefono || client.whatsapp || "No registrado"}`;
           <div class="card p-3 mb-3" style="background: var(--bg-surface-solid); border-radius: 10px;">
             <div class="d-flex justify-between items-start mb-2">
               <div>
-                <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">\uD83E\uDDEA ${wiz.nombreFormula}</h4>
+                <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">\uD83E\uDDEA ${esc(wiz.nombreFormula)}</h4>
                 <div class="text-xs text-muted">
-                  Producto Asociado: <strong>${prodAsoc ? prodAsoc.nombre : "Sin vincular"}</strong> | Tanda: <strong>${wiz.cantidadProducir} ${wiz.unidadMedida}</strong>
+                  Producto Asociado: <strong>${prodAsoc ? prodAsoc.nombre : "Sin vincular"}</strong> | Tanda: <strong>${wiz.cantidadProducir} ${esc(wiz.unidadMedida)}</strong>
                 </div>
               </div>
               <span class="badge badge-success font-bold">100% Confidencial</span>
@@ -11861,23 +12438,34 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
         }
         if (wiz.step === 4) {
           const doSave = async (goToPricing = false) => {
+            const existing = await DB.getById(STORES.RECIPES_BOM, wiz.id) || {};
+            const nombre = wiz.nombreFormula.trim() || "Fórmula sin nombre";
+            const lote = Number(wiz.cantidadProducir) || 1;
             const recData = {
+              ...existing,
               id: wiz.id,
               tenantId,
-              nombreFormula: wiz.nombreFormula.trim() || "Fórmula Sin Nombre",
+              nombreFormula: nombre,
+              nombreReceta: nombre,
               productoTerminadoId: wiz.productoTerminadoId,
-              cantidadProducir: Number(wiz.cantidadProducir) || 1,
+              cantidadProducir: lote,
+              rendimientoLote: lote,
               unidadMedida: wiz.unidadMedida,
               instruccionesFases: wiz.instruccionesFases,
               especificaciones: { ph: wiz.ph },
-              insumos: wiz.insumos,
-              fechaModificacion: new Date().toISOString()
+              insumos: wiz.insumos.map((i) => ({ ...i, materiaPrimaId: i.productoId, unidadMedida: i.unidadMedida || (rawMaterials.find((m) => m.id === i.productoId) || {}).unidadMedida || "" })),
+              estado: existing.estado || "ACTIVO"
             };
-            await DB.update(STORES.RECIPES_BOM, recData);
+            if (!this._pin) {
+              Toast.error("La bóveda se cerró. Ábrala de nuevo para guardar.");
+              return;
+            }
+            await DB.update(STORES.RECIPES_BOM, await this.sealRecipe(recData, this._pin));
             Toast.success(`¡Receta "${recData.nombreFormula}" guardada en Bóveda!`);
             Modal.close();
             if (goToPricing) {
-              sessionStorage.setItem("nexa_target_pricing_formula", JSON.stringify(recData));
+              const { instruccionesFases, especificaciones, ...publica } = recData;
+              sessionStorage.setItem("nexa_target_pricing_formula", JSON.stringify(publica));
               window.location.hash = "#pricing-calculator";
             } else if (onSaved) {
               onSaved();
@@ -11893,39 +12481,66 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
       };
       renderStep();
     },
-    openChangePin() {
-      Modal.show({
-        title: "Cambiar Clave de la Bóveda",
+    openChangePin(tenantId, onDone) {
+      const dialog = Modal.show({
+        title: "Cambiar clave de la bóveda",
+        size: "sm",
         content: `
-        <div class="form-group mb-3">
-          <label class="font-bold text-xs">Clave Actual</label>
-          <input type="password" id="inp-pin-cur" class="form-control" placeholder="Escribe tu clave actual" required>
-        </div>
-        <div class="form-group mb-3">
-          <label class="font-bold text-xs">Nueva Clave</label>
-          <input type="password" id="inp-pin-new" class="form-control" placeholder="Escribe tu nueva clave" required>
-        </div>
-      `,
+        <form id="vault-change-form" autocomplete="off">
+          <div class="form-group mb-3"><label class="font-bold text-xs">Clave actual</label>
+            <input type="password" name="cur" class="form-control" required></div>
+          <div class="form-group mb-3"><label class="font-bold text-xs">Nueva clave (mínimo 6 caracteres)</label>
+            <input type="password" name="n1" class="form-control" required></div>
+          <div class="form-group mb-3"><label class="font-bold text-xs">Repetir nueva clave</label>
+            <input type="password" name="n2" class="form-control" required></div>
+          <p class="text-xs text-muted">Todas las recetas se volverán a cifrar con la nueva clave.</p>
+        </form>`,
         footerButtons: [
           { label: "Cancelar", class: "btn-secondary", onClick: () => Modal.close() },
           {
-            label: "Guardar Clave",
+            label: "Guardar clave",
             class: "btn-primary",
-            onClick: () => {
-              const cur = document.getElementById("inp-pin-cur").value.trim();
-              const n = document.getElementById("inp-pin-new").value.trim();
-              const realPin = localStorage.getItem("nexa_vault_pin") || "1234";
-              if (cur !== realPin && cur !== "NEXA_RESCUE_999") {
+            onClick: async (dlg, ev) => {
+              const fd = new FormData(dialog.querySelector("#vault-change-form"));
+              const cur = fd.get("cur");
+              const n1 = fd.get("n1");
+              const stored = await DB.getParam(this.pinParam(tenantId), null);
+              if (!await CryptoUtil.verifyPassword(cur, stored)) {
                 Toast.error("La clave actual no es correcta.");
                 return;
               }
-              if (n.length < 3) {
-                Toast.warning("La nueva clave debe tener al menos 3 caracteres.");
+              if (n1.length < 6) {
+                Toast.warning("La nueva clave debe tener al menos 6 caracteres.");
                 return;
               }
-              localStorage.setItem("nexa_vault_pin", n);
-              Toast.success("¡Clave actualizada correctamente!");
-              Modal.close();
+              if (n1 !== fd.get("n2")) {
+                Toast.warning("Las claves no coinciden.");
+                return;
+              }
+              ev.target.disabled = true;
+              try {
+                const recipes = await DB.getAll(STORES.RECIPES_BOM, tenantId);
+                const resealed = [];
+                for (const r of recipes)
+                  resealed.push(r.secreto ? await this.sealRecipe(await this.openRecipe(r, cur), n1) : r);
+                const hash = await CryptoUtil.hashPassword(n1);
+                await DB.runTransaction([STORES.RECIPES_BOM, STORES.SYSTEM_PARAMS], async (tx) => {
+                  for (const r of resealed)
+                    await tx.put(STORES.RECIPES_BOM, r);
+                  const row = await tx.get(STORES.SYSTEM_PARAMS, this.pinParam(tenantId)) || { id: this.pinParam(tenantId), tenantId };
+                  row.valor = hash;
+                  await tx.put(STORES.SYSTEM_PARAMS, row);
+                });
+                this._pin = n1;
+                await AuditService.log({ modulo: "Bóveda", accion: "MODIFICAR", campoModificado: "Clave de bóveda", valorNuevo: "Cambiada" });
+                Toast.success("Clave actualizada y recetas cifradas de nuevo.");
+                Modal.close();
+                if (onDone)
+                  onDone();
+              } catch (err) {
+                Toast.error(err.message);
+                ev.target.disabled = false;
+              }
             }
           }
         ]
@@ -12054,9 +12669,9 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
                     <div class="d-flex items-center gap-2">
                       <span style="font-size: 20px;">\uD83E\uDDF4</span>
                       <div>
-                        <strong style="font-size: 13.5px; color: var(--text-main);">${p.nombre}</strong>
+                        <strong style="font-size: 13.5px; color: var(--text-main);">${esc(p.nombre)}</strong>
                         <div class="text-xs text-muted">
-                          SKU: ${p.sku || "-"} ${tieneReceta ? '• <span class="text-primary font-bold">\uD83E\uDDEA Con Receta</span>' : ""}
+                          SKU: ${esc(p.sku || "-")} ${tieneReceta ? '• <span class="text-primary font-bold">\uD83E\uDDEA Con Receta</span>' : ""}
                         </div>
                       </div>
                     </div>
@@ -12253,7 +12868,7 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
               <option value="">-- Simulación Libre (Escribir nombre abajo) --</option>
               ${finishedGoods.map((fg) => `
                 <option value="${fg.id}" ${wiz.productId === fg.id ? "selected" : ""}>
-                  ${fg.nombre} (${fg.sku || "Sin SKU"}) - Costo registrado: ${Formatters.currency(fg.costo || 0)}
+                  ${esc(fg.nombre)} (${esc(fg.sku || "Sin SKU")}) - Costo registrado: ${Formatters.currency(fg.costo || 0)}
                 </option>
               `).join("")}
             </select>
@@ -12775,8 +13390,8 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
           ${this.recipes.map((r) => `
             <button type="button" class="list-group-item list-group-item-action d-flex justify-between items-center p-3 btn-pick-rec" data-id="${r.id}" style="text-align: left;">
               <div>
-                <strong style="font-size: 13px;">${r.nombreFormula}</strong>
-                <div class="text-xs text-muted">Tanda de ${r.cantidadProducir || 200} ${r.unidadMedida || "Litros"}</div>
+                <strong style="font-size: 13px;">${esc(r.nombreFormula)}</strong>
+                <div class="text-xs text-muted">Tanda de ${r.cantidadProducir || 200} ${esc(r.unidadMedida || "Litros")}</div>
               </div>
               <span class="badge badge-primary font-bold">Seleccionar</span>
             </button>
@@ -12936,10 +13551,10 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
         return `
                       <tr>
                         <td>
-                          <div class="font-bold">${f.nombre}</div>
+                          <div class="font-bold">${esc(f.nombre)}</div>
                           <div class="text-xs text-muted">${f.nitCc ? "CC: " + f.nitCc : ""} ${f.telefono ? "· " + f.telefono : ""}</div>
                         </td>
-                        <td><span class="badge badge-neutral" style="font-size: 10px;">${f.zona || "—"}</span></td>
+                        <td><span class="badge badge-neutral" style="font-size: 10px;">${esc(f.zona || "—")}</span></td>
                         <td>
                           <span class="badge badge-info" style="font-size: 10.5px; font-weight: 700;">
                             ${f.precioBaseId === "plist_2" ? "P2 - Taller" : f.precioBaseId === "plist_4" ? "P4 - Distribuidor" : "P3 - Mayorista"}
@@ -12955,14 +13570,14 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
                         </td>
                         <td>
                           <span class="badge ${f.estado === "ACTIVO" ? "badge-success" : "badge-danger"}">
-                            ${f.estado || "ACTIVO"}
+                            ${esc(f.estado || "ACTIVO")}
                           </span>
                         </td>
                         <td>
                           <div class="d-flex gap-2">
                             <button class="btn btn-secondary btn-sm btn-ver-freelancer" data-id="${f.id}" title="Ver Ficha">\uD83D\uDC41️ Ver</button>
                             <button class="btn btn-secondary btn-sm btn-edit-freelancer" data-id="${f.id}" title="Editar Datos">✏️ Editar</button>
-                            ${pendiente > 0 ? `<button class="btn btn-primary btn-sm btn-liquidar-freelancer" data-id="${f.id}" data-nombre="${f.nombre}" data-pendiente="${pendiente}">\uD83D\uDCB8 Liquidar</button>` : ""}
+                            ${pendiente > 0 ? `<button class="btn btn-primary btn-sm btn-liquidar-freelancer" data-id="${f.id}" data-nombre="${esc(f.nombre)}" data-pendiente="${pendiente}">\uD83D\uDCB8 Liquidar</button>` : ""}
                           </div>
                         </td>
                       </tr>
@@ -13015,27 +13630,27 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
             <div class="form-row" style="gap: 12px;">
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Nombre Completo *</label>
-                <input type="text" class="form-control" id="fl-nombre" value="${f.nombre || ""}" placeholder="Ej: Carlos Mendoza" required>
+                <input type="text" class="form-control" id="fl-nombre" value="${esc(f.nombre || "")}" placeholder="Ej: Carlos Mendoza" required>
               </div>
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Cédula / NIT</label>
-                <input type="text" class="form-control" id="fl-cedula" value="${f.nitCc || ""}" placeholder="Ej: 1234567890">
+                <input type="text" class="form-control" id="fl-cedula" value="${esc(f.nitCc || "")}" placeholder="Ej: 1234567890">
               </div>
             </div>
             <div class="form-row" style="gap: 12px;">
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Teléfono / WhatsApp</label>
-                <input type="text" class="form-control" id="fl-telefono" value="${f.telefono || ""}" placeholder="3001234567">
+                <input type="text" class="form-control" id="fl-telefono" value="${esc(f.telefono || "")}" placeholder="3001234567">
               </div>
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Email</label>
-                <input type="email" class="form-control" id="fl-email" value="${f.email || ""}" placeholder="correo@gmail.com">
+                <input type="email" class="form-control" id="fl-email" value="${esc(f.email || "")}" placeholder="correo@gmail.com">
               </div>
             </div>
             <div class="form-row" style="gap: 12px;">
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Zona de Ventas</label>
-                <input type="text" class="form-control" id="fl-zona" value="${f.zona || ""}" placeholder="Ej: Medellín Norte, Eje Cafetero...">
+                <input type="text" class="form-control" id="fl-zona" value="${esc(f.zona || "")}" placeholder="Ej: Medellín Norte, Eje Cafetero...">
               </div>
               <div class="form-group mb-3" style="flex: 1;">
                 <label class="form-label">Estado</label>
@@ -13178,10 +13793,10 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
         <div style="background: var(--bg-surface-solid); border-radius: 8px; border: 1px solid var(--border-color); padding: 12px;">
           <div class="font-bold text-xs text-muted mb-2" style="text-transform: uppercase;">Datos de Contacto</div>
           <div class="text-xs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-            <div>\uD83D\uDCF1 ${f.telefono || "—"}</div>
-            <div>\uD83D\uDCE7 ${f.email || "—"}</div>
-            <div>\uD83E\uDEAA CC: ${f.nitCc || "—"}</div>
-            <div>\uD83D\uDCCD Zona: ${f.zona || "—"}</div>
+            <div>\uD83D\uDCF1 ${esc(f.telefono || "—")}</div>
+            <div>\uD83D\uDCE7 ${esc(f.email || "—")}</div>
+            <div>\uD83E\uDEAA CC: ${esc(f.nitCc || "—")}</div>
+            <div>\uD83D\uDCCD Zona: ${esc(f.zona || "—")}</div>
             <div>\uD83C\uDFE6 ${(f.datosBancarios || {}).banco || "—"} ${(f.datosBancarios || {}).tipoCuenta || ""}</div>
             <div>Cta: ${(f.datosBancarios || {}).numeroCuenta || "—"}</div>
           </div>
@@ -13194,8 +13809,8 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
               <tbody>
                 ${fSales.slice(-5).reverse().map((s) => `
                   <tr>
-                    <td><strong style="color: var(--brand-primary);">${s.consecutivo}</strong></td>
-                    <td>${s.clienteNombre}</td>
+                    <td><strong style="color: var(--brand-primary);">${esc(s.consecutivo)}</strong></td>
+                    <td>${esc(s.clienteNombre)}</td>
                     <td>${Formatters.currency(s.total)}</td>
                     <td class="font-bold text-success">${Formatters.currency(s.comisionFreelance || 0)}</td>
                     <td>${Formatters.date(s.fecha)}</td>
@@ -13244,8 +13859,8 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
             <tbody>
               ${cxpItems.map((c) => `
                 <tr>
-                  <td><strong>${c.documento}</strong></td>
-                  <td>${c.ventaConsecutivo || "—"}</td>
+                  <td><strong>${esc(c.documento)}</strong></td>
+                  <td>${esc(c.ventaConsecutivo || "—")}</td>
                   <td class="font-bold text-danger">${Formatters.currency(c.saldo)}</td>
                 </tr>
               `).join("")}
@@ -13257,15 +13872,12 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
           <div class="form-group mb-3">
             <label class="form-label">Medio de Pago</label>
             <select class="form-select" name="medio">
-              <option value="Bancolombia Cuenta Corriente">Bancolombia Cuenta Corriente</option>
-              <option value="Davivienda Ahorros">Davivienda Ahorros</option>
-              <option value="Transferencia Nequi">Transferencia Nequi</option>
-              <option value="Efectivo Caja">Efectivo Caja</option>
+              ${PAYOUT_METHODS.map((m) => `<option value="${m}">${m}</option>`).join("")}
             </select>
           </div>
           <div class="form-group mb-0">
             <label class="form-label">Número de Comprobante</label>
-            <input type="text" class="form-control" name="comprobante" placeholder="Ej: TRANSF-982347" required>
+            <input type="text" class="form-control" name="comprobante" placeholder="Referencia (opcional)">
           </div>
         </form>
       </div>
@@ -13285,19 +13897,18 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
                 form.reportValidity();
                 return;
               }
-              for (const cxpItem of cxpItems) {
-                cxpItem.abonos = (cxpItem.abonos || 0) + cxpItem.saldo;
-                cxpItem.saldo = 0;
-                cxpItem.estado = "PAGADA";
-                await DB.update(STORES.PAYABLES_CXP, cxpItem);
-              }
+              const fd = new FormData(form);
               const tenant = TenantServiceInstance.getActiveTenant();
-              const tenantId = tenant ? tenant.id : "tenant_rayopro";
-              const allSuppliers = await DB.getAll(STORES.SUPPLIERS, tenantId);
-              const freelancer = allSuppliers.find((s) => s.id === freelancerId);
-              if (freelancer) {
-                freelancer.comisionesTotalesPagadas = (freelancer.comisionesTotalesPagadas || 0) + totalPendiente;
-                await DB.update(STORES.SUPPLIERS, freelancer);
+              try {
+                await PaymentsService.payPayables({
+                  tenantId: tenant.id,
+                  pagos: cxpItems.map((c) => ({ cxpId: c.id, monto: c.saldo })),
+                  metodo: fd.get("medio"),
+                  referencia: fd.get("comprobante")
+                });
+              } catch (err) {
+                Toast.error(err.message);
+                return;
               }
               Toast.success(`Liquidación de ${Formatters.currency(totalPendiente)} a ${nombre} registrada.`);
               Modal.close();
@@ -13705,6 +14316,9 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
         overlay.classList.remove("active");
       const module = MODULES[hash] || DashboardModule;
       if (this.contentContainer) {
+        const fresh = this.contentContainer.cloneNode(false);
+        this.contentContainer.replaceWith(fresh);
+        this.contentContainer = fresh;
         try {
           this.contentContainer.innerHTML = '<div class="text-center text-muted" style="padding: 40px;">Cargando módulo...</div>';
           await module.render(this.contentContainer);
@@ -13846,7 +14460,7 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
         if (shift) {
           ind.className = "badge badge-success";
           ind.textContent = "● Caja Abierta";
-          ind.title = `Turno abierto por ${shift.usuarioNombre || "-"}`;
+          ind.title = `Turno abierto por ${esc(shift.usuarioNombre || "-")}`;
         } else {
           ind.className = "badge badge-warning";
           ind.textContent = "○ Caja Cerrada";
@@ -13867,7 +14481,7 @@ Paso 5: Completar con agua al 100%, agitar por 15 minutos y verificar pH en labo
       if (brandNameEl)
         brandNameEl.textContent = tenant.nombreComercial;
       if (brandNitEl)
-        brandNitEl.textContent = `NIT: ${tenant.nit}-${tenant.dv}`;
+        brandNitEl.textContent = `NIT: ${esc(tenant.nit)}-${tenant.dv}`;
       if (topbarBrandEl)
         topbarBrandEl.textContent = tenant.nombreComercial;
       if (brandIconEl) {

@@ -4,8 +4,8 @@
  */
 
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
-import { KardexService } from '../services/kardex-service.js';
+import { Formatters, esc } from '../utils/formatters.js';
+import { PurchaseService, PURCHASE_TERMS } from '../services/purchase-service.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
@@ -45,12 +45,12 @@ export const PurchasesModule = {
         {
           key: 'consecutivo',
           title: 'Factura / Doc.',
-          render: val => `<strong style="color: var(--brand-primary);">${val}</strong>`
+          render: val => `<strong style="color: var(--brand-primary);">${esc(val)}</strong>`
         },
         {
           key: 'proveedorNombre',
           title: 'Proveedor',
-          render: val => `<strong>${val || 'Proveedor General'}</strong>`
+          render: val => `<strong>${esc(val || 'Proveedor General')}</strong>`
         },
         {
           key: 'fecha',
@@ -65,12 +65,12 @@ export const PurchasesModule = {
         {
           key: 'condicionPago',
           title: 'Condición',
-          render: val => `<span class="badge ${val === 'Crédito' ? 'badge-warning' : 'badge-success'}">${val || 'Contado'}</span>`
+          render: val => `<span class="badge ${val === 'Crédito' ? 'badge-warning' : 'badge-success'}">${esc(val || 'Contado')}</span>`
         },
         {
           key: 'estado',
           title: 'Estado Recepción',
-          render: val => `<span class="badge badge-success">${val || 'RECIBIDA'}</span>`
+          render: val => `<span class="badge badge-success">${esc(val || 'RECIBIDA')}</span>`
         }
       ]
     });
@@ -95,12 +95,12 @@ export const PurchasesModule = {
           <div class="form-group">
             <label class="form-label">Proveedor</label>
             <select class="form-select" id="purch-supplier" name="proveedorId" required>
-              ${suppliers.map(s => `<option value="${s.id}">${s.razonSocial} (NIT: ${s.nitCc}-${s.dv || 0})</option>`).join('')}
+              ${suppliers.map(s => `<option value="${s.id}">${esc(s.razonSocial)} (NIT: ${esc(s.nitCc)}-${s.dv || 0})</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">No. Factura de Compra / Remisión</label>
-            <input type="text" class="form-control" name="consecutivo" required value="FAC-PROV-${Math.floor(1000 + Math.random() * 9000)}">
+            <label class="form-label">No. factura o remisión del proveedor</label>
+            <input type="text" class="form-control" name="consecutivo" placeholder="Ej: FE-12345 (recomendado)">
           </div>
         </div>
 
@@ -108,20 +108,19 @@ export const PurchasesModule = {
           <div class="form-group">
             <label class="form-label">Bodega Destino de Almacenamiento</label>
             <select class="form-select" name="bodegaDestinoId">
-              ${warehouses.map(w => `<option value="${w.id}">${w.nombre}</option>`).join('')}
+              ${warehouses.map(w => `<option value="${w.id}">${esc(w.nombre)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Forma de Pago</label>
             <select class="form-select" name="condicionPago" id="purch-payment-term">
-              <option value="Contado">Contado Inmediato (Transferencia / Banco)</option>
-              <option value="Crédito">Crédito a Proveedor (Genera Cuenta por Pagar)</option>
+              ${Object.entries(PURCHASE_TERMS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
             </select>
           </div>
         </div>
 
         <!-- AGREGAR ÍTEMS A LA COMPRA -->
-        <div class="card mb-3" style="background: #f8fafc; border: 1px solid var(--border-color);">
+        <div class="card mb-3" style="border: 1px solid var(--border-color);">
           <div class="card-header" style="padding: 10px 14px;">
             <div class="card-title" style="font-size: 13px;">📦 Ítems Comprados / Materias Primas</div>
           </div>
@@ -129,14 +128,14 @@ export const PurchasesModule = {
             <div class="form-row mb-2">
               <div class="form-group mb-0" style="flex: 2;">
                 <select class="form-select" id="purch-item-prod">
-                  ${products.map(p => `<option value="${p.id}" data-cost="${p.costoPromedio}">${p.nombre} (${p.unidadMedida})</option>`).join('')}
+                  ${products.map(p => `<option value="${p.id}" data-cost="${p.costoPromedio}">${esc(p.nombre)} (${esc(p.unidadMedida)})</option>`).join('')}
                 </select>
               </div>
               <div class="form-group mb-0">
                 <input type="number" step="any" min="0.1" class="form-control" id="purch-item-qty" placeholder="Cantidad" value="10">
               </div>
               <div class="form-group mb-0">
-                <input type="number" class="form-control" id="purch-item-cost" placeholder="Costo Unit.">
+                <input type="number" step="any" min="0" class="form-control" id="purch-item-cost" placeholder="Costo unit. (sin IVA)">
               </div>
               <div class="form-group mb-0">
                 <button type="button" class="btn btn-secondary" id="btn-add-purch-item">➕ Añadir</button>
@@ -177,71 +176,26 @@ export const PurchasesModule = {
         {
           label: 'Ingresar Compra a Kardex',
           class: 'btn-primary',
-          onClick: async () => {
-            if (purchaseItems.length === 0) {
-              Toast.warning('Debe agregar al menos un producto a la compra.');
-              return;
-            }
-
+          onClick: async (dlg, ev) => {
             const form = dialog.querySelector('#purchase-form');
-            const formData = new FormData(form);
-            const proveedorId = formData.get('proveedorId');
-            const supp = suppliers.find(s => s.id === proveedorId);
-            const consecutivo = formData.get('consecutivo');
-            const bodegaId = formData.get('bodegaDestinoId');
-            const condicionPago = formData.get('condicionPago');
-            const totalCompra = purchaseItems.reduce((acc, i) => acc + (i.cantidad * i.costoUnitario), 0);
-
-            // 1. Guardar compra
-            const purchaseRecord = {
-              tenantId,
-              consecutivo,
-              proveedorId,
-              proveedorNombre: supp ? supp.razonSocial : 'Proveedor',
-              fecha: new Date().toISOString(),
-              total: totalCompra,
-              condicionPago,
-              estado: 'RECIBIDA',
-              items: purchaseItems
-            };
-
-            await DB.add(STORES.PURCHASES, purchaseRecord);
-
-            // 2. Afectar Kardex y Costo Promedio
-            for (const item of purchaseItems) {
-              await KardexService.registerMovement({
+            const fd = new FormData(form);
+            ev.target.disabled = true;
+            try {
+              const compra = await PurchaseService.registerPurchase({
                 tenantId,
-                productoId: item.productoId,
-                bodegaId,
-                documentoTipo: 'COMPRA',
-                documentoNumero: consecutivo,
-                cantidad: item.cantidad,
-                costoUnitario: item.costoUnitario,
-                observacion: `Entrada compra fac. ${consecutivo} de ${supp?.razonSocial}`
+                proveedorId: fd.get('proveedorId'),
+                facturaProveedor: fd.get('consecutivo'),
+                bodegaId: fd.get('bodegaDestinoId'),
+                condicion: fd.get('condicionPago'),
+                items: purchaseItems
               });
+              Toast.success(`Compra ${compra.consecutivo} registrada. Inventario y costos actualizados.`);
+              Modal.close();
+              if (onSaved) onSaved();
+            } catch (err) {
+              Toast.error(err.message);
+              ev.target.disabled = false;
             }
-
-            // 3. Si fue a crédito, generar Cuenta por Pagar (CXP)
-            if (condicionPago === 'Crédito') {
-              await DB.add(STORES.PAYABLES_CXP, {
-                tenantId,
-                compraId: purchaseRecord.id,
-                documento: consecutivo,
-                proveedorId,
-                proveedorNombre: supp.razonSocial,
-                fechaEmision: new Date().toISOString().split('T')[0],
-                fechaVencimiento: new Date(Date.now() + (supp.diasCredito || 30) * 86400000).toISOString().split('T')[0],
-                valorTotal: totalCompra,
-                abonos: 0,
-                saldo: totalCompra,
-                diasMora: 0,
-                estado: 'AL_DIA'
-              });
-            }
-
-            Toast.success('Compra procesada exitosamente. Se actualizaron existencias en Kardex.');
-            Modal.close();
-            if (onSaved) onSaved();
           }
         }
       ]
@@ -263,7 +217,7 @@ export const PurchasesModule = {
         total += sub;
         return `
           <tr>
-            <td><strong>${it.nombre}</strong></td>
+            <td><strong>${esc(it.nombre)}</strong></td>
             <td class="text-center">${it.cantidad}</td>
             <td class="text-right">${Formatters.currency(it.costoUnitario)}</td>
             <td class="text-right"><strong>${Formatters.currency(sub)}</strong></td>
@@ -287,8 +241,11 @@ export const PurchasesModule = {
     dialog.querySelector('#btn-add-purch-item').addEventListener('click', () => {
       const pId = prodSelect.value;
       const prod = products.find(p => p.id === pId);
-      const qty = Number(dialog.querySelector('#purch-item-qty').value) || 1;
-      const cost = Number(costInput.value) || 0;
+      const qty = Number(dialog.querySelector('#purch-item-qty').value);
+      const cost = Number(costInput.value);
+      if (!prod) return;
+      if (!(qty > 0)) { Toast.warning('La cantidad debe ser mayor a cero.'); return; }
+      if (!(cost >= 0) || costInput.value === '') { Toast.warning('Indique el costo unitario.'); return; }
 
       purchaseItems.push({
         productoId: pId,
@@ -328,11 +285,11 @@ export const PurchasesModule = {
           <tbody>
             ${suppliers.map(s => `
               <tr>
-                <td><strong>${s.razonSocial}</strong></td>
-                <td>${s.nitCc}-${s.dv || 0}</td>
-                <td>${s.contacto || '-'} (${s.telefono || '-'})</td>
+                <td><strong>${esc(s.razonSocial)}</strong></td>
+                <td>${esc(s.nitCc)}-${s.dv || 0}</td>
+                <td>${esc(s.contacto || '-')} (${esc(s.telefono || '-')})</td>
                 <td>${s.diasCredito || 0} días</td>
-                <td><span class="badge badge-neutral">${s.categoria || 'Insumos'}</span></td>
+                <td><span class="badge badge-neutral">${esc(s.categoria || 'Insumos')}</span></td>
               </tr>
             `).join('')}
           </tbody>

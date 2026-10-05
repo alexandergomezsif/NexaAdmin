@@ -4,7 +4,8 @@
  */
 
 import { DB, STORES } from './db-service.js';
-import { KardexService } from './kardex-service.js';
+import { KardexService, KARDEX_TX_STORES } from './kardex-service.js';
+import { Session } from '../utils/session.js';
 import { AuditService } from './audit-service.js';
 
 export const ProductionService = {
@@ -15,12 +16,14 @@ export const ProductionService = {
     const receta = await DB.getById(STORES.RECIPES_BOM, recetaId);
     if (!receta) throw new Error('Receta no encontrada.');
 
-    const factor = cantidadAProducir / (receta.rendimientoLote || 1);
+    const factor = cantidadAProducir / (Number(receta.rendimientoLote || receta.cantidadProducir) || 1);
     let costoTotalInsumos = 0;
     const desgloseInsumos = [];
 
-    for (const insumo of receta.insumos) {
-      const prod = await DB.getById(STORES.PRODUCTS, insumo.materiaPrimaId);
+    for (const insumo of (receta.insumos || [])) {
+      const mpId = insumo.materiaPrimaId || insumo.productoId;
+      if (!mpId) continue;
+      const prod = await DB.getById(STORES.PRODUCTS, mpId);
       const cantRequerida = insumo.cantidad * factor;
       const cantConMerma = cantRequerida * (1 + (insumo.mermaEsperada || 0) / 100);
       const costoUnitario = prod ? prod.costoPromedio || 0 : 0;
@@ -28,8 +31,8 @@ export const ProductionService = {
       costoTotalInsumos += costoInsumo;
 
       desgloseInsumos.push({
-        materiaPrimaId: insumo.materiaPrimaId,
-        nombre: prod ? prod.nombre : 'Insumo',
+        materiaPrimaId: mpId,
+        nombre: prod ? prod.nombre : 'Insumo no encontrado',
         sku: prod ? prod.sku : '-',
         cantidadBase: insumo.cantidad,
         cantidadRequerida: Math.round(cantConMerma * 100) / 100,
@@ -72,108 +75,98 @@ export const ProductionService = {
     cantidadProducida,
     loteCodigo,
     costosIndirectosReales = 0,
-    responsableId,
-    responsableNombre,
     observaciones
   }) {
-    const pt = await DB.getById(STORES.PRODUCTS, productoTerminadoId);
-    if (!pt) throw new Error('Producto terminado no encontrado.');
+    const cant = Number(cantidadProducida);
+    if (!Number.isFinite(cant) || cant <= 0) throw new Error('La cantidad a producir debe ser mayor a cero.');
 
-    const receta = await DB.getById(STORES.RECIPES_BOM, recetaId);
-    if (!receta) throw new Error('Receta no encontrada.');
+    const stores = [...new Set([...KARDEX_TX_STORES, STORES.RECIPES_BOM, STORES.PRODUCTION_ORDERS, STORES.SYSTEM_PARAMS])];
+    return DB.runTransaction(stores, async (tx) => {
+      const pt = await tx.get(STORES.PRODUCTS, productoTerminadoId);
+      if (!pt) throw new Error('Producto terminado no encontrado.');
+      const receta = await tx.get(STORES.RECIPES_BOM, recetaId);
+      if (!receta) throw new Error('Receta no encontrada.');
+      const insumos = (receta.insumos || []).filter(i => i.materiaPrimaId || i.productoId);
+      if (insumos.length === 0) throw new Error('La receta no tiene insumos configurados.');
 
-    const factor = cantidadProducida / (receta.rendimientoLote || 1);
-    const numeroOrden = 'OP-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
-    const lote = loteCodigo || `LOTE-${pt.sku.substring(0, 4)}-${Date.now().toString().slice(-4)}`;
+      const n = await tx.nextSequence(tenantId, 'PRODUCCION');
+      const numeroOrden = `OP-${String(n).padStart(6, '0')}`;
+      const lote = loteCodigo || `LOTE-${String(pt.sku || 'PT').substring(0, 6)}-${String(n).padStart(4, '0')}`;
+      const factor = cant / (Number(receta.rendimientoLote || receta.cantidadProducir) || 1);
 
-    let costoTotalMateriasPrimasReal = 0;
-    const insumosConsumidos = [];
+      let costoMP = 0;
+      const insumosConsumidos = [];
+      for (const insumo of insumos) {
+        const mpId = insumo.materiaPrimaId || insumo.productoId;
+        const cantConsumida = Math.round(Number(insumo.cantidad) * factor * (1 + (Number(insumo.mermaEsperada) || 0) / 100) * 1000) / 1000;
+        if (cantConsumida <= 0) continue;
+        // applyMovement valida existencias: si falta un insumo, la orden completa se cancela
+        const mov = await KardexService.applyMovement(tx, {
+          tenantId,
+          productoId: mpId,
+          bodegaId: null,
+          documentoTipo: 'CONSUMO_PRODUCCION',
+          documentoNumero: numeroOrden,
+          cantidad: cantConsumida,
+          observacion: `Consumo para ${cant} ${pt.unidadMedida || ''} de ${pt.nombre} (Lote ${lote})`
+        });
+        costoMP += mov.costoTotal;
+        insumosConsumidos.push({
+          materiaPrimaId: mpId,
+          nombre: mov.productoNombre,
+          sku: mov.sku,
+          cantidad: cantConsumida,
+          unidadMedida: insumo.unidadMedida || '',
+          costoUnitario: mov.costoUnitario,
+          costoTotal: Math.round(mov.costoTotal)
+        });
+      }
 
-    // 1. Consumo de cada materia prima
-    for (const insumo of receta.insumos) {
-      const mp = await DB.getById(STORES.PRODUCTS, insumo.materiaPrimaId);
-      if (!mp) continue;
+      const costoRealTotal = Math.round(costoMP + Number(costosIndirectosReales || 0));
+      const costoUnitarioReal = Math.round((costoRealTotal / cant) * 100) / 100;
 
-      const cantConsumida = Math.round(insumo.cantidad * factor * (1 + (insumo.mermaEsperada || 0) / 100) * 100) / 100;
-      const costoInsumo = cantConsumida * (mp.costoPromedio || 0);
-      costoTotalMateriasPrimasReal += costoInsumo;
-
-      insumosConsumidos.push({
-        materiaPrimaId: mp.id,
-        nombre: mp.nombre,
-        sku: mp.sku,
-        cantidad: cantConsumida,
-        unidadMedida: insumo.unidadMedida,
-        costoUnitario: mp.costoPromedio,
-        costoTotal: Math.round(costoInsumo)
-      });
-
-      // Registrar salida en Kardex por consumo de producción
-      await KardexService.registerMovement({
+      await KardexService.applyMovement(tx, {
         tenantId,
-        productoId: mp.id,
-        bodegaId: mp.bodegaId || 'wh_2',
-        documentoTipo: 'CONSUMO_PRODUCCION',
+        productoId: pt.id,
+        bodegaId: null,
+        documentoTipo: 'PRODUCCION_ENTRADA',
         documentoNumero: numeroOrden,
-        cantidad: cantConsumida,
-        costoUnitario: mp.costoPromedio,
-        usuarioId: responsableId,
-        observacion: `Consumo para fabricación de ${cantidadProducida} ${pt.unidadMedida} de ${pt.nombre} (Lote: ${lote})`
+        cantidad: cant,
+        costoUnitario: costoUnitarioReal,
+        observacion: `Producto terminado. Lote ${lote}`
       });
-    }
 
-    const costoRealTotal = Math.round(costoTotalMateriasPrimasReal + Number(costosIndirectosReales || 0));
-    const costoUnitarioReal = Math.round(costoRealTotal / cantidadProducida);
+      const ahora = new Date().toISOString();
+      const orden = await tx.put(STORES.PRODUCTION_ORDERS, {
+        tenantId,
+        numeroOrden,
+        recetaId,
+        recetaNombre: receta.nombreReceta || receta.nombreFormula || '-',
+        productoTerminadoId: pt.id,
+        productoTerminadoNombre: pt.nombre,
+        loteCodigo: lote,
+        fechaProgramada: ahora.split('T')[0],
+        fechaInicio: ahora,
+        fechaFin: ahora,
+        cantidadPlanificada: cant,
+        cantidadProducida: cant,
+        costoEstimadoTotal: costoRealTotal,
+        costoRealTotal,
+        costoUnitarioReal,
+        costosIndirectosReales: Number(costosIndirectosReales || 0),
+        insumosConsumidos,
+        estado: 'COMPLETADA',
+        responsableId: Session.userId(),
+        responsableNombre: Session.userName(),
+        observaciones: observaciones || ''
+      });
 
-    // 2. Ingreso del producto terminado al inventario
-    await KardexService.registerMovement({
-      tenantId,
-      productoId: pt.id,
-      bodegaId: pt.bodegaId || 'wh_1',
-      documentoTipo: 'PRODUCCION_ENTRADA',
-      documentoNumero: numeroOrden,
-      cantidad: cantidadProducida,
-      costoUnitario: costoUnitarioReal,
-      usuarioId: responsableId,
-      observacion: `Entrada de fabricación terminada. Lote: ${lote}`
+      await AuditService.logTx(tx, {
+        tenantId, modulo: 'Producción', accion: 'CREAR', registroId: numeroOrden,
+        campoModificado: 'Orden ejecutada',
+        valorNuevo: `${cant} ${pt.unidadMedida || ''} de ${pt.nombre} (Lote ${lote}) - Costo unit. $ ${costoUnitarioReal}`
+      });
+      return orden;
     });
-
-    // 3. Registrar Orden de Producción
-    const orden = {
-      tenantId,
-      numeroOrden,
-      recetaId,
-      recetaNombre: receta.nombreReceta,
-      productoTerminadoId: pt.id,
-      productoTerminadoNombre: pt.nombre,
-      loteCodigo: lote,
-      fechaProgramada: new Date().toISOString().split('T')[0],
-      fechaInicio: new Date().toISOString(),
-      fechaFin: new Date().toISOString(),
-      cantidadPlanificada: cantidadProducida,
-      cantidadProducida,
-      costoEstimadoTotal: costoRealTotal,
-      costoRealTotal,
-      costoUnitarioReal,
-      costosIndirectosReales,
-      insumosConsumidos,
-      estado: 'COMPLETADA',
-      responsableId,
-      responsableNombre: responsableNombre || 'Jefe de Planta',
-      observaciones: observaciones || 'Producción finalizada exitosamente.'
-    };
-
-    const savedOrder = await DB.add(STORES.PRODUCTION_ORDERS, orden);
-
-    await AuditService.log({
-      modulo: 'Producción',
-      accion: 'CREAR',
-      registroId: numeroOrden,
-      campoModificado: 'Orden Ejecutada',
-      valorAnterior: '-',
-      valorNuevo: `${cantidadProducida} ${pt.unidadMedida} de ${pt.nombre} (Lote: ${lote}) - Costo Unit: $ ${costoUnitarioReal}`
-    });
-
-    return savedOrder;
   }
 };

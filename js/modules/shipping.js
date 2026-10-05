@@ -3,8 +3,10 @@
  * Ciclo visual del pedido (Preparación -> Empaque -> Despacho -> Entrega) y guías de transporte
  */
 
+import { Session } from '../utils/session.js';
+import { bindOnce } from '../utils/dom.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
@@ -77,8 +79,8 @@ export const ShippingModule = {
           title: 'Guía / Transportadora',
           render: (val, row) => `
             <div>
-              <strong style="color: var(--brand-primary);">${val || 'POR ASIGNAR'}</strong>
-              <div class="text-xs text-muted">${row.transportadora}</div>
+              <strong style="color: var(--brand-primary);">${esc(val || 'POR ASIGNAR')}</strong>
+              <div class="text-xs text-muted">${esc(row.transportadora)}</div>
             </div>
           `
         },
@@ -87,8 +89,8 @@ export const ShippingModule = {
           title: 'Destinatario',
           render: (val, row) => `
             <div>
-              <div class="font-bold">${val}</div>
-              <div class="text-xs text-muted">📍 ${row.direccion || '-'}</div>
+              <div class="font-bold">${esc(val)}</div>
+              <div class="text-xs text-muted">📍 ${esc(row.direccion || '-')}</div>
             </div>
           `
         },
@@ -117,8 +119,8 @@ export const ShippingModule = {
         }
       ],
         actions: (row) => `
-          <button class="btn btn-primary btn-sm btn-print-label" data-id="${row.id}" title="Añadir a Cola de Impresión">➕ Encolar</button>
-          <button class="btn btn-secondary btn-sm btn-update-ship-status" data-id="${row.id}">🔄 Estado</button>
+          <button class="btn btn-primary btn-sm btn-print-label" data-id="${esc(row.id)}" title="Añadir a Cola de Impresión">➕ Encolar</button>
+          <button class="btn btn-secondary btn-sm btn-update-ship-status" data-id="${esc(row.id)}">🔄 Estado</button>
         `
     });
 
@@ -143,7 +145,7 @@ export const ShippingModule = {
     // Eventos de tabla (Usar un handler en una propiedad para evitar duplicados si se llama render múltiples veces)
     if (!this._hasBoundClick) {
       this._hasBoundClick = true;
-      container.addEventListener('click', (e) => {
+      bindOnce(container, 'shipping-click', 'click', (e) => {
         const printLabelBtn = e.target.closest('.btn-print-label');
         if (printLabelBtn) {
           const id = printLabelBtn.getAttribute('data-id');
@@ -186,7 +188,7 @@ export const ShippingModule = {
           <div class="form-group">
             <label class="form-label">Cliente Destinatario</label>
             <select class="form-select" name="clienteId" id="ship-client-select" required>
-              ${clients.map(c => `<option value="${c.id}" data-addr="${c.direccion || ''}">${c.nombre} (${c.ciudad || ''})</option>`).join('')}
+              ${clients.map(c => `<option value="${c.id}" data-addr="${esc(c.direccion || '')}">${esc(c.nombre)} (${esc(c.ciudad || '')})</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
@@ -276,7 +278,7 @@ export const ShippingModule = {
               fechaDespacho: formData.get('fechaDespacho'),
               fechaEntregaEstimada: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
               estadoCiclo: formData.get('estadoCiclo'),
-              responsable: 'Valentina Restrepo',
+              responsable: Session.userName(),
               cajasTotal: 1,
               contenidoDescripcion: 'Productos de mantenimiento y embellecimiento automotriz',
               observaciones: formData.get('observaciones') || 'Manejar con precaución. Productos de mantenimiento y embellecimiento automotriz.'
@@ -300,8 +302,8 @@ export const ShippingModule = {
   openUpdateStatusModal(ship, onUpdated) {
     const content = `
       <div class="form-group mb-3">
-        <label class="form-label">Guía de Transporte: <strong>${ship.numeroGuia}</strong> (${ship.transportadora})</label>
-        <div class="text-xs text-muted mb-2">Destinatario: ${ship.clienteNombre}</div>
+        <label class="form-label">Guía de Transporte: <strong>${esc(ship.numeroGuia)}</strong> (${esc(ship.transportadora)})</label>
+        <div class="text-xs text-muted mb-2">Destinatario: ${esc(ship.clienteNombre)}</div>
       </div>
       <div class="form-group mb-3">
         <label class="form-label">Seleccionar Nuevo Estado del Ciclo:</label>

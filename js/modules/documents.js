@@ -3,6 +3,7 @@
  * Visor interactivo e impresión de Facturas, Cotizaciones, Remisiones y Órdenes
  */
 
+import { esc } from '../utils/formatters.js';
 import { DB, STORES } from '../services/db-service.js';
 import { PrintTemplates } from '../components/print-template.js';
 import { ExportService } from '../services/export-service.js';
@@ -92,7 +93,7 @@ export const DocumentsModule = {
       <div class="view-header">
         <div class="view-title-wrap">
           <h1>Visor de Documentos & Plantillas Membretadas</h1>
-          <p>Plantillas dinámicas que adoptan automáticamente la identidad corporativa de <strong>${tenant.nombreComercial}</strong></p>
+          <p>Plantillas dinámicas que adoptan automáticamente la identidad corporativa de <strong>${esc(tenant.nombreComercial)}</strong></p>
         </div>
         <div class="view-actions">
           <button class="btn btn-primary btn-sm" id="btn-print-active-doc">🖨️ Imprimir / Descargar PDF</button>
@@ -133,7 +134,7 @@ export const DocumentsModule = {
     // Imprimir
     container.querySelector('#btn-print-active-doc').addEventListener('click', () => {
       const html = getPreviewHtml(activeDocType);
-      ExportService.printDocument(html, `Documento_${activeDocType}_${tenant.nombreComercial}`);
+      ExportService.printDocument(html, `Documento_${activeDocType}_${esc(tenant.nombreComercial)}`);
     });
   }
 };

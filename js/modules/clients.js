@@ -3,8 +3,9 @@
  * CRUD, cálculo automático de DV DIAN, cupos de crédito, 5 listas de precios y ficha comercial
  */
 
+import { bindOnce } from '../utils/dom.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { DianDV } from '../utils/dian-dv.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
@@ -100,14 +101,14 @@ export const ClientsModule = {
           key: 'codigo',
           title: 'Código',
           width: '90px',
-          render: val => `<strong>${val || '-'}</strong>`
+          render: val => `<strong>${esc(val || '-')}</strong>`
         },
         {
           key: 'nombre',
           title: 'Cliente / Razón Social',
           render: (val, row) => `
             <div>
-              <div class="font-bold">${val}</div>
+              <div class="font-bold">${esc(val)}</div>
               <div class="text-xs text-muted">NIT/CC: ${DianDV.formatWithDV(row.nitCc)}</div>
             </div>
           `
@@ -118,21 +119,21 @@ export const ClientsModule = {
           render: val => {
             const seg = CLIENT_SEGMENTS[val];
             const badgeClass = seg ? seg.badge : 'badge-neutral';
-            return `<span class="badge ${badgeClass}" style="font-weight: 700;">${val || 'General'}</span>`;
+            return `<span class="badge ${badgeClass}" style="font-weight: 700;">${esc(val || 'General')}</span>`;
           }
         },
         {
           key: 'ciudad',
           title: 'Ciudad',
-          render: (val, row) => `${val || '-'}, ${row.departamento || ''}`
+          render: (val, row) => `${esc(val || '-')}, ${esc(row.departamento || '')}`
         },
         {
           key: 'telefono',
           title: 'Contacto',
           render: (val, row) => `
             <div class="text-xs">
-              <div>📞 ${val || '-'}</div>
-              ${row.whatsapp ? `<div>💬 <a href="https://wa.me/${row.whatsapp.replace(/\D/g, '')}" target="_blank" style="color: var(--brand-primary);">${row.whatsapp}</a></div>` : ''}
+              <div>📞 ${esc(val || '-')}</div>
+              ${row.whatsapp ? `<div>💬 <a href="https://wa.me/${row.whatsapp.replace(/\D/g, '')}" target="_blank" style="color: var(--brand-primary);">${esc(row.whatsapp)}</a></div>` : ''}
             </div>
           `
         },
@@ -142,7 +143,7 @@ export const ClientsModule = {
           render: val => {
             if (!val) return '<span class="text-muted" style="font-size: 11px;">Directo (Rayo Pro)</span>';
             const f = (freelancers || []).find(x => x.id === val);
-            return f ? `<span class="badge badge-info" style="font-size: 11px;">🤝 ${f.nombre}</span>` : '<span class="text-muted">—</span>';
+            return f ? `<span class="badge badge-info" style="font-size: 11px;">🤝 ${esc(f.nombre)}</span>` : '<span class="text-muted">—</span>';
           }
         },
         {
@@ -182,12 +183,12 @@ export const ClientsModule = {
         {
           key: 'estado',
           title: 'Estado',
-          render: val => `<span class="badge ${val === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">${val}</span>`
+          render: val => `<span class="badge ${val === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">${esc(val)}</span>`
         }
       ],
       actions: (row) => `
-        <button class="btn btn-secondary btn-sm btn-view-client" data-id="${row.id}" title="Ficha 360°">👁️ Ficha</button>
-        <button class="btn btn-secondary btn-sm btn-edit-client" data-id="${row.id}" title="Editar">✏️</button>
+        <button class="btn btn-secondary btn-sm btn-view-client" data-id="${esc(row.id)}" title="Ficha 360°">👁️ Ficha</button>
+        <button class="btn btn-secondary btn-sm btn-edit-client" data-id="${esc(row.id)}" title="Editar">✏️</button>
       `
     });
 
@@ -207,7 +208,7 @@ export const ClientsModule = {
       });
     }
 
-    container.addEventListener('click', (e) => {
+    bindOnce(container, 'clients-click', 'click', (e) => {
       const editBtn = e.target.closest('.btn-edit-client');
       if (editBtn) {
         const id = editBtn.getAttribute('data-id');
@@ -277,7 +278,7 @@ export const ClientsModule = {
             <option value="">-- Sin vendedor freelance (Venta Directa de Fábrica) --</option>
             ${(freelancers || []).map(fl => `
               <option value="${fl.id}" ${client && client.vendedorFreelanceId === fl.id ? 'selected' : ''}>
-                🤝 ${fl.nombre} ${fl.zona ? '(' + fl.zona + ')' : ''}
+                🤝 ${esc(fl.nombre)} ${fl.zona ? '(' + fl.zona + ')' : ''}
               </option>
             `).join('')}
           </select>
@@ -299,7 +300,7 @@ export const ClientsModule = {
             <label class="form-label font-bold">Lista de Precios Asignada</label>
             <select class="form-select" name="listaPreciosId" id="modal-client-pricelist">
               ${priceLists.map(pl => `
-                <option value="${pl.id}" ${client && client.listaPreciosId === pl.id ? 'selected' : ''}>${pl.nombre}</option>
+                <option value="${pl.id}" ${client && client.listaPreciosId === pl.id ? 'selected' : ''}>${esc(pl.nombre)}</option>
               `).join('')}
             </select>
           </div>
@@ -419,7 +420,14 @@ export const ClientsModule = {
               if (pid && val > 0) preciosEspeciales[pid] = val;
             });
 
+            if (nitCc && nitCc !== '222222222222') {
+              const dup = (await DB.getAll(STORES.CUSTOMERS, tenantId)).find(c => String(c.nitCc || '').replace(/\D/g, '') === nitCc && (!client || c.id !== client.id));
+              if (dup) { Toast.warning(`Ya existe un cliente con ese NIT/CC: ${dup.nombre}.`); return; }
+            }
+            const hasSpecialInputs = dialog.querySelectorAll('.special-price-input').length > 0;
+
             const payload = {
+              ...(client || {}),
               tenantId,
               codigo: formData.get('codigo'),
               tipoPersona: formData.get('tipoPersona'),
@@ -440,10 +448,8 @@ export const ClientsModule = {
               cupoCredito: Number(formData.get('cupoCredito') || 0),
               diasCredito: Number(formData.get('diasCredito') || 0),
               observaciones: formData.get('observaciones'),
-              preciosEspeciales: Object.keys(preciosEspeciales).length > 0
-                ? preciosEspeciales
-                : (client ? (client.preciosEspeciales || {}) : {}),
-              estado: 'ACTIVO'
+              preciosEspeciales: hasSpecialInputs ? preciosEspeciales : (client ? (client.preciosEspeciales || {}) : {}),
+              estado: (client && client.estado) || 'ACTIVO'
             };
 
             if (isEdit) {
@@ -543,10 +549,10 @@ export const ClientsModule = {
       <div class="mb-4" style="background: rgba(0, 113, 227, 0.03); padding: 18px; border-radius: 16px; border: 1px solid rgba(0, 113, 227, 0.12);">
         <div class="d-flex justify-between items-center mb-2">
           <div>
-            <h2 style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">${client.nombre}</h2>
-            <div class="text-xs text-muted" style="margin-top: 2px;">NIT/CC: <strong>${DianDV.formatWithDV(client.nitCc)}</strong> • Segmento: <span class="badge badge-neutral" style="font-size: 11px;">${client.tipoCliente}</span></div>
+            <h2 style="font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">${esc(client.nombre)}</h2>
+            <div class="text-xs text-muted" style="margin-top: 2px;">NIT/CC: <strong>${DianDV.formatWithDV(client.nitCc)}</strong> • Segmento: <span class="badge badge-neutral" style="font-size: 11px;">${esc(client.tipoCliente)}</span></div>
           </div>
-          <span class="badge ${client.estado === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">${client.estado}</span>
+          <span class="badge ${client.estado === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">${esc(client.estado)}</span>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 14px;">
@@ -574,8 +580,8 @@ export const ClientsModule = {
       </div>
 
       <div class="d-flex flex-col gap-2 mb-4 text-xs" style="color: var(--text-main); background: var(--bg-surface-solid); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
-        <div>📍 <strong>Dirección de Entrega:</strong> ${client.direccion || '-'}, ${client.barrio || ''} (${client.ciudad || '-'}, ${client.departamento || ''})</div>
-        <div>📞 <strong>Contacto Comercial:</strong> ${client.telefono || '-'} | <strong>WhatsApp:</strong> ${client.whatsapp || '-'} | <strong>Email:</strong> ${client.email || '-'}</div>
+        <div>📍 <strong>Dirección de Entrega:</strong> ${esc(client.direccion || '-')}, ${esc(client.barrio || '')} (${esc(client.ciudad || '-')}, ${esc(client.departamento || '')})</div>
+        <div>📞 <strong>Contacto Comercial:</strong> ${esc(client.telefono || '-')} | <strong>WhatsApp:</strong> ${esc(client.whatsapp || '-')} | <strong>Email:</strong> ${esc(client.email || '-')}</div>
         <div>🏷️ <strong>Lista de Precios Predilecta:</strong> <span class="badge badge-info" style="font-size: 11px;">${listName}</span></div>
         <div>⚡ <strong>Régimen de Facturación:</strong> 
           <span class="badge ${client.facturaElectronica !== false ? 'badge-success' : 'badge-neutral'}" style="font-size: 11px;">
@@ -586,7 +592,7 @@ export const ClientsModule = {
           </span>
         </div>
         <div>⏱️ <strong>Condición de Crédito:</strong> ${client.diasCredito > 0 ? `${client.diasCredito} Días plazo (Cupo Total: ${Formatters.currency(client.cupoCredito)})` : 'Contado inmediato'}</div>
-        ${client.observaciones ? `<div style="background: rgba(245, 158, 11, 0.08); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #f59e0b; margin-top: 4px;">📝 <strong>Notas Internas:</strong> ${client.observaciones}</div>` : ''}
+        ${client.observaciones ? `<div style="background: rgba(245, 158, 11, 0.08); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #f59e0b; margin-top: 4px;">📝 <strong>Notas Internas:</strong> ${esc(client.observaciones)}</div>` : ''}
       </div>
 
       <!-- SECCIÓN CARTERA & ABONOS HISTÓRICOS -->
@@ -608,12 +614,12 @@ export const ClientsModule = {
               <tbody>
                 ${clientCxc.map(c => `
                   <tr>
-                    <td><strong>${c.documento}</strong><br><span class="text-xs text-muted">${c.observaciones || ''}</span></td>
+                    <td><strong>${esc(c.documento)}</strong><br><span class="text-xs text-muted">${esc(c.observaciones || '')}</span></td>
                     <td>${Formatters.date(c.fechaEmision)}<br><span class="text-xs text-muted">Vence: ${Formatters.date(c.fechaVencimiento)}</span></td>
                     <td class="text-right font-medium">${Formatters.currency(c.valorTotal)}</td>
                     <td class="text-right font-medium" style="color: var(--color-success);">- ${Formatters.currency(c.abonos || 0)}</td>
                     <td class="text-right font-bold" style="color: var(--color-danger);">${Formatters.currency(c.saldo)}</td>
-                    <td><span class="badge ${c.saldo === 0 ? 'badge-success' : 'badge-warning'}">${c.estado}</span></td>
+                    <td><span class="badge ${c.saldo === 0 ? 'badge-success' : 'badge-warning'}">${esc(c.estado)}</span></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -637,11 +643,11 @@ export const ClientsModule = {
           <tbody>
             ${clientSales.length > 0 ? clientSales.map(s => `
               <tr>
-                <td><strong>${s.consecutivo}</strong></td>
+                <td><strong>${esc(s.consecutivo)}</strong></td>
                 <td>${Formatters.date(s.fecha)}</td>
-                <td>${s.metodoPago}</td>
+                <td>${esc(s.metodoPago)}</td>
                 <td class="text-right font-bold">${Formatters.currency(s.total)}</td>
-                <td><span class="badge ${s.estado === 'PAGADA' ? 'badge-success' : 'badge-warning'}">${s.estado}</span></td>
+                <td><span class="badge ${s.estado === 'PAGADA' ? 'badge-success' : 'badge-warning'}">${esc(s.estado)}</span></td>
               </tr>
             `).join('') : `
               <tr><td colspan="5" class="text-center text-muted" style="padding: 15px;">Sin compras registradas aún.</td></tr>
@@ -668,10 +674,10 @@ export const ClientsModule = {
               <tbody>
                 ${clientShipments.map(sh => `
                   <tr>
-                    <td><strong>${sh.numeroGuia}</strong></td>
-                    <td>${sh.transportadora}</td>
+                    <td><strong>${esc(sh.numeroGuia)}</strong></td>
+                    <td>${esc(sh.transportadora)}</td>
                     <td>${sh.cajasTotal || 1} Cajas</td>
-                    <td class="text-xs">${sh.contenidoDescripcion || '-'}</td>
+                    <td class="text-xs">${esc(sh.contenidoDescripcion || '-')}</td>
                     <td><span class="badge ${sh.estadoCiclo === 'ENTREGADO' ? 'badge-success' : 'badge-info'}">${sh.estadoCiclo}</span></td>
                   </tr>
                 `).join('')}

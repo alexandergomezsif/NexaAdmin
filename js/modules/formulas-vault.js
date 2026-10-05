@@ -6,86 +6,123 @@
  * - Asistente Modal (Wizard): 4 pasos didácticos para crear o editar recetas maestras
  */
 
+import { AuditService } from '../services/audit-service.js';
+import { CryptoUtil } from '../utils/crypto.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
 
 export const FormulasVaultModule = {
-  isUnlocked: false,
+  _pin: null,   // PIN en memoria mientras la bóveda está abierta (nunca se guarda en claro)
 
   async render(container) {
     const tenant = TenantServiceInstance.getActiveTenant();
     const tenantId = tenant ? tenant.id : 'tenant_rayopro';
 
-    if (!this.isUnlocked) {
-      this.renderLockScreen(container);
+    if (!this._pin) {
+      const hasPin = !!(await DB.getParam(this.pinParam(tenantId), null));
+      this.renderLockScreen(container, tenantId, hasPin);
       return;
     }
 
     await this.renderVault(container, tenantId);
   },
 
-  renderLockScreen(container) {
+  pinParam(tenantId) {
+    return `vault_pin_${tenantId}`;
+  },
+
+  /** Cifra el texto secreto (protocolo de mezcla y especificaciones) de una receta */
+  async sealRecipe(r, pin) {
+    const secret = { instruccionesFases: r.instruccionesFases || '', especificaciones: r.especificaciones || {} };
+    const out = { ...r, secreto: await CryptoUtil.encryptJSON(secret, pin) };
+    delete out.instruccionesFases;
+    delete out.especificaciones;
+    return out;
+  },
+
+  /** Descifra en memoria (no modifica la BD) */
+  async openRecipe(r, pin) {
+    if (!r.secreto) return r;
+    const sec = await CryptoUtil.decryptJSON(r.secreto, pin);
+    return { ...r, instruccionesFases: sec.instruccionesFases, especificaciones: sec.especificaciones };
+  },
+
+  /** Cifra recetas que aún tengan el secreto en texto plano (datos de versiones anteriores) */
+  async sealLegacy(tenantId, pin) {
+    const recipes = await DB.getAll(STORES.RECIPES_BOM, tenantId);
+    for (const r of recipes) {
+      if (!r.secreto && (r.instruccionesFases || r.especificaciones)) {
+        await DB.update(STORES.RECIPES_BOM, await this.sealRecipe(r, pin));
+      }
+    }
+  },
+
+  renderLockScreen(container, tenantId, hasPin) {
     container.innerHTML = `
       <div class="d-flex items-center justify-center" style="min-height: 70vh;">
-        <div class="card" style="max-width: 420px; width: 100%; padding: 32px; text-align: center; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.06);">
+        <div class="card" style="max-width: 440px; width: 100%; padding: 32px; text-align: center; border-radius: 16px;">
           <div style="font-size: 40px; margin-bottom: 12px;">🔒</div>
-          <h2 style="font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Bóveda Privada de Recetas</h2>
-          <span class="badge badge-warning mb-3" style="display: inline-block;">SECRETO DE FABRICACIÓN</span>
-          
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.4;">
-            Aquí se guardan las recetas secretas y las proporciones de tus productos. Ingresa tu clave para abrir la bóveda.
+          <h2 style="font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">Bóveda de recetas</h2>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.45;">
+            ${hasPin
+              ? 'El protocolo de mezcla y las especificaciones están cifrados. Ingrese la clave de la bóveda.'
+              : 'Defina la clave de la bóveda. Con ella se cifran el protocolo de mezcla y las especificaciones de cada receta.'}
           </p>
-
-          <form id="vault-pin-form">
-            <div class="form-group mb-3">
-              <input type="password" id="vault-pin-inp" class="form-control text-center font-bold" placeholder="Escribe tu clave aquí" required autofocus style="font-size: 18px; letter-spacing: 3px; height: 45px;">
-            </div>
-
+          <form id="vault-pin-form" autocomplete="off">
+            <input type="password" id="vault-pin-inp" class="form-control text-center font-bold mb-2" placeholder="${hasPin ? 'Clave de la bóveda' : 'Nueva clave (mínimo 6 caracteres)'}" required autofocus style="font-size: 16px; height: 44px;">
+            ${hasPin ? '' : '<input type="password" id="vault-pin-inp2" class="form-control text-center font-bold mb-2" placeholder="Repetir clave" required style="font-size: 16px; height: 44px;">'}
             <div id="vault-pin-err" class="alert alert-danger mb-3 text-xs" style="display: none; padding: 8px;"></div>
-
-            <button type="submit" class="btn btn-primary w-100 font-bold" style="height: 42px; font-size: 14px;">
-              🔓 Abrir mi Bóveda de Recetas
-            </button>
+            ${hasPin ? '' : '<div class="alert alert-warning text-xs mb-3" style="text-align: left;">⚠️ Si olvida esta clave, el texto cifrado de las recetas <strong>no se puede recuperar</strong> (ni siquiera el desarrollador). Anótela en un lugar seguro. Las cantidades de insumos no se cifran porque Producción las necesita.</div>'}
+            <button type="submit" class="btn btn-primary w-100 font-bold" style="height: 42px;">${hasPin ? '🔓 Abrir bóveda' : '🔐 Crear clave y abrir'}</button>
           </form>
-
-          <div class="text-xs text-muted mt-3 pt-3" style="border-top: 1px solid var(--border-color);">
-            Clave inicial por defecto: <strong>1234</strong>
-          </div>
         </div>
       </div>
     `;
 
     const form = container.querySelector('#vault-pin-form');
-    const inp = container.querySelector('#vault-pin-inp');
     const err = container.querySelector('#vault-pin-err');
-
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const val = (inp.value || '').trim();
-      const realPin = localStorage.getItem('nexa_vault_pin') || '1234';
-
-      if (val === realPin || val === 'NEXA_RESCUE_999') {
-        this.isUnlocked = true;
-        Toast.success('¡Bóveda abierta con éxito!');
+      err.style.display = 'none';
+      const val = container.querySelector('#vault-pin-inp').value;
+      try {
+        if (hasPin) {
+          const stored = await DB.getParam(this.pinParam(tenantId), null);
+          if (!(await CryptoUtil.verifyPassword(val, stored))) throw new Error('Clave incorrecta.');
+        } else {
+          if (val.length < 6) throw new Error('La clave debe tener al menos 6 caracteres.');
+          if (val !== container.querySelector('#vault-pin-inp2').value) throw new Error('Las claves no coinciden.');
+          await DB.setParam(this.pinParam(tenantId), await CryptoUtil.hashPassword(val), tenantId);
+          await AuditService.log({ modulo: 'Bóveda', accion: 'CREAR', campoModificado: 'Clave de bóveda', valorNuevo: 'Definida' });
+        }
+        this._pin = val;
+        await this.sealLegacy(tenantId, val);
+        Toast.success('Bóveda abierta.');
         this.render(container);
-      } else {
-        err.textContent = 'Clave incorrecta. Intenta nuevamente.';
+      } catch (ex) {
+        err.textContent = ex.message;
         err.style.display = 'block';
-        inp.value = '';
-        inp.focus();
       }
     });
   },
 
   async renderVault(container, tenantId) {
-    const [recipes, rawMaterials, finishedGoods] = await Promise.all([
+    const [sealed, rawMaterials, finishedGoods] = await Promise.all([
       DB.getAll(STORES.RECIPES_BOM, tenantId),
       (await DB.getAll(STORES.PRODUCTS, tenantId)).filter(p => p.tipoItem === 'MATERIA_PRIMA'),
       (await DB.getAll(STORES.PRODUCTS, tenantId)).filter(p => p.tipoItem === 'PRODUCTO_TERMINADO')
     ]);
+    const recipes = [];
+    for (const r of sealed) {
+      try {
+        recipes.push(await this.openRecipe(r, this._pin));
+      } catch (e) {
+        recipes.push({ ...r, instruccionesFases: '⚠️ No se pudo descifrar con la clave actual.' });
+      }
+    }
 
     container.innerHTML = `
       <div class="view-header mb-3" style="padding-bottom: 8px;">
@@ -181,10 +218,10 @@ export const FormulasVaultModule = {
                   <div>
                     <div class="d-flex items-center gap-2">
                       <span style="font-size: 20px;">🧪</span>
-                      <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">${r.nombreFormula}</h4>
+                      <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">${esc(r.nombreFormula)}</h4>
                     </div>
                     <div class="text-xs text-muted mt-1">
-                      Producto: <strong>${fg.nombre || 'No asignado'}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${r.unidadMedida || 'Litros'}</strong>
+                      Producto: <strong>${esc(fg.nombre || 'No asignado')}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${esc(r.unidadMedida || 'Litros')}</strong>
                     </div>
                   </div>
 
@@ -245,7 +282,7 @@ export const FormulasVaultModule = {
                 ${r.instruccionesFases ? `
                   <div class="p-2 mt-1" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 11.5px;">
                     <strong>👨‍🔬 Protocolo de Mezcla:</strong>
-                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.35;">${r.instruccionesFases}</div>
+                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.35;">${esc(r.instruccionesFases)}</div>
                   </div>
                 ` : ''}
               </div>
@@ -257,13 +294,13 @@ export const FormulasVaultModule = {
 
     // Eventos
     container.querySelector('#btn-lock-now').addEventListener('click', () => {
-      this.isUnlocked = false;
+      this._pin = null;
       Toast.info('Bóveda cerrada');
       this.render(container);
     });
 
     container.querySelector('#btn-change-pin').addEventListener('click', () => {
-      this.openChangePin();
+      this.openChangePin(tenantId, () => this.render(container));
     });
 
     const btnNew = container.querySelector('#btn-nueva-receta-asistente');
@@ -289,7 +326,8 @@ export const FormulasVaultModule = {
         const id = btn.getAttribute('data-id');
         const r = recipes.find(rec => rec.id === id);
         if (r) {
-          sessionStorage.setItem('nexa_target_pricing_formula', JSON.stringify(r));
+          const { instruccionesFases, especificaciones, secreto, ...publica } = r;
+          sessionStorage.setItem('nexa_target_pricing_formula', JSON.stringify(publica));
           window.location.hash = '#pricing-calculator';
         }
       });
@@ -372,7 +410,7 @@ export const FormulasVaultModule = {
           <div class="nexa-grid-2 mb-3">
             <div>
               <label class="font-bold text-xs">Nombre de la Receta Maestra:</label>
-              <input type="text" id="wiz-rec-name" class="form-control font-bold" value="${wiz.nombreFormula}" placeholder="Ej: Desengrasante Pesado Industrial" required>
+              <input type="text" id="wiz-rec-name" class="form-control font-bold" value="${esc(wiz.nombreFormula)}" placeholder="Ej: Desengrasante Pesado Industrial" required>
             </div>
             <div>
               <label class="font-bold text-xs">¿A qué Producto Terminado corresponde?</label>
@@ -380,7 +418,7 @@ export const FormulasVaultModule = {
                 <option value="">-- Sin vincular aún (Solo fórmula) --</option>
                 ${finishedGoods.map(fg => `
                   <option value="${fg.id}" ${wiz.productoTerminadoId === fg.id ? 'selected' : ''}>
-                    ${fg.nombre} (${fg.sku || '-'})
+                    ${esc(fg.nombre)} (${esc(fg.sku || '-')})
                   </option>
                 `).join('')}
               </select>
@@ -433,7 +471,7 @@ export const FormulasVaultModule = {
                   <th>Materia Prima</th>
                   <th style="width: 140px;">Momento</th>
                   <th style="width: 90px;" class="text-center">%</th>
-                  <th style="width: 110px;" class="text-center">Cantidad (${wiz.unidadMedida})</th>
+                  <th style="width: 110px;" class="text-center">Cantidad (${esc(wiz.unidadMedida)})</th>
                   <th style="width: 40px;"></th>
                 </tr>
               </thead>
@@ -445,7 +483,7 @@ export const FormulasVaultModule = {
                         <option value="" disabled ${!item.productoId ? 'selected' : ''}>Elegir insumo...</option>
                         ${rawMaterials.map(rm => `
                           <option value="${rm.id}" ${item.productoId === rm.id ? 'selected' : ''}>
-                            ${rm.nombre} (${Formatters.currency(rm.costo || rm.precioCompra || 0)}/u)
+                            ${esc(rm.nombre)} (${Formatters.currency(rm.costo || rm.precioCompra || 0)}/u)
                           </option>
                         `).join('')}
                       </select>
@@ -513,7 +551,7 @@ export const FormulasVaultModule = {
                 Insertar Plantilla Guía
               </button>
             </div>
-            <textarea id="wiz-rec-steps" rows="6" class="form-control text-xs" style="font-size: 12px; line-height: 1.4;" placeholder="Paso 1: Llenar el tanque con el agua base y encender el agitador a media velocidad...&#10;Paso 2: Agregar el químico activo lentamente para evitar salpicaduras...&#10;Paso 3: Incorporar el color y la fragancia hasta homogenizar...&#10;Paso 4: Tomar muestra de pH antes del envasado.">${wiz.instruccionesFases}</textarea>
+            <textarea id="wiz-rec-steps" rows="6" class="form-control text-xs" style="font-size: 12px; line-height: 1.4;" placeholder="Paso 1: Llenar el tanque con el agua base y encender el agitador a media velocidad...&#10;Paso 2: Agregar el químico activo lentamente para evitar salpicaduras...&#10;Paso 3: Incorporar el color y la fragancia hasta homogenizar...&#10;Paso 4: Tomar muestra de pH antes del envasado.">${esc(wiz.instruccionesFases)}</textarea>
           </div>
         `;
       }
@@ -532,9 +570,9 @@ export const FormulasVaultModule = {
           <div class="card p-3 mb-3" style="background: var(--bg-surface-solid); border-radius: 10px;">
             <div class="d-flex justify-between items-start mb-2">
               <div>
-                <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">🧪 ${wiz.nombreFormula}</h4>
+                <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">🧪 ${esc(wiz.nombreFormula)}</h4>
                 <div class="text-xs text-muted">
-                  Producto Asociado: <strong>${prodAsoc ? prodAsoc.nombre : 'Sin vincular'}</strong> | Tanda: <strong>${wiz.cantidadProducir} ${wiz.unidadMedida}</strong>
+                  Producto Asociado: <strong>${prodAsoc ? prodAsoc.nombre : 'Sin vincular'}</strong> | Tanda: <strong>${wiz.cantidadProducir} ${esc(wiz.unidadMedida)}</strong>
                 </div>
               </div>
               <span class="badge badge-success font-bold">100% Confidencial</span>
@@ -714,25 +752,33 @@ export const FormulasVaultModule = {
       // Paso 4: Guardar
       if (wiz.step === 4) {
         const doSave = async (goToPricing = false) => {
+          const existing = (await DB.getById(STORES.RECIPES_BOM, wiz.id)) || {};
+          const nombre = wiz.nombreFormula.trim() || 'Fórmula sin nombre';
+          const lote = Number(wiz.cantidadProducir) || 1;
           const recData = {
+            ...existing,
             id: wiz.id,
             tenantId,
-            nombreFormula: wiz.nombreFormula.trim() || 'Fórmula Sin Nombre',
+            nombreFormula: nombre,
+            nombreReceta: nombre,
             productoTerminadoId: wiz.productoTerminadoId,
-            cantidadProducir: Number(wiz.cantidadProducir) || 1,
+            cantidadProducir: lote,
+            rendimientoLote: lote,
             unidadMedida: wiz.unidadMedida,
             instruccionesFases: wiz.instruccionesFases,
             especificaciones: { ph: wiz.ph },
-            insumos: wiz.insumos,
-            fechaModificacion: new Date().toISOString()
+            insumos: wiz.insumos.map(i => ({ ...i, materiaPrimaId: i.productoId, unidadMedida: i.unidadMedida || (rawMaterials.find(m => m.id === i.productoId) || {}).unidadMedida || '' })),
+            estado: existing.estado || 'ACTIVO'
           };
 
-          await DB.update(STORES.RECIPES_BOM, recData);
+          if (!this._pin) { Toast.error('La bóveda se cerró. Ábrala de nuevo para guardar.'); return; }
+          await DB.update(STORES.RECIPES_BOM, await this.sealRecipe(recData, this._pin));
           Toast.success(`¡Receta "${recData.nombreFormula}" guardada en Bóveda!`);
           Modal.close();
 
           if (goToPricing) {
-            sessionStorage.setItem('nexa_target_pricing_formula', JSON.stringify(recData));
+            const { instruccionesFases, especificaciones, ...publica } = recData;
+            sessionStorage.setItem('nexa_target_pricing_formula', JSON.stringify(publica));
             window.location.hash = '#pricing-calculator';
           } else if (onSaved) {
             onSaved();
@@ -750,41 +796,51 @@ export const FormulasVaultModule = {
     renderStep();
   },
 
-  openChangePin() {
-    Modal.show({
-      title: 'Cambiar Clave de la Bóveda',
+  openChangePin(tenantId, onDone) {
+    const dialog = Modal.show({
+      title: 'Cambiar clave de la bóveda',
+      size: 'sm',
       content: `
-        <div class="form-group mb-3">
-          <label class="font-bold text-xs">Clave Actual</label>
-          <input type="password" id="inp-pin-cur" class="form-control" placeholder="Escribe tu clave actual" required>
-        </div>
-        <div class="form-group mb-3">
-          <label class="font-bold text-xs">Nueva Clave</label>
-          <input type="password" id="inp-pin-new" class="form-control" placeholder="Escribe tu nueva clave" required>
-        </div>
-      `,
+        <form id="vault-change-form" autocomplete="off">
+          <div class="form-group mb-3"><label class="font-bold text-xs">Clave actual</label>
+            <input type="password" name="cur" class="form-control" required></div>
+          <div class="form-group mb-3"><label class="font-bold text-xs">Nueva clave (mínimo 6 caracteres)</label>
+            <input type="password" name="n1" class="form-control" required></div>
+          <div class="form-group mb-3"><label class="font-bold text-xs">Repetir nueva clave</label>
+            <input type="password" name="n2" class="form-control" required></div>
+          <p class="text-xs text-muted">Todas las recetas se volverán a cifrar con la nueva clave.</p>
+        </form>`,
       footerButtons: [
         { label: 'Cancelar', class: 'btn-secondary', onClick: () => Modal.close() },
         {
-          label: 'Guardar Clave',
-          class: 'btn-primary',
-          onClick: () => {
-            const cur = document.getElementById('inp-pin-cur').value.trim();
-            const n = document.getElementById('inp-pin-new').value.trim();
-            const realPin = localStorage.getItem('nexa_vault_pin') || '1234';
-
-            if (cur !== realPin && cur !== 'NEXA_RESCUE_999') {
-              Toast.error('La clave actual no es correcta.');
-              return;
+          label: 'Guardar clave', class: 'btn-primary', onClick: async (dlg, ev) => {
+            const fd = new FormData(dialog.querySelector('#vault-change-form'));
+            const cur = fd.get('cur'); const n1 = fd.get('n1');
+            const stored = await DB.getParam(this.pinParam(tenantId), null);
+            if (!(await CryptoUtil.verifyPassword(cur, stored))) { Toast.error('La clave actual no es correcta.'); return; }
+            if (n1.length < 6) { Toast.warning('La nueva clave debe tener al menos 6 caracteres.'); return; }
+            if (n1 !== fd.get('n2')) { Toast.warning('Las claves no coinciden.'); return; }
+            ev.target.disabled = true;
+            try {
+              const recipes = await DB.getAll(STORES.RECIPES_BOM, tenantId);
+              const resealed = [];
+              for (const r of recipes) resealed.push(r.secreto ? await this.sealRecipe(await this.openRecipe(r, cur), n1) : r);
+              const hash = await CryptoUtil.hashPassword(n1);
+              await DB.runTransaction([STORES.RECIPES_BOM, STORES.SYSTEM_PARAMS], async (tx) => {
+                for (const r of resealed) await tx.put(STORES.RECIPES_BOM, r);
+                const row = (await tx.get(STORES.SYSTEM_PARAMS, this.pinParam(tenantId))) || { id: this.pinParam(tenantId), tenantId };
+                row.valor = hash;
+                await tx.put(STORES.SYSTEM_PARAMS, row);
+              });
+              this._pin = n1;
+              await AuditService.log({ modulo: 'Bóveda', accion: 'MODIFICAR', campoModificado: 'Clave de bóveda', valorNuevo: 'Cambiada' });
+              Toast.success('Clave actualizada y recetas cifradas de nuevo.');
+              Modal.close();
+              if (onDone) onDone();
+            } catch (err) {
+              Toast.error(err.message);
+              ev.target.disabled = false;
             }
-            if (n.length < 3) {
-              Toast.warning('La nueva clave debe tener al menos 3 caracteres.');
-              return;
-            }
-
-            localStorage.setItem('nexa_vault_pin', n);
-            Toast.success('¡Clave actualizada correctamente!');
-            Modal.close();
           }
         }
       ]

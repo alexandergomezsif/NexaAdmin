@@ -3,6 +3,11 @@
  * Carga de Clientes, Productos y Proveedores mediante archivos CSV / Excel con previsualización
  */
 
+import { esc } from '../utils/formatters.js';
+import { AuditService } from '../services/audit-service.js';
+import { KardexService } from '../services/kardex-service.js';
+import { PricingService } from '../services/pricing-service.js';
+import { parseCSV, parseNumber } from '../utils/csv.js';
 import { DB, STORES } from '../services/db-service.js';
 import { DianDV } from '../utils/dian-dv.js';
 import { Toast } from '../components/toast.js';
@@ -17,7 +22,7 @@ export const ImporterModule = {
     container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
-          <h1>Importación Masiva de Datos (CSV / Excel)</h1>
+          <h1>Importación Masiva de Datos (CSV)</h1>
           <p>Carga ágil de catálogos maestros de clientes, productos y proveedores mediante hojas de cálculo</p>
         </div>
       </div>
@@ -93,7 +98,8 @@ export const ImporterModule = {
 
     // Funciones de descarga de plantillas modelo
     const downloadCSVTemplate = (filename, headers, sampleRow) => {
-      const csv = '\uFEFF' + headers.join(';') + '\r\n' + sampleRow.join(';') + '\r\n';
+      const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+      const csv = '\uFEFF' + headers.map(q).join(';') + '\r\n' + sampleRow.map(q).join(';') + '\r\n';
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -116,8 +122,8 @@ export const ImporterModule = {
     container.querySelector('#btn-dl-template-products').addEventListener('click', () => {
       downloadCSVTemplate(
         'Plantilla_Productos_Nexa',
-        ['SKU', 'Nombre', 'TipoItem', 'Categoria', 'UnidadMedida', 'CostoPromedio', 'Precio1', 'StockInicial', 'StockMinimo'],
-        ['RAYO-LIMP-500', 'Limpiador Cristales Antiempañante 500ml', 'PRODUCTO_TERMINADO', 'Visibilidad', 'Unidad', '6500', '18000', '40', '10']
+        ['SKU', 'Nombre', 'TipoItem', 'Categoria', 'UnidadMedida', 'CostoPromedio', 'Precio1', 'Precio2', 'Precio3', 'Precio4', 'Precio5', 'StockInicial', 'StockMinimo'],
+        ['RAYO-LIMP-500', 'Limpiador Cristales Antiempañante 500ml', 'PRODUCTO_TERMINADO', 'Visibilidad', 'Unidad', '6500', '18000', '16000', '14000', '12500', '', '40', '10']
       );
     });
 
@@ -144,25 +150,12 @@ export const ImporterModule = {
 
         const reader = new FileReader();
         reader.onload = (e) => {
-          const text = e.target.result;
-          const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
-          if (lines.length < 2) {
+          const parsed = parseCSV(e.target.result);
+          const headers = parsed.headers;
+          const rows = parsed.rows;
+          if (rows.length === 0) {
             Toast.warning('El archivo seleccionado no contiene filas de datos.');
             return;
-          }
-
-          const headers = lines[0].split(';').map(h => h.replace(/"/g, '').trim());
-          const rows = [];
-
-          for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(';').map(c => c.replace(/"/g, '').trim());
-            if (cols.length >= headers.length) {
-              const rowObj = {};
-              headers.forEach((h, idx) => {
-                rowObj[h] = cols[idx];
-              });
-              rows.push(rowObj);
-            }
           }
 
           pendingImportType = type;
@@ -184,9 +177,9 @@ export const ImporterModule = {
       const title = container.querySelector('#importer-preview-title');
 
       title.textContent = `Previsualización de Importación: ${rows.length} registros listos (${type})`;
-      thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      thead.innerHTML = `<tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr>`;
       tbody.innerHTML = rows.slice(0, 10).map(r => `
-        <tr>${headers.map(h => `<td>${r[h] || '-'}</td>`).join('')}</tr>
+        <tr>${headers.map(h => `<td>${esc(r[h] || '-')}</td>`).join('')}</tr>
       `).join('');
 
       card.style.display = 'block';
@@ -197,72 +190,110 @@ export const ImporterModule = {
     container.querySelector('#btn-confirm-import').addEventListener('click', async () => {
       if (!pendingImportType || pendingImportRows.length === 0) return;
 
+      const btnConfirm = container.querySelector('#btn-confirm-import');
+      btnConfirm.disabled = true;
       try {
         let inserted = 0;
+        const skipped = [];
 
         if (pendingImportType === 'CUSTOMERS') {
+          const existing = await DB.getAll(STORES.CUSTOMERS, tenantId);
+          const nits = new Set(existing.map(c => String(c.nitCc || '').replace(/\D/g, '')).filter(Boolean));
           for (const r of pendingImportRows) {
             const cleanNit = (r.NIT_CC || '').replace(/\D/g, '');
+            if (!r.Nombre) { skipped.push('fila sin nombre'); continue; }
+            if (cleanNit && nits.has(cleanNit)) { skipped.push(`${r.Nombre} (NIT ya existe)`); continue; }
             await DB.add(STORES.CUSTOMERS, {
               tenantId,
-              codigo: r.Codigo || `CLI-${Math.floor(100 + Math.random() * 900)}`,
-              nombre: r.Nombre || 'Cliente Importado',
+              codigo: r.Codigo || '',
+              nombre: r.Nombre,
               nitCc: cleanNit,
-              dv: DianDV.calculate(cleanNit) || 0,
-              tipoCliente: r.TipoCliente || 'Taller / Detailing',
+              dv: DianDV.calculate(cleanNit),
+              tipoCliente: r.TipoCliente || 'Consumidor Final',
               telefono: r.Telefono || '',
-              ciudad: r.Ciudad || 'Medellín',
+              ciudad: r.Ciudad || '',
               direccion: r.Direccion || '',
-              cupoCredito: Number(r.CupoCredito || 0),
-              diasCredito: Number(r.DiasCredito || 0),
+              cupoCredito: parseNumber(r.CupoCredito),
+              diasCredito: parseNumber(r.DiasCredito),
               saldoPendiente: 0,
               estado: 'ACTIVO'
             });
+            if (cleanNit) nits.add(cleanNit);
             inserted++;
           }
         } else if (pendingImportType === 'PRODUCTS') {
+          const existing = await DB.getAll(STORES.PRODUCTS, tenantId);
+          const priceLists = await DB.getAll(STORES.PRICE_LISTS, tenantId);
+          const skus = new Set(existing.map(p => String(p.sku || '').toLowerCase()));
           for (const r of pendingImportRows) {
-            await DB.add(STORES.PRODUCTS, {
+            const sku = String(r.SKU || '').trim();
+            if (!sku || !r.Nombre) { skipped.push(`${r.Nombre || sku || 'fila'} (falta SKU o nombre)`); continue; }
+            if (skus.has(sku.toLowerCase())) { skipped.push(`${sku} (SKU ya existe)`); continue; }
+            const precios = {};
+            [1, 2, 3, 4, 5].forEach(n => {
+              const pl = PricingService.findByCode(priceLists, `P${n}`);
+              const v = parseNumber(r[`Precio${n}`]);
+              if (pl && v > 0) precios[pl.id] = v;
+            });
+            const prod = await DB.add(STORES.PRODUCTS, {
               tenantId,
-              sku: r.SKU || `SKU-${Date.now()}`,
-              codigoInterno: r.SKU || '',
-              nombre: r.Nombre || 'Producto Importado',
+              sku,
+              codigoInterno: sku,
+              nombre: r.Nombre,
               tipoItem: r.TipoItem || 'PRODUCTO_TERMINADO',
               categoria: r.Categoria || 'General',
               unidadMedida: r.UnidadMedida || 'Unidad',
-              costoPromedio: Number(r.CostoPromedio || 0),
-              stock: Number(r.StockInicial || 0),
-              stockMinimo: Number(r.StockMinimo || 10),
-              precios: { plist_1: Number(r.Precio1 || 0) },
+              costoPromedio: parseNumber(r.CostoPromedio),
+              stock: 0,
+              stockMinimo: parseNumber(r.StockMinimo),
+              precios,
               estado: 'ACTIVO'
             });
+            const stockInicial = parseNumber(r.StockInicial);
+            if (stockInicial > 0) {
+              // El inventario inicial entra por Kardex para que quede trazado y valorizado
+              await KardexService.registerMovement({
+                tenantId, productoId: prod.id, documentoTipo: 'AJUSTE_POS', documentoNumero: 'INV-INICIAL',
+                cantidad: stockInicial, costoUnitario: prod.costoPromedio, observacion: 'Inventario inicial (importación CSV)'
+              });
+            }
+            skus.add(sku.toLowerCase());
             inserted++;
           }
         } else if (pendingImportType === 'SUPPLIERS') {
+          const existing = await DB.getAll(STORES.SUPPLIERS, tenantId);
+          const nits = new Set(existing.map(c => String(c.nitCc || '').replace(/\D/g, '')).filter(Boolean));
           for (const r of pendingImportRows) {
             const cleanNit = (r.NIT || '').replace(/\D/g, '');
+            if (!r.RazonSocial) { skipped.push('fila sin razón social'); continue; }
+            if (cleanNit && nits.has(cleanNit)) { skipped.push(`${r.RazonSocial} (NIT ya existe)`); continue; }
             await DB.add(STORES.SUPPLIERS, {
               tenantId,
-              codigo: r.Codigo || `PROV-${Math.floor(100 + Math.random() * 900)}`,
-              razonSocial: r.RazonSocial || 'Proveedor Importado',
+              codigo: r.Codigo || '',
+              razonSocial: r.RazonSocial,
               nitCc: cleanNit,
-              dv: DianDV.calculate(cleanNit) || 0,
+              dv: DianDV.calculate(cleanNit),
               contacto: r.Contacto || '',
               telefono: r.Telefono || '',
-              ciudad: r.Ciudad || 'Medellín',
+              ciudad: r.Ciudad || '',
               categoria: r.Categoria || 'Materias Primas',
-              diasCredito: Number(r.DiasCredito || 30),
+              diasCredito: parseNumber(r.DiasCredito) || 30,
               estado: 'ACTIVO'
             });
+            if (cleanNit) nits.add(cleanNit);
             inserted++;
           }
         }
 
-        Toast.success(`¡Se importaron ${inserted} registros con éxito!`);
+        await AuditService.log({ modulo: 'Importador', accion: 'CREAR', campoModificado: pendingImportType, valorNuevo: `${inserted} importados, ${skipped.length} omitidos` });
+        if (skipped.length) Toast.warning(`Omitidos ${skipped.length}: ${skipped.slice(0, 5).join('; ')}${skipped.length > 5 ? '…' : ''}`);
+        Toast.success(`Se importaron ${inserted} registros.`);
         container.querySelector('#importer-preview-card').style.display = 'none';
         pendingImportRows = [];
       } catch (err) {
         Toast.error('Error durante la importación: ' + err.message);
+      } finally {
+        btnConfirm.disabled = false;
       }
     });
   }

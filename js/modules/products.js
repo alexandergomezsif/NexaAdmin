@@ -3,8 +3,10 @@
  * Soporta Materias Primas, Productos Terminados (Rayo Pro), Márgenes y Multibodega
  */
 
+import { bindOnce } from '../utils/dom.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { PricingService } from '../services/pricing-service.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
@@ -62,7 +64,7 @@ export const ProductsModule = {
           render: (val, row) => `
             <div>
               <strong style="color: var(--brand-primary);">${val || row.codigoInterno}</strong>
-              <div class="text-xs text-muted">${row.codigoBarras || ''}</div>
+              <div class="text-xs text-muted">${esc(row.codigoBarras || '')}</div>
             </div>
           `
         },
@@ -71,8 +73,8 @@ export const ProductsModule = {
           title: 'Descripción / Presentación',
           render: (val, row) => `
             <div>
-              <div class="font-bold">${val}</div>
-              <div class="text-xs text-muted">${row.categoria} • ${row.presentacion || row.unidadMedida}</div>
+              <div class="font-bold">${esc(val)}</div>
+              <div class="text-xs text-muted">${esc(row.categoria)} • ${row.presentacion || row.unidadMedida}</div>
             </div>
           `
         },
@@ -102,7 +104,7 @@ export const ProductsModule = {
 
             return `
               <div>
-                <span class="badge ${badge}">${stock} ${row.unidadMedida}</span>
+                <span class="badge ${badge}">${stock} ${esc(row.unidadMedida)}</span>
                 <div class="text-xs text-muted" style="margin-top: 2px;">Mín: ${min} | Máx: ${row.stockMaximo || 100}</div>
               </div>
             `;
@@ -111,24 +113,24 @@ export const ProductsModule = {
         {
           key: 'costoPromedio',
           title: 'Costo Promedio',
-          render: val => Formatters.currency(val)
+          render: val => Formatters.currency(val, 2)
         },
         {
           key: 'precios',
           title: 'Precio 1 (Público)',
           render: (val, row) => {
-            const p1 = (row.precios && row.precios.plist_1) || 0;
+            const p1 = PricingService.priceFor(row, (PricingService.findByCode(priceLists, 'P1') || {}).id);
             return `<strong>${Formatters.currency(p1)}</strong>`;
           }
         },
         {
           key: 'estado',
           title: 'Estado',
-          render: val => `<span class="badge ${val === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">${val}</span>`
+          render: val => `<span class="badge ${val === 'ACTIVO' ? 'badge-success' : 'badge-danger'}">${esc(val)}</span>`
         }
       ],
       actions: (row) => `
-        <button class="btn btn-secondary btn-sm btn-edit-product" data-id="${row.id}" title="Editar">✏️ Editar</button>
+        <button class="btn btn-secondary btn-sm btn-edit-product" data-id="${esc(row.id)}" title="Editar">✏️ Editar</button>
       `
     });
 
@@ -163,7 +165,7 @@ export const ProductsModule = {
       });
     }
 
-    container.addEventListener('click', (e) => {
+    bindOnce(container, 'products-click', 'click', (e) => {
       const editBtn = e.target.closest('.btn-edit-product');
       if (editBtn) {
         const id = editBtn.getAttribute('data-id');
@@ -193,21 +195,21 @@ export const ProductsModule = {
           </div>
           <div class="form-group">
             <label class="form-label">SKU / Referencia</label>
-            <input type="text" class="form-control" name="sku" required value="${product ? product.sku : 'SKU-' + Math.floor(1000 + Math.random() * 9000)}" placeholder="Ej: RAYO-SHAMP-1G">
+            <input type="text" class="form-control" name="sku" required value="${esc(product ? product.sku : '')}" placeholder="Ej: RAYO-SHAMP-1G">
           </div>
         </div>
 
         <div class="form-row mb-3">
           <div class="form-group" style="grid-column: span 2;">
             <label class="form-label">Nombre Comercial del Producto</label>
-            <input type="text" class="form-control" name="nombre" required value="${product ? product.nombre : ''}" placeholder="Ej: Shampoo Automotriz pH Neutro 1 Galón">
+            <input type="text" class="form-control" name="nombre" required value="${esc(product ? product.nombre : '')}" placeholder="Ej: Shampoo Automotriz pH Neutro 1 Galón">
           </div>
         </div>
 
         <div class="form-row mb-3">
           <div class="form-group">
             <label class="form-label">Categoría</label>
-            <input type="text" class="form-control" name="categoria" required value="${product ? product.categoria : 'Lavado Exterior'}" placeholder="Ej: Lavado Exterior">
+            <input type="text" class="form-control" name="categoria" required value="${esc(product ? product.categoria : '')}" placeholder="Ej: Lavado Exterior">
           </div>
           <div class="form-group">
             <label class="form-label">Unidad de Medida</label>
@@ -223,8 +225,9 @@ export const ProductsModule = {
 
         <div class="form-row mb-3">
           <div class="form-group">
-            <label class="form-label">Costo Promedio ($ COP)</label>
-            <input type="number" class="form-control" name="costoPromedio" id="prod-costo" value="${product ? product.costoPromedio : 0}">
+            <label class="form-label">Costo promedio ($ COP, sin IVA)</label>
+            <input type="number" step="any" min="0" class="form-control" name="costoPromedio" id="prod-costo" value="${product ? product.costoPromedio : 0}" ${isEdit && Number(product.stock || 0) !== 0 ? 'readonly title="El costo con existencias se actualiza solo con compras, producción y ajustes (Kardex)."' : ''}>
+            ${isEdit && Number(product.stock || 0) !== 0 ? '<div class="form-help">Con existencias, el costo lo calcula el Kardex.</div>' : ''}
           </div>
           <div class="form-group">
             <label class="form-label">Margen Esperado (%)</label>
@@ -241,8 +244,8 @@ export const ProductsModule = {
             <div class="form-row">
               ${priceLists.map(pl => `
                 <div class="form-group mb-2">
-                  <label class="form-label text-xs font-bold" style="color: var(--text-main);">${pl.nombre}</label>
-                  <input type="number" class="form-control font-bold" name="precio_${pl.id}" value="${(product && product.precios && product.precios[pl.id]) || 0}" style="color: var(--brand-primary);">
+                  <label class="form-label text-xs font-bold" style="color: var(--text-main);">${esc(pl.nombre)} ${pl.incluyeIva ? '<span class="badge badge-info" style="font-size: 9px;">IVA incluido</span>' : '<span class="badge badge-neutral" style="font-size: 9px;">+ IVA</span>'}</label>
+                  <input type="number" min="0" step="100" class="form-control font-bold" name="precio_${pl.id}" value="${(product && product.precios && product.precios[pl.id]) || 0}" style="color: var(--brand-primary);">
                 </div>
               `).join('')}
             </div>
@@ -258,7 +261,7 @@ export const ProductsModule = {
             <label class="form-label">Bodega Habitual</label>
             <select class="form-select" name="bodegaId">
               ${warehouses.map(w => `
-                <option value="${w.id}" ${product && product.bodegaId === w.id ? 'selected' : ''}>${w.nombre}</option>
+                <option value="${w.id}" ${product && product.bodegaId === w.id ? 'selected' : ''}>${esc(w.nombre)}</option>
               `).join('')}
             </select>
           </div>
@@ -266,7 +269,7 @@ export const ProductsModule = {
 
         <div class="form-group mb-3">
           <label class="form-label">Descripción Técnica</label>
-          <textarea class="form-control" name="descripcion" rows="2">${product ? (product.descripcion || '') : ''}</textarea>
+          <textarea class="form-control" name="descripcion" rows="2">${esc(product ? (product.descripcion || '') : '')}</textarea>
         </div>
       </form>
     `;
@@ -293,26 +296,33 @@ export const ProductsModule = {
               precios[pl.id] = Number(formData.get(`precio_${pl.id}`) || 0);
             });
 
+            const sku = String(formData.get('sku') || '').trim();
+            const allProducts = await DB.getAll(STORES.PRODUCTS, tenantId);
+            if (allProducts.some(p => String(p.sku || '').toLowerCase() === sku.toLowerCase() && (!isEdit || p.id !== product.id))) {
+              Toast.warning(`Ya existe un producto con el SKU ${sku}.`);
+              return;
+            }
             const payload = {
+              ...(isEdit ? product : {}),
               tenantId,
               tipoItem: formData.get('tipoItem'),
-              sku: formData.get('sku'),
-              codigoInterno: formData.get('sku'),
-              nombre: formData.get('nombre'),
+              sku,
+              codigoInterno: sku,
+              nombre: String(formData.get('nombre')).trim(),
               categoria: formData.get('categoria'),
               unidadMedida: formData.get('unidadMedida'),
-              costoPromedio: Number(formData.get('costoPromedio') || 0),
+              costoPromedio: isEdit && Number(product.stock || 0) !== 0 ? Number(product.costoPromedio || 0) : Number(formData.get('costoPromedio') || 0),
               margenEsperado: Number(formData.get('margenEsperado') || 0),
               stockMinimo: Number(formData.get('stockMinimo') || 0),
               bodegaId: formData.get('bodegaId'),
               descripcion: formData.get('descripcion'),
-              precios,
-              estado: 'ACTIVO'
+              precios: { ...((isEdit && product.precios) || {}), ...precios },
+              estado: (isEdit && product.estado) || 'ACTIVO'
             };
 
             if (isEdit) {
               payload.id = product.id;
-              payload.stock = product.stock || 0;
+              payload.stock = Number(product.stock || 0);
               await DB.update(STORES.PRODUCTS, payload);
               await AuditService.log({
                 modulo: 'Productos',
@@ -320,7 +330,7 @@ export const ProductsModule = {
                 registroId: payload.sku,
                 campoModificado: 'Ficha y Precios',
                 valorAnterior: product.nombre,
-                valorNuevo: `${payload.nombre} (P1: $ ${precios.plist_1 || 0})`
+                valorNuevo: `${payload.nombre} · precios: ${Object.values(precios).join(' / ')}`
               });
               Toast.success('Producto actualizado con éxito.');
             } else {

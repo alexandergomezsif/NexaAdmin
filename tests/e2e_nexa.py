@@ -183,6 +183,89 @@ async def run(base, legacy):
         check('búsqueda global devuelve resultados', await page.locator('.global-search-hit').count() > 0)
         await close_modals(page)
 
+
+        print('== Crédito y cartera ==')
+        await page.evaluate("localStorage.removeItem('nexa_session')")
+        await login(page, base, 'admin', NEW_PASS)
+        custs = await page.evaluate(G, ['customers'])
+        cli = [c for c in custs if c.get('nitCc') != '222222222222'][0]
+        cli['cupoCredito'] = 10000000; cli['saldoPendiente'] = 0; cli['aplicaIva'] = True
+        await page.evaluate(P, ['customers', cli])
+        await goto(page, 'sales-pos')
+        await page.select_option('#pos-select-client', cli['id']); await page.wait_for_timeout(300)
+        await page.locator('.pos-product-card').first.click(); await page.wait_for_timeout(100)
+        await page.select_option('#pos-doc-type', 'VENTA_CREDITO'); await page.wait_for_timeout(200)
+        await page.click('#btn-process-sale'); await page.wait_for_timeout(300); await confirm_modal(page)
+        vc = sorted(await page.evaluate(G, ['sales']), key=lambda s: s.get('fecha',''))[-1]
+        cxcs = [c for c in await page.evaluate(G, ['receivables_cxc']) if c.get('ventaId') == vc['id']]
+        check('venta a crédito crea cuenta por cobrar', vc['estado'] == 'CREDITO_PENDIENTE' and len(cxcs) == 1)
+        await close_modals(page)
+        await goto(page, 'cxc')
+        await page.locator(f'.btn-cxc-payment[data-id="{cxcs[0]["id"]}"]').click(); await page.wait_for_timeout(300)
+        await page.select_option('#cxc-payment-form select[name=metodoPago]', 'Efectivo')
+        sh_before = [s for s in await page.evaluate(G, ['cash_shifts']) if s['estado'] == 'ABIERTA'][0]['saldoEsperado']
+        await page.click('.modal-footer .btn-primary'); await page.wait_for_timeout(1200)
+        vc2 = [s for s in await page.evaluate(G, ['sales']) if s['id'] == vc['id']][0]
+        sh_after = [s for s in await page.evaluate(G, ['cash_shifts']) if s['estado'] == 'ABIERTA'][0]['saldoEsperado']
+        check('abono total marca la venta como PAGADA', vc2['estado'] == 'PAGADA')
+        check('abono en efectivo entra a la caja', sh_after == sh_before + vc['total'], f'{sh_before}->{sh_after}')
+        cli2 = [c for c in await page.evaluate(G, ['customers']) if c['id'] == cli['id']][0]
+        check('saldo del cliente vuelve a 0', cli2['saldoPendiente'] == 0)
+
+        print('== Compras y producción ==')
+        await goto(page, 'purchases'); await page.click('#btn-new-purchase'); await page.wait_for_timeout(400)
+        mp = [p for p in await page.evaluate(G, ['products']) if p.get('tipoItem') == 'MATERIA_PRIMA'][0]
+        await page.select_option('#purch-item-prod', mp['id']); await page.fill('#purch-item-qty', '100'); await page.fill('#purch-item-cost', str(mp['costoPromedio'] * 2))
+        await page.click('#btn-add-purch-item'); await page.select_option('#purch-payment-term', 'CREDITO')
+        await page.click('.modal-footer .btn-primary'); await page.wait_for_timeout(1500)
+        mp2 = await product(page, mp['id'])
+        exp_avg = round((mp['stock'] * mp['costoPromedio'] + 100 * mp['costoPromedio'] * 2) / (mp['stock'] + 100), 2)
+        check('compra suma stock y recalcula costo promedio', mp2['stock'] == mp['stock'] + 100 and abs(mp2['costoPromedio'] - exp_avg) < 0.02, f"{mp2['costoPromedio']} vs {exp_avg}")
+        cxp_c = [c for c in await page.evaluate(G, ['payables_cxp']) if c.get('tipoDocumento') == 'FACTURA_COMPRA']
+        check('compra a crédito crea cuenta por pagar', len(cxp_c) >= 1)
+        await close_modals(page)
+        recipes = await page.evaluate(G, ['recipes_bom'])
+        orders0 = len(await page.evaluate(G, ['production_orders']))
+        await goto(page, 'production'); await page.click('#btn-execute-production'); await page.wait_for_timeout(800)
+        btn = page.locator('#btn-confirm-production')
+        if await btn.is_enabled():
+            await btn.click(); await page.wait_for_timeout(1500)
+            orders = await page.evaluate(G, ['production_orders'])
+            last = sorted(orders, key=lambda o: o.get('fechaInicio',''))[-1]
+            check('orden de producción con consecutivo y responsable real', len(orders) == orders0 + 1 and last['numeroOrden'].startswith('OP-') and last['responsableNombre'] not in ('Julián Montoya (Planta)',), last['numeroOrden'])
+        else:
+            check('producción bloqueada por falta de insumos (esperado si no hay stock)', True)
+        await close_modals(page)
+
+        print('== Gastos ==')
+        sh0 = [s for s in await page.evaluate(G, ['cash_shifts']) if s['estado'] == 'ABIERTA'][0]['saldoEsperado']
+        await goto(page, 'expenses'); await page.click('#btn-new-expense'); await page.wait_for_timeout(300)
+        await page.fill('#expense-form input[name=valor]', '5000'); await page.fill('#expense-form input[name=concepto]', 'Prueba gasto caja')
+        await page.select_option('#expense-form select[name=formaPago]', 'Efectivo Caja Menor')
+        await page.click('.modal-footer .btn-primary'); await page.wait_for_timeout(1200)
+        sh1 = [s for s in await page.evaluate(G, ['cash_shifts']) if s['estado'] == 'ABIERTA'][0]['saldoEsperado']
+        check('gasto en efectivo descuenta la caja', sh1 == sh0 - 5000, f'{sh0}->{sh1}')
+        await close_modals(page)
+
+        print('== Bóveda ==')
+        await goto(page, 'formulas-vault')
+        await page.fill('#vault-pin-inp', 'Boveda#1'); await page.fill('#vault-pin-inp2', 'Boveda#1')
+        await page.click('#vault-pin-form button[type=submit]'); await page.wait_for_timeout(2500)
+        recs = await page.evaluate(G, ['recipes_bom'])
+        check('recetas sin texto secreto en claro', all('instruccionesFases' not in r for r in recs))
+        await goto(page, 'production')
+        check('producción sigue funcionando con recetas cifradas', await page.locator('#btn-execute-production').count() == 1)
+
+        print('== Respaldo ==')
+        await goto(page, 'backup')
+        async with page.expect_download() as dl:
+            await page.click('#btn-export-backup')
+        d = await dl.value
+        path = await d.path()
+        data = json.load(open(path, encoding='utf-8'))
+        check('respaldo descargado con todas las tablas', 'attachments' in data['stores'] and len(data['stores']['sales']) > 0)
+        check('respaldo sin contraseñas en claro', all('clave' not in u for u in data['stores']['users']))
+
         print('== Usuarios ==')
         await goto(page, 'users')
         await page.click('#btn-new-user'); await page.wait_for_timeout(300)

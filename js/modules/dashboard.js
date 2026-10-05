@@ -3,8 +3,9 @@
  * Métricas KPI, Gráficos comparativos, Panel de Alertas Operativas y Acciones Rápidas
  */
 
+import { FinanceService } from '../services/finance-service.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { renderKpiCard } from '../components/kpi-card.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
 import { Modal } from '../components/modal.js';
@@ -26,26 +27,16 @@ export const DashboardModule = {
       DB.getAll(STORES.PRODUCTION_ORDERS, tenantId)
     ]);
 
-    // Calcular KPIs
-    const todayStr = new Date().toISOString().split('T')[0];
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    let ventasDia = 0;
-    let ventasMes = 0;
-    let ventasAno = 0;
-    let costoTotalVentas = 0;
-
-    sales.forEach(s => {
-      const sDate = new Date(s.fecha);
-      const isToday = s.fecha && s.fecha.startsWith(todayStr);
-      const isThisMonth = sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear;
-      const isThisYear = sDate.getFullYear() === currentYear;
-
-      if (isToday) ventasDia += Number(s.total || 0);
-      if (isThisMonth) ventasMes += Number(s.total || 0);
-      if (isThisYear) ventasAno += Number(s.total || 0);
-    });
+    // KPIs con datos reales (excluye cotizaciones y ventas anuladas; valores sin IVA)
+    const P = FinanceService.periods();
+    const resDia = FinanceService.summarize({ sales, expenses, products, ...P.hoy });
+    const resMes = FinanceService.summarize({ sales, expenses, products, ...P.mes });
+    const ventasDia = resDia.ventasNetas;
+    const ventasMes = resMes.ventasNetas;
+    const serieMensual = FinanceService.monthlySeries(sales, 6);
+    const maxSerie = Math.max(1, ...serieMensual.map(x => x.value));
+    const porCategoria = FinanceService.byCategory(sales, products, P.mes.from, P.mes.to).slice(0, 5);
+    const porPago = FinanceService.byPayment(sales, P.mes.from, P.mes.to);
 
     const totalGastos = expenses.reduce((acc, exp) => acc + Number(exp.valor || 0), 0);
     const totalCarteraCobrar = cxc.reduce((acc, c) => acc + Number(c.saldo || 0), 0);
@@ -60,8 +51,7 @@ export const DashboardModule = {
     const carteraVencida = cxc.filter(c => c.estado === 'VENCIDO' || (c.diasMora && c.diasMora > 0));
     const enviosPendientes = shipping.filter(s => s.estadoCiclo !== 'ENTREGADO');
 
-    // Utilidad Estimada (Ventas Año - Gastos - Costos estimados aproximados)
-    const utilidadEstimada = Math.max(0, (ventasAno * 0.45) - totalGastos);
+    const utilidadEstimada = resMes.utilidadOperativa;
 
     container.innerHTML = `
       <div class="view-header">
@@ -70,7 +60,7 @@ export const DashboardModule = {
             <h1>Dashboard Ejecutivo</h1>
             <span class="badge-demo">DEMO RAYO PRO</span>
           </div>
-          <p>Visión general de ventas, cartera, inventario y alertas operativas de <strong>${tenant.nombreComercial}</strong></p>
+          <p>Visión general de ventas, cartera, inventario y alertas operativas de <strong>${esc(tenant.nombreComercial)}</strong></p>
         </div>
         <div class="view-actions">
           <button class="btn btn-secondary btn-sm" id="btn-refresh-dashboard">🔄 Actualizar</button>
@@ -157,12 +147,12 @@ export const DashboardModule = {
         })}
 
         ${renderKpiCard({
-          label: 'Utilidad Estimada',
+          label: 'Utilidad operativa del mes',
           value: Formatters.currency(utilidadEstimada),
           icon: '💎',
           iconBg: '#ecfdf5',
           iconColor: '#059669',
-          footerText: 'Margen global ~42%'
+          footerText: resMes.margenBrutoPct === null ? 'Sin ventas este mes' : `Margen bruto ${resMes.margenBrutoPct.toFixed(1)}%${resMes.costoEstimado ? ' (costo parcialmente estimado)' : ''}`
         })}
 
         ${renderKpiCard({
@@ -210,24 +200,17 @@ export const DashboardModule = {
           <div class="card">
             <div class="card-header">
               <div>
-                <div class="card-title">Ventas por Período y Tendencia</div>
-                <div class="card-subtitle">Evolución de facturación últimos meses (COP)</div>
+                <div class="card-title">Ventas netas por mes</div>
+                <div class="card-subtitle">Últimos 6 meses, sin IVA, excluye cotizaciones y anuladas</div>
               </div>
-              <span class="badge badge-info">2026</span>
             </div>
             <div class="card-body">
               <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 180px; padding-top: 20px; border-bottom: 1px solid var(--border-color); gap: 12px;">
-                ${[
-                  { m: 'May', val: 18500000, h: 55 },
-                  { m: 'Jun', val: 24200000, h: 72 },
-                  { m: 'Jul', val: 21900000, h: 65 },
-                  { m: 'Ago', val: 29800000, h: 88 },
-                  { m: 'Sep', val: ventasMes || 32400000, h: 95 }
-                ].map(bar => `
+                ${serieMensual.map(x => ({ m: x.label, val: x.value, h: Math.max(2, Math.round((x.value / maxSerie) * 95)) })).map(bar => `
                   <div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">
                     <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">${Formatters.currency(bar.val, 0)}</div>
                     <div style="width: 100%; max-width: 48px; height: ${bar.h}%; background: var(--brand-primary); border-radius: 6px 6px 0 0; transition: height 0.5s ease;"></div>
-                    <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 8px;">${bar.m}</div>
+                    <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 8px;">${esc(bar.m)}</div>
                   </div>
                 `).join('')}
               </div>
@@ -238,72 +221,35 @@ export const DashboardModule = {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="card" style="margin-bottom: 0;">
               <div class="card-header">
-                <div class="card-title" style="font-size: 14px;">Ventas por Categoría</div>
+                <div class="card-title" style="font-size: 14px;">Ventas por categoría (mes)</div>
               </div>
               <div class="card-body">
                 <div class="d-flex flex-col gap-3">
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Lavado Exterior (Shampoos)</span>
-                      <span>45%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 45%; height: 100%; background: var(--brand-primary);"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Protección & Ceras</span>
-                      <span>30%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 30%; height: 100%; background: var(--brand-secondary);"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Desengrasantes Pesados</span>
-                      <span>15%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 15%; height: 100%; background: #10b981;"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="d-flex justify-between text-xs font-semibold mb-1">
-                      <span>Accesorios / Microfibras</span>
-                      <span>10%</span>
-                    </div>
-                    <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                      <div style="width: 10%; height: 100%; background: #8b5cf6;"></div>
-                    </div>
-                  </div>
+                  ${porCategoria.length ? porCategoria.map((c, i) => `
+                    <div>
+                      <div class="d-flex justify-between text-xs font-semibold mb-1">
+                        <span>${esc(c.categoria)}</span>
+                        <span>${c.pct.toFixed(0)}% · ${Formatters.currency(c.valor)}</span>
+                      </div>
+                      <div style="height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${c.pct.toFixed(1)}%; height: 100%; background: ${['var(--brand-primary)', 'var(--brand-secondary)', '#10b981', '#8b5cf6', '#64748b'][i]};"></div>
+                      </div>
+                    </div>`).join('') : '<div class="text-xs text-muted">Sin ventas este mes.</div>'}
                 </div>
               </div>
             </div>
 
             <div class="card" style="margin-bottom: 0;">
               <div class="card-header">
-                <div class="card-title" style="font-size: 14px;">Métodos de Pago</div>
+                <div class="card-title" style="font-size: 14px;">Métodos de pago (mes)</div>
               </div>
               <div class="card-body">
                 <div class="d-flex flex-col gap-2 text-xs">
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-                    <span>📱 Nequi / Daviplata</span>
-                    <strong style="color: #6366f1;">35% ($ 1.130.000)</strong>
-                  </div>
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-                    <span>💵 Efectivo en Caja</span>
-                    <strong style="color: #10b981;">30% ($ 960.000)</strong>
-                  </div>
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-                    <span>💳 Transferencia Bancaria</span>
-                    <strong style="color: var(--brand-primary);">20% ($ 640.000)</strong>
-                  </div>
-                  <div class="d-flex justify-between items-center" style="padding: 6px 0;">
-                    <span>📑 Crédito Directo 30 días</span>
-                    <strong style="color: #f59e0b;">15% ($ 480.000)</strong>
-                  </div>
+                  ${porPago.length ? porPago.map(m => `
+                    <div class="d-flex justify-between items-center" style="padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                      <span>${esc(m.metodo)}</span>
+                      <strong>${m.pct.toFixed(0)}% (${Formatters.currency(m.valor)})</strong>
+                    </div>`).join('') : '<div class="text-muted">Sin ventas este mes.</div>'}
                 </div>
               </div>
             </div>
@@ -323,7 +269,7 @@ export const DashboardModule = {
                   <div class="alert alert-danger" style="margin-bottom: 4px; padding: 10px 12px;">
                     <div>
                       <div class="font-bold">❌ Producto Agotado</div>
-                      <div class="text-xs">${p.nombre} (Stock: 0 ${p.unidadMedida})</div>
+                      <div class="text-xs">${esc(p.nombre)} (Stock: 0 ${esc(p.unidadMedida)})</div>
                       <a href="#production" class="text-xs font-bold text-danger" style="text-decoration: underline; margin-top: 4px; display: inline-block;">Programar Producción →</a>
                     </div>
                   </div>
@@ -333,7 +279,7 @@ export const DashboardModule = {
                   <div class="alert alert-warning" style="margin-bottom: 4px; padding: 10px 12px;">
                     <div>
                       <div class="font-bold">⚠️ Stock Crítico Mínimo</div>
-                      <div class="text-xs">${p.nombre} (Existencias: ${p.stock} / Mínimo: ${p.stockMinimo})</div>
+                      <div class="text-xs">${esc(p.nombre)} (Existencias: ${p.stock} / Mínimo: ${p.stockMinimo})</div>
                     </div>
                   </div>
                 `).join('')}
@@ -342,7 +288,7 @@ export const DashboardModule = {
                   <div class="alert alert-warning" style="margin-bottom: 4px; padding: 10px 12px;">
                     <div>
                       <div class="font-bold">⏰ Factura en Mora</div>
-                      <div class="text-xs">${c.clienteNombre} - Doc ${c.documento} - Saldo: ${Formatters.currency(c.saldo)}</div>
+                      <div class="text-xs">${esc(c.clienteNombre)} - Doc ${esc(c.documento)} - Saldo: ${Formatters.currency(c.saldo)}</div>
                     </div>
                   </div>
                 `).join('')}
@@ -367,7 +313,7 @@ export const DashboardModule = {
               </div>
               <div class="badge badge-warning mb-2">Integración Pendiente de Configuración</div>
               <p class="text-xs" style="color: var(--text-secondary); line-height: 1.4;">
-                El sistema almacena consecutivos fiscales y genera documentos equivalentes POS conformes a la normativa interna. Para emitir CUFE y XML validado se requiere enlazar el certificado digital o proveedor tecnológico en el módulo de integraciones.
+                Los documentos que genera NexaAdmin son internos (no son factura electrónica ni documento equivalente). Para emitir factura electrónica con CUFE se requiere integrar un proveedor tecnológico autorizado por la DIAN (pendiente).
               </p>
             </div>
           </div>
@@ -397,12 +343,12 @@ export const DashboardModule = {
       btnWaSummary.addEventListener('click', () => {
         const todayFormatted = new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const defaultSummaryText = 
-`📊 *RESUMEN EJECUTIVO DIARIO - ${tenant.nombreComercial}*
+`📊 *RESUMEN EJECUTIVO DIARIO - ${esc(tenant.nombreComercial)}*
 📅 *Fecha:* ${todayFormatted}
 
-💰 *Ventas del Día:* ${Formatters.currency(ventasDia)}
-📈 *Ventas Acumuladas Mes:* ${Formatters.currency(ventasMes)}
-💎 *Utilidad Estimada Mes:* ${Formatters.currency(utilidadEstimada)}
+💰 *Ventas netas del día:* ${Formatters.currency(ventasDia)}
+📈 *Ventas netas del mes:* ${Formatters.currency(ventasMes)}
+💎 *Utilidad operativa del mes:* ${Formatters.currency(utilidadEstimada)}
 ⚠️ *Cartera Pendiente Total:* ${Formatters.currency(totalCarteraCobrar)}
 🚨 *Cartera en Mora:* ${Formatters.currency(carteraVencida.reduce((a, b) => a + Number(b.saldo || 0), 0))} (${carteraVencida.length} cuentas)
 📦 *Inventario Valorizado:* ${Formatters.currency(inventarioValorizado)} (${products.length} referencias)
@@ -466,7 +412,7 @@ ${productosStockBajo.length > 0 ? `⚠️ *Productos con Stock Bajo:* ${producto
       btnEmailSummary.addEventListener('click', () => {
         const todayFormatted = new Date().toLocaleDateString('es-CO');
         const subject = `Resumen Ejecutivo Diario - ${tenant.nombreComercial} (${todayFormatted})`;
-        const body = `Resumen Ejecutivo Diario - ${tenant.nombreComercial}\nFecha: ${todayFormatted}\n\nVentas del Día: ${Formatters.currency(ventasDia)}\nVentas Mes: ${Formatters.currency(ventasMes)}\nUtilidad Estimada: ${Formatters.currency(utilidadEstimada)}\nCartera Pendiente: ${Formatters.currency(totalCarteraCobrar)}\nInventario: ${Formatters.currency(inventarioValorizado)}\n\nGenerado por Nexa ERP.`;
+        const body = `Resumen Ejecutivo Diario - ${tenant.nombreComercial}\nFecha: ${todayFormatted}\n\nVentas netas del día: ${Formatters.currency(ventasDia)}\nVentas Mes: ${Formatters.currency(ventasMes)}\nUtilidad operativa del mes: ${Formatters.currency(utilidadEstimada)}\nCartera Pendiente: ${Formatters.currency(totalCarteraCobrar)}\nInventario: ${Formatters.currency(inventarioValorizado)}\n\nGenerado por Nexa ERP.`;
         window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
       });
     }
@@ -540,7 +486,7 @@ ${productosStockBajo.length > 0 ? `⚠️ *Productos con Stock Bajo:* ${producto
 
         document.getElementById('btn-gcal-daily')?.addEventListener('click', () => {
           launchGCal(
-            `Cierre de Caja y Arqueo Diario - ${tenant.nombreComercial}`,
+            `Cierre de Caja y Arqueo Diario - ${esc(tenant.nombreComercial)}`,
             `${todayRaw}T183000Z`, `${todayRaw}T190000Z`,
             `Conciliación de efectivo físico, transferencias Nequi/Daviplata y envío de reporte a socios en Nexa ERP.`
           );
@@ -548,7 +494,7 @@ ${productosStockBajo.length > 0 ? `⚠️ *Productos con Stock Bajo:* ${producto
 
         document.getElementById('btn-gcal-monthly')?.addEventListener('click', () => {
           launchGCal(
-            `Cierre Mensual de Inventario y Contabilidad - ${tenant.nombreComercial}`,
+            `Cierre Mensual de Inventario y Contabilidad - ${esc(tenant.nombreComercial)}`,
             `${endOfMonthRaw}T170000Z`, `${endOfMonthRaw}T190000Z`,
             `Auditoría de existencias físicas en bodega vs Kardex y balance general mensual en Nexa ERP.`
           );
@@ -556,15 +502,15 @@ ${productosStockBajo.length > 0 ? `⚠️ *Productos con Stock Bajo:* ${producto
 
         document.getElementById('btn-gcal-dian')?.addEventListener('click', () => {
           launchGCal(
-            `Vencimiento Tributario DIAN (IVA / ReteFuente) - ${tenant.nombreComercial}`,
+            `Vencimiento Tributario DIAN (IVA / ReteFuente) - ${esc(tenant.nombreComercial)}`,
             `${endOfMonthRaw}T140000Z`, `${endOfMonthRaw}T160000Z`,
-            `Presentación y pago de obligaciones tributarias DIAN para NIT ${tenant.nit}-${tenant.dv}.`
+            `Presentación y pago de obligaciones tributarias DIAN para NIT ${esc(tenant.nit)}-${tenant.dv}.`
           );
         });
 
         document.getElementById('btn-gcal-yearly')?.addEventListener('click', () => {
           launchGCal(
-            `Cierre Anual Fiscal y Balance General - ${tenant.nombreComercial}`,
+            `Cierre Anual Fiscal y Balance General - ${esc(tenant.nombreComercial)}`,
             `${endOfYearRaw}T150000Z`, `${endOfYearRaw}T180000Z`,
             `Cierre de ejercicio fiscal anual, inventario total valorizado y distribución de utilidades a socios.`
           );

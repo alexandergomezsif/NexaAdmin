@@ -3,8 +3,9 @@
  * Fórmulas maestras, explosión de materiales, órdenes de fabricación, costeo real y lotes
  */
 
+import { bindOnce } from '../utils/dom.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { ProductionService } from '../services/production-service.js';
 import { ExportService } from '../services/export-service.js';
 import { PrintTemplates } from '../components/print-template.js';
@@ -35,7 +36,7 @@ export const ProductionModule = {
           <p>Control de recetas químicas, explosión de insumos, costeo por lote y fabricación en planta</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-new-recipe">🧪 Nueva Fórmula / Receta</button>
+          <a href="#formulas-vault" class="btn btn-secondary btn-sm" id="btn-new-recipe" style="text-decoration: none;">🧪 Nueva fórmula (en la Bóveda)</a>
           <button class="btn btn-primary btn-sm" id="btn-execute-production">⚡ Ejecutar Orden de Producción</button>
         </div>
       </div>
@@ -70,8 +71,8 @@ export const ProductionModule = {
             title: 'No. Orden / Lote',
             render: (val, row) => `
               <div>
-                <strong style="color: var(--brand-primary);">${val}</strong>
-                <div class="text-xs text-muted">Lote: <strong>${row.loteCodigo}</strong></div>
+                <strong style="color: var(--brand-primary);">${esc(val)}</strong>
+                <div class="text-xs text-muted">Lote: <strong>${esc(row.loteCodigo)}</strong></div>
               </div>
             `
           },
@@ -80,8 +81,8 @@ export const ProductionModule = {
             title: 'Producto Fabricado',
             render: (val, row) => `
               <div>
-                <div class="font-bold">${val}</div>
-                <div class="text-xs text-muted">Cant: <strong>${row.cantidadProducida} unidades</strong></div>
+                <div class="font-bold">${esc(val)}</div>
+                <div class="text-xs text-muted">Cant: <strong>${esc(row.cantidadProducida)} unidades</strong></div>
               </div>
             `
           },
@@ -103,16 +104,16 @@ export const ProductionModule = {
           {
             key: 'responsableNombre',
             title: 'Responsable',
-            render: val => `<span class="badge badge-neutral">${val || 'Planta'}</span>`
+            render: val => `<span class="badge badge-neutral">${esc(val || 'Planta')}</span>`
           },
           {
             key: 'estado',
             title: 'Estado',
-            render: val => `<span class="badge badge-success">${val}</span>`
+            render: val => `<span class="badge badge-success">${esc(val)}</span>`
           }
         ],
         actions: (row) => `
-          <button class="btn btn-secondary btn-sm btn-print-order" data-id="${row.id}" title="Imprimir Orden">🖨️ Imprimir</button>
+          <button class="btn btn-secondary btn-sm btn-print-order" data-id="${esc(row.id)}" title="Imprimir Orden">🖨️ Imprimir</button>
         `
       });
     };
@@ -130,10 +131,10 @@ export const ProductionModule = {
                 const pt = finishedGoods.find(p => p.id === r.productoTerminadoId);
                 return `
                   <div class="card" style="border: 1px solid var(--border-color); margin-bottom: 0;">
-                    <div class="card-header" style="background: #f8fafc;">
+                    <div class="card-header">
                       <div>
-                        <strong style="color: var(--brand-primary); font-size: 15px;">${r.nombreReceta}</strong>
-                        <div class="text-xs text-muted">Producto Resultante: <strong>${pt ? pt.nombre : 'Producto Terminado'}</strong> | Rendimiento Lote: <strong>${r.rendimientoLote} ${r.unidadMedidaLote}</strong></div>
+                        <strong style="color: var(--brand-primary); font-size: 15px;">${esc(r.nombreReceta || r.nombreFormula)}</strong>
+                        <div class="text-xs text-muted">Producto resultante: <strong>${esc(pt ? pt.nombre : 'Sin producto vinculado')}</strong> | Rendimiento por lote: <strong>${esc(r.rendimientoLote || r.cantidadProducir)} ${esc(r.unidadMedidaLote || r.unidadMedida || '')}</strong></div>
                       </div>
                       <button class="btn btn-primary btn-sm btn-quick-produce" data-receta-id="${r.id}">⚡ Fabricar Este Lote</button>
                     </div>
@@ -151,19 +152,19 @@ export const ProductionModule = {
                             </tr>
                           </thead>
                           <tbody>
-                            ${r.insumos.map(ins => {
-                              const mp = rawMaterials.find(m => m.id === ins.materiaPrimaId);
+                            ${(r.insumos || []).map(ins => {
+                              const mp = rawMaterials.find(m => m.id === (ins.materiaPrimaId || ins.productoId));
                               const stock = mp ? mp.stock : 0;
                               const isSufficient = stock >= ins.cantidad;
                               return `
                                 <tr>
-                                  <td><strong>${mp ? mp.nombre : 'Insumo'}</strong> <span class="text-xs text-muted">(${mp ? mp.sku : '-'})</span></td>
+                                  <td><strong>${esc(mp ? mp.nombre : 'Insumo no encontrado')}</strong> <span class="text-xs text-muted">(${esc(mp ? mp.sku : '-')})</span></td>
                                   <td class="text-center font-bold">${ins.cantidad}</td>
-                                  <td class="text-center">${ins.unidadMedida}</td>
+                                  <td class="text-center">${esc(ins.unidadMedida || '')}</td>
                                   <td class="text-center">${ins.mermaEsperada || 0}%</td>
                                   <td class="text-right">
                                     <span class="badge ${isSufficient ? 'badge-success' : 'badge-danger'}">
-                                      ${stock} ${ins.unidadMedida}
+                                      ${esc(stock)} ${esc(ins.unidadMedida || '')}
                                     </span>
                                   </td>
                                 </tr>
@@ -172,7 +173,7 @@ export const ProductionModule = {
                           </tbody>
                         </table>
                       </div>
-                      ${r.observaciones ? `<div class="text-xs text-muted mt-2"><strong>Instrucciones de Mezcla:</strong> ${r.observaciones}</div>` : ''}
+                      ${r.observaciones ? `<div class="text-xs text-muted mt-2"><strong>Notas:</strong> ${esc(r.observaciones)}</div>` : ''}
                     </div>
                   </div>
                 `;
@@ -201,7 +202,7 @@ export const ProductionModule = {
       this.openExecuteProductionModal(tenantId, recipes, finishedGoods, rawMaterials, () => this.render(container));
     });
 
-    container.addEventListener('click', (e) => {
+    bindOnce(container, 'production-click', 'click', (e) => {
       const quickBtn = e.target.closest('.btn-quick-produce');
       if (quickBtn) {
         const recetaId = quickBtn.getAttribute('data-receta-id');
@@ -215,7 +216,7 @@ export const ProductionModule = {
         const order = orders.find(o => o.id === orderId);
         if (order) {
           const html = PrintTemplates.productionOrder(order);
-          ExportService.printDocument(html, `Orden_Produccion_${order.numeroOrden}`);
+          ExportService.printDocument(html, `Orden_Produccion_${esc(order.numeroOrden)}`);
         }
       }
     });
@@ -239,20 +240,20 @@ export const ProductionModule = {
             <label class="form-label">Seleccionar Fórmula Maestra (BOM)</label>
             <select class="form-select" id="sel-production-recipe" name="recetaId">
               ${recipes.map(r => `
-                <option value="${r.id}" ${r.id === selectedRecipe.id ? 'selected' : ''}>${r.nombreReceta}</option>
+                <option value="${esc(r.id)}" ${r.id === selectedRecipe.id ? 'selected' : ''}>${esc(r.nombreReceta || r.nombreFormula)}</option>
               `).join('')}
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Cantidad a Fabricar (Unidades)</label>
-            <input type="number" step="1" min="1" class="form-control" id="inp-prod-qty" name="cantidad" value="${selectedRecipe.rendimientoLote || 50}" required>
+            <input type="number" step="1" min="1" class="form-control" id="inp-prod-qty" name="cantidad" value="${esc(selectedRecipe.rendimientoLote || selectedRecipe.cantidadProducir || 1)}" required>
           </div>
         </div>
 
         <div class="form-row mb-3">
           <div class="form-group">
             <label class="form-label">Código de Lote</label>
-            <input type="text" class="form-control" name="loteCodigo" value="LOTE-RP${new Date().getMonth() + 1}-${Math.floor(100 + Math.random() * 900)}" required>
+            <input type="text" class="form-control" name="loteCodigo" value="" placeholder="Vacío = se genera automáticamente">
           </div>
           <div class="form-group">
             <label class="form-label">Costos Indirectos Adicionales (CIF COP)</label>
@@ -314,12 +315,10 @@ export const ProductionModule = {
                 cantidadProducida: cantidad,
                 loteCodigo,
                 costosIndirectosReales: cif,
-                responsableId: 'usr_planta',
-                responsableNombre: 'Julián Montoya (Planta)',
                 observaciones
               });
 
-              Toast.success(`¡Lote ${loteCodigo} fabricado con éxito! Se consumieron las materias primas e ingresó el producto terminado a Kardex.`);
+              Toast.success('Orden de producción registrada: se consumieron los insumos e ingresó el producto terminado.');
               Modal.close();
               if (onCompleted) onCompleted();
             } catch (err) {
@@ -357,11 +356,11 @@ export const ProductionModule = {
               <tbody>
                 ${est.desgloseInsumos.map(ins => `
                   <tr>
-                    <td><strong>${ins.nombre}</strong></td>
-                    <td class="text-center font-bold">${ins.cantidadRequerida} ${ins.unidadMedida}</td>
+                    <td><strong>${esc(ins.nombre)}</strong></td>
+                    <td class="text-center font-bold">${ins.cantidadRequerida} ${esc(ins.unidadMedida)}</td>
                     <td class="text-right">
                       <span class="badge ${ins.stockSuficiente ? 'badge-success' : 'badge-danger'}">
-                        ${ins.stockDisponible} ${ins.unidadMedida}
+                        ${ins.stockDisponible} ${esc(ins.unidadMedida)}
                       </span>
                     </td>
                     <td class="text-right">${Formatters.currency(ins.costoTotal)}</td>

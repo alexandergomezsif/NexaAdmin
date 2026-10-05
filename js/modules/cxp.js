@@ -3,8 +3,10 @@
  * Vencimientos, abonos a facturas de compra y programación de pagos
  */
 
+import { PaymentsService, PAYOUT_METHODS } from '../services/payments-service.js';
+import { bindOnce } from '../utils/dom.js';
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
@@ -59,7 +61,7 @@ export const CxpModule = {
           render: (val, row) => {
             const isComision = row.tipoDocumento === 'COMISION_FREELANCE';
             return `<div>
-              <strong style="color: ${isComision ? '#7c3aed' : 'var(--brand-primary)'};">${val}</strong>
+              <strong style="color: ${isComision ? '#7c3aed' : 'var(--brand-primary)'};">${esc(val)}</strong>
               ${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">🤝 Comisión</span>' : ''}
               ${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + '</div>' : ''}
             </div>`;
@@ -68,7 +70,7 @@ export const CxpModule = {
         {
           key: 'proveedorNombre',
           title: 'Proveedor',
-          render: val => `<strong>${val}</strong>`
+          render: val => `<strong>${esc(val)}</strong>`
         },
         {
           key: 'fechaEmision',
@@ -93,11 +95,11 @@ export const CxpModule = {
         {
           key: 'estado',
           title: 'Estado',
-          render: val => `<span class="badge ${val === 'AL_DIA' ? 'badge-success' : 'badge-danger'}">${val}</span>`
+          render: val => `<span class="badge ${val === 'AL_DIA' ? 'badge-success' : 'badge-danger'}">${esc(val)}</span>`
         }
       ],
       actions: (row) => `
-        <button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">💳 Pagar a Proveedor</button>
+        <button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${esc(row.id)}">💳 Pagar a Proveedor</button>
       `
     });
 
@@ -116,16 +118,16 @@ export const CxpModule = {
         columns: [
           { key: 'documento', title: 'Referencia', render: (val, row) => {
             const isComision = row.tipoDocumento === 'COMISION_FREELANCE';
-            return `<div><strong style="color: ${isComision ? '#7c3aed' : 'var(--brand-primary)'};">${val}</strong>${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">🤝 Comisión</span>' : ''}${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + '</div>' : ''}</div>`;
+            return `<div><strong style="color: ${isComision ? '#7c3aed' : 'var(--brand-primary)'};">${esc(val)}</strong>${isComision ? '<span class="badge" style="background: rgba(124,58,237,0.15); color: #7c3aed; font-size: 9px; margin-left: 4px;">🤝 Comisión</span>' : ''}${row.ventaConsecutivo ? '<div class="text-xs text-muted">Venta: ' + row.ventaConsecutivo + '</div>' : ''}</div>`;
           }},
-          { key: 'proveedorNombre', title: 'Proveedor / Vendedor', render: val => `<strong>${val}</strong>` },
+          { key: 'proveedorNombre', title: 'Proveedor / Vendedor', render: val => `<strong>${esc(val)}</strong>` },
           { key: 'fechaEmision', title: 'Emisión', render: val => Formatters.date(val) },
           { key: 'fechaVencimiento', title: 'Vencimiento', render: val => Formatters.date(val) },
           { key: 'valorTotal', title: 'Valor Total', render: val => Formatters.currency(val) },
           { key: 'saldo', title: 'Saldo Pendiente', render: val => `<strong class="text-danger">${Formatters.currency(val)}</strong>` },
-          { key: 'estado', title: 'Estado', render: val => `<span class="badge ${val === 'AL_DIA' ? 'badge-success' : 'badge-danger'}">${val}</span>` }
+          { key: 'estado', title: 'Estado', render: val => `<span class="badge ${val === 'AL_DIA' ? 'badge-success' : 'badge-danger'}">${esc(val)}</span>` }
         ],
-        actions: (row) => `<button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${row.id}">💳 Pagar</button>`
+        actions: (row) => `<button class="btn btn-primary btn-sm btn-cxp-pay" data-id="${esc(row.id)}">💳 Pagar</button>`
       });
       container.querySelectorAll('.btn-cxp-filter').forEach(b => {
         b.style.fontWeight = b.getAttribute('data-filter') === filtro ? '700' : '400';
@@ -136,7 +138,7 @@ export const CxpModule = {
       btn.addEventListener('click', () => renderTable(btn.getAttribute('data-filter')));
     });
 
-    container.addEventListener('click', (e) => {
+    bindOnce(container, 'cxp-click', 'click', (e) => {
       const payBtn = e.target.closest('.btn-cxp-pay');
       if (payBtn) {
         const id = payBtn.getAttribute('data-id');
@@ -148,9 +150,9 @@ export const CxpModule = {
 
   openPaySupplierModal(cxpItem, onSaved) {
     const content = `
-      <div class="mb-3" style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-        <div class="text-xs text-muted">Pago a Proveedor: <strong>${cxpItem.proveedorNombre}</strong></div>
-        <div style="font-size: 15px; font-weight: 700; margin: 2px 0;">Factura: ${cxpItem.documento}</div>
+      <div class="mb-3" style="background: var(--bg-surface-solid); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+        <div class="text-xs text-muted">Pago a Proveedor: <strong>${esc(cxpItem.proveedorNombre)}</strong></div>
+        <div style="font-size: 15px; font-weight: 700; margin: 2px 0;">Factura: ${esc(cxpItem.documento)}</div>
         <div class="text-xs text-danger font-bold mt-1">Saldo a Liquidar: ${Formatters.currency(cxpItem.saldo)}</div>
       </div>
 
@@ -162,15 +164,12 @@ export const CxpModule = {
         <div class="form-group mb-3">
           <label class="form-label">Cuenta Bancaria de Origen / Medio</label>
           <select class="form-select" name="medio">
-            <option value="Bancolombia Cuenta Corriente">Bancolombia Cuenta Corriente</option>
-            <option value="Davivienda Ahorros">Davivienda Ahorros</option>
-            <option value="Transferencia Nequi">Transferencia Nequi</option>
-            <option value="Efectivo Caja">Efectivo Caja</option>
+            ${PAYOUT_METHODS.map(m => `<option value="${m}">${m === 'Efectivo de caja' ? 'Efectivo de caja (sale de la caja abierta)' : m}</option>`).join('')}
           </select>
         </div>
         <div class="form-group mb-3">
           <label class="form-label">Número de Comprobante / Aprobación</label>
-          <input type="text" class="form-control" name="comprobante" required placeholder="Ej: TRANSF-982347">
+          <input type="text" class="form-control" name="comprobante" placeholder="Ej: número de transferencia (opcional)">
         </div>
       </form>
     `;
@@ -192,12 +191,18 @@ export const CxpModule = {
 
             const formData = new FormData(form);
             const pago = Number(formData.get('monto'));
-
-            cxpItem.abonos = (cxpItem.abonos || 0) + pago;
-            cxpItem.saldo = Math.max(0, cxpItem.saldo - pago);
-            if (cxpItem.saldo === 0) cxpItem.estado = 'PAGADA';
-            await DB.update(STORES.PAYABLES_CXP, cxpItem);
-
+            try {
+              await PaymentsService.payPayable({
+                tenantId: cxpItem.tenantId,
+                cxpId: cxpItem.id,
+                monto: pago,
+                metodo: formData.get('medio'),
+                referencia: formData.get('comprobante')
+              });
+            } catch (err) {
+              Toast.error(err.message);
+              return;
+            }
             Toast.success(`Pago por ${Formatters.currency(pago)} registrado con éxito.`);
             Modal.close();
             if (onSaved) onSaved();

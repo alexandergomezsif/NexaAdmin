@@ -6,7 +6,7 @@
  */
 
 import { DB, STORES } from '../services/db-service.js';
-import { Formatters } from '../utils/formatters.js';
+import { Formatters, esc } from '../utils/formatters.js';
 import { Toast } from '../components/toast.js';
 import { Modal } from '../components/modal.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
@@ -142,9 +142,9 @@ export const PricingCalculatorModule = {
                     <div class="d-flex items-center gap-2">
                       <span style="font-size: 20px;">🧴</span>
                       <div>
-                        <strong style="font-size: 13.5px; color: var(--text-main);">${p.nombre}</strong>
+                        <strong style="font-size: 13.5px; color: var(--text-main);">${esc(p.nombre)}</strong>
                         <div class="text-xs text-muted">
-                          SKU: ${p.sku || '-'} ${tieneReceta ? '• <span class="text-primary font-bold">🧪 Con Receta</span>' : ''}
+                          SKU: ${esc(p.sku || '-')} ${tieneReceta ? '• <span class="text-primary font-bold">🧪 Con Receta</span>' : ''}
                         </div>
                       </div>
                     </div>
@@ -370,7 +370,7 @@ export const PricingCalculatorModule = {
               <option value="">-- Simulación Libre (Escribir nombre abajo) --</option>
               ${finishedGoods.map(fg => `
                 <option value="${fg.id}" ${wiz.productId === fg.id ? 'selected' : ''}>
-                  ${fg.nombre} (${fg.sku || 'Sin SKU'}) - Costo registrado: ${Formatters.currency(fg.costo || 0)}
+                  ${esc(fg.nombre)} (${esc(fg.sku || 'Sin SKU')}) - Costo registrado: ${Formatters.currency(fg.costo || 0)}
                 </option>
               `).join('')}
             </select>
@@ -911,8 +911,8 @@ export const PricingCalculatorModule = {
           ${this.recipes.map(r => `
             <button type="button" class="list-group-item list-group-item-action d-flex justify-between items-center p-3 btn-pick-rec" data-id="${r.id}" style="text-align: left;">
               <div>
-                <strong style="font-size: 13px;">${r.nombreFormula}</strong>
-                <div class="text-xs text-muted">Tanda de ${r.cantidadProducir || 200} ${r.unidadMedida || 'Litros'}</div>
+                <strong style="font-size: 13px;">${esc(r.nombreFormula)}</strong>
+                <div class="text-xs text-muted">Tanda de ${r.cantidadProducir || 200} ${esc(r.unidadMedida || 'Litros')}</div>
               </div>
               <span class="badge badge-primary font-bold">Seleccionar</span>
             </button>
