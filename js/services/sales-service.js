@@ -140,7 +140,7 @@ export const SalesService = {
         cantidad: Number(it.cantidad),
         precioUnitario: Math.round(Number(it.precioUnitario)),
         precioIncluyeIva: listIncl,
-        ivaPct: products[i].ivaPct !== undefined ? Number(products[i].ivaPct) : IVA_DEFAULT
+        ivaPct: (products[i].ivaPct !== undefined && products[i].ivaPct !== null && products[i].ivaPct !== '') ? Number(products[i].ivaPct) : IVA_DEFAULT
       }));
       const totals = TaxService.calculateTotals(lineItems, 0, { aplicaIva });
       lineItems.forEach((li, i) => Object.assign(li, {
@@ -235,6 +235,7 @@ export const SalesService = {
           observacion: `Venta ${consecutivo} a ${sale.clienteNombre}`
         });
         li.costoUnitario = mov.costoUnitario;
+        li.lotes = mov.lotes || [];
         costoTotal += mov.costoTotal;
       }
       sale.costoTotal = Math.round(costoTotal);
@@ -387,6 +388,7 @@ export const SalesService = {
             documentoNumero: sale.consecutivo,
             cantidad: li.cantidad,
             costoUnitario: li.costoUnitario !== undefined ? li.costoUnitario : prod.costoPromedio,
+            lotes: li.lotes || null,
             observacion: `Anulación ${sale.consecutivo}: ${motivo}`
           });
         }

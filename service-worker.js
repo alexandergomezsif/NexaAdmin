@@ -3,21 +3,23 @@
 // Cambie APP_VERSION en cada publicación para invalidar la caché.
 // ============================================================
 
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.4.0';
 const CACHE_NAME = `nexaadmin-${APP_VERSION}`;
 
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './js/bundle.js?v=3.0.0',
+  './js/bundle.js',
   './css/variables.css',
   './css/themes.css',
   './css/layout.css',
   './css/components.css',
   './css/utilities.css',
   './icons/icon-192x192.png',
-  './icons/icon-512x512.png'
+  './icons/icon-512x512.png',
+  './icons/nexa-corp-light.png',
+  './icons/nexa-corp-dark.png'
 ];
 
 self.addEventListener('install', (event) => {

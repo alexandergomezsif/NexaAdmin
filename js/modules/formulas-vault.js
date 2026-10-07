@@ -14,6 +14,22 @@ import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
 import { TenantServiceInstance } from '../services/tenant-service.js';
 
+/** Costo unitario de un insumo: costo promedio del Kardex (los campos 'costo'/'precioCompra' no existen en el catálogo actual). */
+const mpCost = (mp) => Number((mp && (mp.costoPromedio || mp.costo || mp.precioCompra)) || 0);
+
+/** Las recetas de la semilla y las creadas en la Bóveda usaban nombres de campo distintos; se unifican al leer. */
+function normalizeRecipe(r) {
+  return {
+    ...r,
+    nombreFormula: r.nombreFormula || r.nombreReceta || 'Receta',
+    cantidadProducir: Number(r.cantidadProducir || r.rendimientoLote) || 1,
+    unidadMedida: r.unidadMedida || r.unidadMedidaLote || 'Unidades',
+    volumenTanda: Number(r.volumenTanda) || (/^(litros|galones|kilos)$/i.test(r.unidadMedida || '') ? Number(r.cantidadProducir || r.rendimientoLote) || 0 : 0),
+    unidadTanda: r.unidadTanda || (/^(litros|galones|kilos)$/i.test(r.unidadMedida || '') ? r.unidadMedida : 'Litros'),
+    insumos: (r.insumos || []).map(i => ({ ...i, productoId: i.productoId || i.materiaPrimaId, mermaEsperada: Number(i.mermaEsperada) || 0 }))
+  };
+}
+
 export const FormulasVaultModule = {
   _pin: null,   // PIN en memoria mientras la bóveda está abierta (nunca se guarda en claro)
 
@@ -72,8 +88,8 @@ export const FormulasVaultModule = {
               : 'Defina la clave de la bóveda. Con ella se cifran el protocolo de mezcla y las especificaciones de cada receta.'}
           </p>
           <form id="vault-pin-form" autocomplete="off">
-            <input type="password" id="vault-pin-inp" class="form-control text-center font-bold mb-2" placeholder="${hasPin ? 'Clave de la bóveda' : 'Nueva clave (mínimo 6 caracteres)'}" required autofocus style="font-size: 16px; height: 44px;">
-            ${hasPin ? '' : '<input type="password" id="vault-pin-inp2" class="form-control text-center font-bold mb-2" placeholder="Repetir clave" required style="font-size: 16px; height: 44px;">'}
+            <input type="password" id="vault-pin-inp" class="form-control text-center font-bold mb-2" placeholder="${hasPin ? 'PIN de la bóveda' : 'Nuevo PIN (4 dígitos)'}" inputmode="numeric" maxlength="4" required autofocus style="font-size: 16px; height: 44px;">
+            ${hasPin ? '' : '<input type="password" id="vault-pin-inp2" class="form-control text-center font-bold mb-2" placeholder="Repetir PIN" inputmode="numeric" maxlength="4" required style="font-size: 16px; height: 44px;">'}
             <div id="vault-pin-err" class="alert alert-danger mb-3 text-xs" style="display: none; padding: 8px;"></div>
             ${hasPin ? '' : '<div class="alert alert-warning text-xs mb-3" style="text-align: left;">⚠️ Si olvida esta clave, el texto cifrado de las recetas <strong>no se puede recuperar</strong> (ni siquiera el desarrollador). Anótela en un lugar seguro. Las cantidades de insumos no se cifran porque Producción las necesita.</div>'}
             <button type="submit" class="btn btn-primary w-100 font-bold" style="height: 42px;">${hasPin ? '🔓 Abrir bóveda' : '🔐 Crear clave y abrir'}</button>
@@ -93,7 +109,7 @@ export const FormulasVaultModule = {
           const stored = await DB.getParam(this.pinParam(tenantId), null);
           if (!(await CryptoUtil.verifyPassword(val, stored))) throw new Error('Clave incorrecta.');
         } else {
-          if (val.length < 6) throw new Error('La clave debe tener al menos 6 caracteres.');
+          if (!/^\d{4}$/.test(val)) throw new Error('El PIN de la bóveda debe tener 4 dígitos numéricos.');
           if (val !== container.querySelector('#vault-pin-inp2').value) throw new Error('Las claves no coinciden.');
           await DB.setParam(this.pinParam(tenantId), await CryptoUtil.hashPassword(val), tenantId);
           await AuditService.log({ modulo: 'Bóveda', accion: 'CREAR', campoModificado: 'Clave de bóveda', valorNuevo: 'Definida' });
@@ -124,171 +140,87 @@ export const FormulasVaultModule = {
       }
     }
 
+    recipes.forEach((r, i) => { recipes[i] = normalizeRecipe(r); });
+
     container.innerHTML = `
-      <div class="view-header mb-3" style="padding-bottom: 8px;">
+      <div class="view-header">
         <div class="view-title-wrap">
-          <div class="d-flex items-center gap-2">
-            <h1 style="font-size: 20px;">Bóveda Privada de Fórmulas y Recetas</h1>
-            <span class="badge badge-success font-bold">🔓 ABIERTO</span>
-          </div>
-          <p class="text-xs text-muted mb-0">Secretos químicos de fabricación, lista de ingredientes, proporciones y paso a paso</p>
+          <h1>Bóveda de fórmulas <span class="badge badge-success" style="vertical-align: middle;">Abierta</span></h1>
+          <p>${recipes.length} fórmula(s). El protocolo de mezcla y las especificaciones se guardan cifrados.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-lock-now">🔒 Cerrar Bóveda</button>
-          <button class="btn btn-secondary btn-sm" id="btn-change-pin">🔑 Cambiar Clave</button>
-          <button class="btn btn-primary btn-sm font-bold" id="btn-nueva-receta-asistente">
-            ✨ + Asistente para Crear Receta
-          </button>
+          <button class="btn btn-secondary btn-sm" id="btn-lock-now">Cerrar bóveda</button>
+          <button class="btn btn-secondary btn-sm" id="btn-change-pin">Cambiar PIN</button>
+          <button class="btn btn-primary btn-sm" id="btn-nueva-receta-asistente">Nueva fórmula</button>
         </div>
       </div>
 
-      <!-- 3 Tarjetas Resumen en Grid -->
-      <div class="pricing-kpi-grid mb-3">
-        <div class="pricing-kpi-card kpi-cost">
-          <div class="pricing-kpi-info">
-            <span class="pricing-kpi-label"><span>🧪</span> Recetas Registradas</span>
-            <span class="pricing-kpi-sub">Fórmulas activas en bóveda</span>
+      <div class="d-flex flex-col gap-3">
+        ${recipes.length === 0 ? `
+          <div class="card text-center p-5 text-muted">
+            <strong>Aún no hay fórmulas en la bóveda.</strong>
+            <p class="text-xs mt-1">Cree la primera con el botón <em>Nueva fórmula</em>.</p>
+            <button class="btn btn-primary btn-sm mt-2" id="btn-receta-vacia">Nueva fórmula</button>
           </div>
-          <div class="pricing-kpi-data">
-            <span class="pricing-kpi-value" style="color: #0284c7;">${recipes.length}</span>
-            <span class="badge badge-info" style="font-size: 9.5px;">Bóveda</span>
-          </div>
-        </div>
+        ` : recipes.map(r => {
+          const fg = finishedGoods.find(p => p.id === r.productoTerminadoId) || {};
+          let costoTanda = 0;
+          let sumaPorcentajes = 0;
+          let conPorcentaje = false;
+          const insumosConCosto = r.insumos.map(ins => {
+            const mp = rawMaterials.find(m => m.id === ins.productoId) || {};
+            const costoUnit = mpCost(mp);
+            const cant = Number(ins.cantidad || 0) * (1 + Number(ins.mermaEsperada || 0) / 100);
+            const sub = cant * costoUnit;
+            costoTanda += sub;
+            if (ins.porcentaje) { conPorcentaje = true; sumaPorcentajes += Number(ins.porcentaje); }
+            return { ...ins, mp, costoUnit, sub, unidad: ins.unidadMedida || mp.unidadMedida || '' };
+          });
+          costoTanda += Number(r.costosIndirectosEstimados || 0);
+          const lote = r.cantidadProducir;
+          const costoUnidad = lote > 0 ? costoTanda / lote : costoTanda;
+          const sinCosto = insumosConCosto.some(i => !(i.costoUnit > 0));
 
-        <div class="pricing-kpi-card kpi-profit">
-          <div class="pricing-kpi-info">
-            <span class="pricing-kpi-label"><span>🧴</span> Materias Primas</span>
-            <span class="pricing-kpi-sub">Insumos químicos en stock</span>
-          </div>
-          <div class="pricing-kpi-data">
-            <span class="pricing-kpi-value" style="color: #047857;">${rawMaterials.length}</span>
-            <span class="badge badge-success" style="font-size: 9.5px;">Disponibles</span>
-          </div>
-        </div>
-
-        <div class="pricing-kpi-card kpi-price">
-          <div class="pricing-kpi-info">
-            <span class="pricing-kpi-label"><span>🛡️</span> Nivel de Seguridad</span>
-            <span class="pricing-kpi-sub">Protegido con clave</span>
-          </div>
-          <div class="pricing-kpi-data">
-            <span class="pricing-kpi-value" style="color: var(--brand-primary); font-size: 16px;">CONFIDENCIAL</span>
-            <span class="badge badge-primary" style="font-size: 9.5px;">Gerente / Dev</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Listado de Recetas -->
-      <div class="card p-3" style="border-radius: 12px;">
-        <div class="d-flex justify-between items-center mb-3">
-          <div>
-            <h3 style="font-size: 14.5px; font-weight: 800; margin: 0;">Tus Fórmulas de Fabricación</h3>
-            <span class="text-xs text-muted">Cada receta contiene proporciones balanceadas al 100% y costo por litro</span>
-          </div>
-        </div>
-
-        <div class="d-flex flex-col gap-3">
-          ${recipes.length === 0 ? `
-            <div class="text-center p-5 text-muted">
-              <div style="font-size: 32px; margin-bottom: 8px;">🧪</div>
-              <strong>Aún no tienes recetas creadas en tu bóveda.</strong>
-              <p class="text-xs mt-1">Presiona <em>"+ Asistente para Crear Receta"</em> para registrar tu primera fórmula guiada paso a paso.</p>
-              <button class="btn btn-primary btn-sm mt-2 font-bold" id="btn-receta-vacia">✨ Iniciar Asistente de Receta</button>
-            </div>
-          ` : recipes.map(r => {
-            const fg = finishedGoods.find(p => p.id === r.productoTerminadoId) || {};
-            
-            let costoTanda = 0;
-            let sumaPorcentajes = 0;
-            const insumosConCosto = (r.insumos || []).map(ins => {
-              const mp = rawMaterials.find(m => m.id === ins.productoId) || {};
-              const costoUnit = mp.costo || mp.precioCompra || 0;
-              const sub = ins.cantidad * costoUnit;
-              costoTanda += sub;
-              sumaPorcentajes += Number(ins.porcentaje || 0);
-              return { ...ins, mp, costoUnit, sub };
-            });
-
-            const batch = Number(r.cantidadProducir) || 1;
-            const costoPorLitro = batch > 0 ? Math.round(costoTanda / batch) : costoTanda;
-
-            return `
-              <div class="card p-3 mb-0" style="border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-surface);">
-                <div class="d-flex justify-between items-start mb-2">
-                  <div>
-                    <div class="d-flex items-center gap-2">
-                      <span style="font-size: 20px;">🧪</span>
-                      <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">${esc(r.nombreFormula)}</h4>
-                    </div>
-                    <div class="text-xs text-muted mt-1">
-                      Producto: <strong>${esc(fg.nombre || 'No asignado')}</strong> | Tanda: <strong>${r.cantidadProducir || 200} ${esc(r.unidadMedida || 'Litros')}</strong>
-                    </div>
-                  </div>
-
-                  <div class="d-flex gap-2">
-                    <button class="btn btn-primary btn-sm font-bold btn-calcular-precios" data-id="${r.id}" style="font-size: 11.5px;">
-                      💡 Calcular Precios de Venta
-                    </button>
-                    <button class="btn btn-secondary btn-sm btn-editar-receta" data-id="${r.id}" style="font-size: 11.5px;">
-                      ✏️ Editar con Asistente
-                    </button>
-                  </div>
+          return `
+            <div class="card recipe-card">
+              <div class="recipe-head">
+                <div>
+                  <h3 class="recipe-title">${esc(r.nombreFormula)}</h3>
+                  <div class="text-xs text-muted">Producto: <strong>${esc(fg.nombre || 'sin vincular')}</strong> · Rinde: <strong>${esc(lote)} ${esc(fg.unidadMedida || r.unidadMedida)}</strong> por lote${r.volumenTanda ? ` · tanda ${esc(r.volumenTanda)} ${esc(r.unidadTanda)}` : ''}</div>
                 </div>
-
-                <!-- Resumen en 3 Tarjetitas -->
-                <div class="nexa-grid-3 mb-2">
-                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
-                    <div class="text-muted text-xs">Costo Total Tanda:</div>
-                    <strong class="text-success" style="font-size: 13.5px;">${Formatters.currency(costoTanda)}</strong>
-                  </div>
-                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
-                    <div class="text-muted text-xs">Costo Químico x Litro:</div>
-                    <strong class="text-primary" style="font-size: 13.5px;">${Formatters.currency(costoPorLitro)} / L</strong>
-                  </div>
-                  <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
-                    <div class="text-muted text-xs">Suma de Reactivos:</div>
-                    <strong class="${Math.abs(sumaPorcentajes - 100) < 0.5 ? 'text-success' : 'text-warning'}" style="font-size: 13.5px;">
-                      ${sumaPorcentajes.toFixed(1)}% ${Math.abs(sumaPorcentajes - 100) < 0.5 ? '✓ (100%)' : '(Ajustar)'}
-                    </strong>
-                  </div>
+                <div class="recipe-costs">
+                  <div><span class="ps-label">Costo del lote</span><strong>${Formatters.currency(costoTanda)}</strong></div>
+                  <div><span class="ps-label">Costo por unidad</span><strong>${Formatters.currency(costoUnidad)}</strong></div>
+                  ${conPorcentaje ? `<div><span class="ps-label">Suma de %</span><strong class="${Math.abs(sumaPorcentajes - 100) < 0.5 ? 'text-success' : 'text-warning'}">${sumaPorcentajes.toFixed(1)}%</strong></div>` : ''}
                 </div>
-
-                <!-- Tabla de Reactivos -->
-                <div class="table-responsive mb-2">
-                  <table class="table table-sm text-xs" style="margin-bottom: 0;">
-                    <thead>
-                      <tr>
-                        <th>Reactivo Químico</th>
-                        <th class="text-center">Momento</th>
-                        <th class="text-center">Porcentaje (%)</th>
-                        <th class="text-center">Cantidad en Tanda</th>
-                        <th class="text-right">Costo Insumo</th>
-                      </tr>
-                    </thead>
+                <div class="recipe-actions">
+                  ${r.productoTerminadoId ? `<button class="btn btn-secondary btn-sm btn-calcular-precios" data-id="${esc(r.id)}">Precios</button>` : ''}
+                  <button class="btn btn-secondary btn-sm btn-editar-receta" data-id="${esc(r.id)}">Editar</button>
+                </div>
+              </div>
+              ${sinCosto ? '<div class="text-xs text-warning mt-1">Algún insumo no tiene costo todavía (registre una compra); el costo del lote está incompleto.</div>' : ''}
+              <details class="recipe-details">
+                <summary>Ingredientes (${insumosConCosto.length})${r.instruccionesFases ? ' y protocolo de mezcla' : ''}</summary>
+                <div class="table-responsive">
+                  <table class="table table-sm">
+                    <thead><tr><th>Insumo</th><th>Momento</th>${conPorcentaje ? '<th class="text-right">%</th>' : ''}<th class="text-right">Cantidad en el lote</th><th class="text-right">Costo</th></tr></thead>
                     <tbody>
                       ${insumosConCosto.map(i => `
                         <tr>
-                          <td><strong>${i.mp.nombre || 'Reactivo'}</strong> <span class="text-muted">(${i.mp.sku || '-'})</span></td>
-                          <td class="text-center"><span class="badge badge-secondary" style="font-size: 9.5px;">${i.fase || 'Paso 1'}</span></td>
-                          <td class="text-center font-bold">${i.porcentaje ? i.porcentaje + '%' : '-'}</td>
-                          <td class="text-center">${i.cantidad} Kg/L</td>
-                          <td class="text-right font-bold">${Formatters.currency(i.sub)}</td>
-                        </tr>
-                      `).join('')}
+                          <td><strong>${esc(i.mp.nombre || 'Insumo no encontrado')}</strong> <span class="text-muted text-xs">${esc(i.mp.sku || '')}</span></td>
+                          <td class="text-xs">${esc(i.fase || '—')}</td>
+                          ${conPorcentaje ? `<td class="text-right">${i.porcentaje ? esc(i.porcentaje) + '%' : '—'}</td>` : ''}
+                          <td class="text-right">${esc(i.cantidad)} ${esc(i.unidad)}</td>
+                          <td class="text-right">${Formatters.currency(i.sub)}</td>
+                        </tr>`).join('')}
+                      ${Number(r.costosIndirectosEstimados || 0) > 0 ? `<tr><td colspan="${conPorcentaje ? 4 : 3}" class="text-muted">Costos indirectos del lote</td><td class="text-right">${Formatters.currency(r.costosIndirectosEstimados)}</td></tr>` : ''}
                     </tbody>
                   </table>
                 </div>
-
-                ${r.instruccionesFases ? `
-                  <div class="p-2 mt-1" style="background: rgba(0, 113, 227, 0.04); border-left: 3px solid var(--brand-primary); border-radius: 6px; font-size: 11.5px;">
-                    <strong>👨‍🔬 Protocolo de Mezcla:</strong>
-                    <div style="white-space: pre-line; margin-top: 2px; line-height: 1.35;">${esc(r.instruccionesFases)}</div>
-                  </div>
-                ` : ''}
-              </div>
-            `;
-          }).join('')}
-        </div>
+                ${r.instruccionesFases ? `<div class="recipe-protocol"><strong>Protocolo de mezcla</strong><div>${esc(r.instruccionesFases)}</div></div>` : ''}
+              </details>
+            </div>`;
+        }).join('')}
       </div>
     `;
 
@@ -344,10 +276,13 @@ export const FormulasVaultModule = {
       nombreFormula: existingRecipe?.nombreFormula || '',
       productoTerminadoId: existingRecipe?.productoTerminadoId || '',
       cantidadProducir: existingRecipe?.cantidadProducir || 200,
-      unidadMedida: existingRecipe?.unidadMedida || 'Litros',
+      unidadMedida: 'Unidades',
+      volumenTanda: Number(existingRecipe?.volumenTanda) || 0,
+      unidadTanda: existingRecipe?.unidadTanda || 'Litros',
       ph: existingRecipe?.especificaciones?.ph || '',
+      cif: Number(existingRecipe?.costosIndirectosEstimados || 0),
       insumos: existingRecipe?.insumos ? JSON.parse(JSON.stringify(existingRecipe.insumos)) : [
-        { productoId: '', fase: 'Paso 1 (Al inicio)', porcentaje: 80, cantidad: 160 }
+        { productoId: '', fase: 'Paso 1 (Al inicio)', porcentaje: 0, cantidad: 0, mermaEsperada: 0 }
       ],
       instruccionesFases: existingRecipe?.instruccionesFases || ''
     };
@@ -360,6 +295,22 @@ export const FormulasVaultModule = {
     });
 
     const root = dialog.querySelector('#wizard-formula-container');
+
+    const calcTotals = () => {
+      let costoTanda = 0;
+      let sumaPct = 0;
+      wiz.insumos.forEach(i => {
+        const mp = rawMaterials.find(m => m.id === i.productoId) || {};
+        costoTanda += (Number(i.cantidad || 0) * (1 + (Number(i.mermaEsperada) || 0) / 100) * mpCost(mp));
+        sumaPct += Number(i.porcentaje || 0);
+      });
+      const batch = Number(wiz.cantidadProducir) || 1;
+      return { costoTanda, sumaPct, costoPorLitro: batch > 0 ? Math.round(costoTanda / batch) : costoTanda };
+    };
+    const unidadSingular = () => String(wiz.unidadMedida || 'unidad').replace(/es$/i, '').replace(/s$/i, '').toLowerCase();
+    const balanceHtml = (sumaPct) => wiz.insumos.some(i => Number(i.porcentaje) > 0)
+      ? `<span class="badge ${Math.abs(sumaPct - 100) < 0.5 ? 'badge-success' : 'badge-warning'} font-bold">${sumaPct.toFixed(1)}% ${Math.abs(sumaPct - 100) < 0.5 ? '✓' : `(faltan o sobran ${(100 - sumaPct).toFixed(1)}%)`}</span>`
+      : '<span class="text-xs text-muted">Opcional: escriba el % de cada insumo para calcular la cantidad automáticamente.</span>';
 
     const renderStep = () => {
       // Stepper
@@ -385,16 +336,7 @@ export const FormulasVaultModule = {
       `;
 
       // Cálculos reactivos de tanda
-      let costoTanda = 0;
-      let sumaPct = 0;
-      wiz.insumos.forEach(i => {
-        const mp = rawMaterials.find(m => m.id === i.productoId) || {};
-        const uCost = mp.costo || mp.precioCompra || 0;
-        costoTanda += (Number(i.cantidad || 0) * uCost);
-        sumaPct += Number(i.porcentaje || 0);
-      });
-      const batch = Number(wiz.cantidadProducir) || 1;
-      const costoPorLitro = batch > 0 ? Math.round(costoTanda / batch) : costoTanda;
+      const { costoTanda, sumaPct, costoPorLitro } = calcTotals();
 
       let bodyHtml = '';
 
@@ -427,19 +369,26 @@ export const FormulasVaultModule = {
 
           <div class="nexa-grid-2 mb-3">
             <div>
-              <label class="font-bold text-xs">¿Cuántos litros o galones preparas en una tanda?</label>
+              <label class="font-bold text-xs">Rendimiento: ¿cuántas unidades del producto salen de un lote?</label>
+              <input type="number" step="any" min="1" id="wiz-rec-batch" class="form-control font-bold" value="${wiz.cantidadProducir}" required>
+              <div class="text-xs text-muted mt-1">En la unidad del producto (botellas, galones envasados, garrafas). Producción descuenta los insumos en esa proporción.</div>
+            </div>
+            <div>
+              <label class="font-bold text-xs">Tamaño de la tanda (opcional, para calcular con %):</label>
               <div class="d-flex gap-2">
-                <input type="number" step="any" min="1" id="wiz-rec-batch" class="form-control font-bold" value="${wiz.cantidadProducir}" required>
+                <input type="number" step="any" min="0" id="wiz-rec-vol" class="form-control" value="${wiz.volumenTanda || ''}" placeholder="Ej: 100">
                 <select class="form-select" id="wiz-rec-unit" style="max-width: 120px;">
-                  <option value="Litros" ${wiz.unidadMedida === 'Litros' ? 'selected' : ''}>Litros</option>
-                  <option value="Galones" ${wiz.unidadMedida === 'Galones' ? 'selected' : ''}>Galones</option>
-                  <option value="Kilos" ${wiz.unidadMedida === 'Kilos' ? 'selected' : ''}>Kilos</option>
+                  ${['Litros', 'Galones', 'Kilos'].map(u => `<option value="${u}" ${wiz.unidadTanda === u ? 'selected' : ''}>${u}</option>`).join('')}
                 </select>
               </div>
             </div>
             <div>
               <label class="font-bold text-xs">pH esperado (Opcional):</label>
               <input type="text" id="wiz-rec-ph" class="form-control" value="${wiz.ph}" placeholder="Ej: 11 a 12 (Alcalino)">
+            </div>
+            <div>
+              <label class="font-bold text-xs">Costos indirectos por lote (opcional):</label>
+              <input type="number" min="0" step="100" id="wiz-rec-cif" class="form-control" value="${wiz.cif || ''}" placeholder="Mano de obra, energía, agua…">
             </div>
           </div>
         `;
@@ -451,8 +400,8 @@ export const FormulasVaultModule = {
       else if (wiz.step === 2) {
         bodyHtml = `
           <div class="wizard-helper-box">
-            <strong>Paso 2 de 4:</strong> Agrega las materias primas químicas que lleva la mezcla. 
-            El sistema calculará automáticamente el peso en Kg/L y el costo por litro en tiempo real.
+            <strong>Paso 2 de 4:</strong> Agregue todos los insumos del lote (químicos, envases, cajas) con la cantidad que usa.
+            El costo se calcula al instante con el costo promedio de cada insumo.
           </div>
 
           <div class="d-flex justify-between items-center mb-2">
@@ -471,7 +420,9 @@ export const FormulasVaultModule = {
                   <th>Materia Prima</th>
                   <th style="width: 140px;">Momento</th>
                   <th style="width: 90px;" class="text-center">%</th>
-                  <th style="width: 110px;" class="text-center">Cantidad (${esc(wiz.unidadMedida)})</th>
+                  <th style="width: 110px;" class="text-center">Cantidad en el lote</th>
+                  <th style="width: 60px;">Unidad</th>
+                  <th style="width: 80px;" class="text-center" title="Pérdida esperada del insumo en el proceso">Merma %</th>
                   <th style="width: 40px;"></th>
                 </tr>
               </thead>
@@ -483,7 +434,7 @@ export const FormulasVaultModule = {
                         <option value="" disabled ${!item.productoId ? 'selected' : ''}>Elegir insumo...</option>
                         ${rawMaterials.map(rm => `
                           <option value="${rm.id}" ${item.productoId === rm.id ? 'selected' : ''}>
-                            ${esc(rm.nombre)} (${Formatters.currency(rm.costo || rm.precioCompra || 0)}/u)
+                            ${esc(rm.nombre)} (${Formatters.currency(mpCost(rm))}/${esc(rm.unidadMedida || 'u')})
                           </option>
                         `).join('')}
                       </select>
@@ -496,11 +447,14 @@ export const FormulasVaultModule = {
                       </select>
                     </td>
                     <td>
-                      <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm text-center font-bold inp-pct" value="${item.porcentaje || ''}" placeholder="%">
+                      <input type="number" step="0.1" min="0" max="100" class="form-control form-control-sm text-center font-bold inp-pct" value="${item.porcentaje || ''}" placeholder="%"
+                        ${(!(wiz.volumenTanda > 0) || /^(unidad|unidades|und)$/i.test((rawMaterials.find(m => m.id === item.productoId) || {}).unidadMedida || '')) ? 'disabled title="El % aplica solo a químicos y requiere el tamaño de la tanda (paso 1)"' : ''}>
                     </td>
                     <td>
                       <input type="number" step="any" min="0" class="form-control form-control-sm text-center font-bold inp-qty" value="${item.cantidad || ''}" placeholder="Cantidad">
                     </td>
+                    <td class="text-xs text-muted">${esc((rawMaterials.find(m => m.id === item.productoId) || {}).unidadMedida || '')}</td>
+                    <td><input type="number" step="0.5" min="0" max="50" class="form-control form-control-sm text-center inp-merma" value="${item.mermaEsperada || ''}" placeholder="0"></td>
                     <td>
                       <button type="button" class="btn btn-secondary btn-sm btn-del-row" style="padding: 1px 6px; color: var(--danger-color);">&times;</button>
                     </td>
@@ -514,20 +468,14 @@ export const FormulasVaultModule = {
           <div class="p-3 card mb-0" style="background: var(--bg-surface-solid); border-radius: 8px;">
             <div class="d-flex justify-between items-center">
               <div>
-                <span class="text-xs text-muted font-bold">Balance de Proporciones:</span>
-                <div class="d-flex items-center gap-2 mt-1">
-                  <span class="badge ${Math.abs(sumaPct - 100) < 0.5 ? 'badge-success' : 'badge-warning'} font-bold" style="font-size: 13px;">
-                    ${sumaPct.toFixed(1)}% ${Math.abs(sumaPct - 100) < 0.5 ? '100% Perfecto ✓' : '(Faltan o sobran ' + (100 - sumaPct).toFixed(1) + '%)'}
-                  </span>
-                </div>
+                <span class="text-xs text-muted font-bold">Proporciones (%):</span>
+                <div class="d-flex items-center gap-2 mt-1" id="wiz-sum-balance">${balanceHtml(sumaPct)}</div>
               </div>
 
               <div class="text-right">
-                <span class="text-xs text-muted font-bold">Costo Químico Estimado:</span>
-                <div style="font-size: 18px; font-weight: 900; color: #0284c7;">
-                  ${Formatters.currency(costoPorLitro)} / ${wiz.unidadMedida.slice(0, -1) || 'L'}
-                </div>
-                <span class="text-xs text-muted">Total Tanda: ${Formatters.currency(costoTanda)}</span>
+                <span class="text-xs text-muted font-bold">Costo de insumos por ${esc(unidadSingular())}:</span>
+                <div style="font-size: 18px; font-weight: 900; color: var(--brand-primary);" id="wiz-sum-unit">${Formatters.currency(costoPorLitro)}</div>
+                <span class="text-xs text-muted" id="wiz-sum-total">Total del lote: ${Formatters.currency(costoTanda)}</span>
               </div>
             </div>
           </div>
@@ -572,22 +520,22 @@ export const FormulasVaultModule = {
               <div>
                 <h4 style="font-size: 15px; font-weight: 800; margin: 0; color: var(--text-main);">🧪 ${esc(wiz.nombreFormula)}</h4>
                 <div class="text-xs text-muted">
-                  Producto Asociado: <strong>${prodAsoc ? prodAsoc.nombre : 'Sin vincular'}</strong> | Tanda: <strong>${wiz.cantidadProducir} ${esc(wiz.unidadMedida)}</strong>
+                  Producto Asociado: <strong>${prodAsoc ? prodAsoc.nombre : 'Sin vincular'}</strong> | Rinde: <strong>${esc(wiz.cantidadProducir)} unidades por lote</strong>${wiz.volumenTanda ? ` (tanda de ${esc(wiz.volumenTanda)} ${esc(wiz.unidadTanda)})` : ''}
                 </div>
               </div>
               <span class="badge badge-success font-bold">100% Confidencial</span>
             </div>
 
             <div class="nexa-grid-3 mt-2">
-              <div class="p-2" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px;">
+              <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
                 <div class="text-xs text-muted font-bold">Reactivos en la mezcla:</div>
                 <strong style="font-size: 14px; color: var(--text-main);">${wiz.insumos.length} ingredientes</strong>
               </div>
-              <div class="p-2" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px;">
+              <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
                 <div class="text-xs text-muted font-bold">Costo Total Tanda:</div>
                 <strong style="font-size: 14px; color: #047857;">${Formatters.currency(costoTanda)}</strong>
               </div>
-              <div class="p-2" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px;">
+              <div class="p-2" style="background: var(--bg-surface-solid); border: 1px solid var(--border-color); border-radius: 6px;">
                 <div class="text-xs text-muted font-bold">Costo Líquido x Litro:</div>
                 <strong style="font-size: 14px; color: #0284c7;">${Formatters.currency(costoPorLitro)} / L</strong>
               </div>
@@ -678,31 +626,48 @@ export const FormulasVaultModule = {
         inpN.addEventListener('input', () => { wiz.nombreFormula = inpN.value; });
         selP.addEventListener('change', () => { wiz.productoTerminadoId = selP.value; });
         inpB.addEventListener('input', () => { wiz.cantidadProducir = Number(inpB.value) || 1; });
-        selU.addEventListener('change', () => { wiz.unidadMedida = selU.value; });
+        selU.addEventListener('change', () => { wiz.unidadTanda = selU.value; });
+        const inpV = root.querySelector('#wiz-rec-vol');
+        inpV.addEventListener('input', () => { wiz.volumenTanda = Number(inpV.value) || 0; });
         inpPh.addEventListener('input', () => { wiz.ph = inpPh.value; });
+        const inpCif = root.querySelector('#wiz-rec-cif');
+        inpCif.addEventListener('input', () => { wiz.cif = Number(inpCif.value) || 0; });
       }
 
       // Paso 2
       if (wiz.step === 2) {
         const tbody = root.querySelector('#wiz-tbody-ings');
 
-        const syncRows = () => {
+        const updateSummary = () => {
+          const t = calcTotals();
+          const bal = root.querySelector('#wiz-sum-balance');
+          if (bal) bal.innerHTML = balanceHtml(t.sumaPct);
+          const u = root.querySelector('#wiz-sum-unit');
+          if (u) u.textContent = Formatters.currency(t.costoPorLitro);
+          const tot = root.querySelector('#wiz-sum-total');
+          if (tot) tot.textContent = `Total del lote: ${Formatters.currency(t.costoTanda)}`;
+        };
+
+        // rerender=false al escribir: volver a dibujar la tabla le quitaba el foco al campo en cada tecla
+        const syncRows = (rerender = true) => {
           wiz.insumos = [];
           tbody.querySelectorAll('tr').forEach(tr => {
             const selMp = tr.querySelector('.sel-mp');
             const selFase = tr.querySelector('.sel-fase');
             const inpPct = tr.querySelector('.inp-pct');
             const inpQty = tr.querySelector('.inp-qty');
+            const inpMer = tr.querySelector('.inp-merma');
             if (selMp && selMp.value) {
               wiz.insumos.push({
                 productoId: selMp.value,
                 fase: selFase.value,
-                porcentaje: Number(inpPct.value) || 0,
-                cantidad: Number(inpQty.value) || 0
+                porcentaje: inpPct.disabled ? 0 : (Number(inpPct.value) || 0),
+                cantidad: Number(inpQty.value) || 0,
+                mermaEsperada: Number(inpMer.value) || 0
               });
             }
           });
-          renderStep();
+          if (rerender) renderStep(); else updateSummary();
         };
 
         tbody.querySelectorAll('tr').forEach(tr => {
@@ -719,19 +684,20 @@ export const FormulasVaultModule = {
 
           inpPct.addEventListener('input', () => {
             const p = Number(inpPct.value) || 0;
-            const b = Number(wiz.cantidadProducir) || 0;
+            const b = Number(wiz.volumenTanda) || 0;
             if (b > 0 && p > 0) inpQty.value = ((b * p) / 100).toFixed(2);
-            syncRows();
+            syncRows(false);
           });
 
           selMp.addEventListener('change', syncRows);
           selFase.addEventListener('change', syncRows);
-          inpQty.addEventListener('input', syncRows);
+          inpQty.addEventListener('input', () => syncRows(false));
+          tr.querySelector('.inp-merma').addEventListener('input', () => syncRows(false));
         });
 
         const btnAdd = root.querySelector('#wiz-btn-add-ing');
         btnAdd.addEventListener('click', () => {
-          wiz.insumos.push({ productoId: '', fase: 'Paso 2 (En el medio)', porcentaje: 10, cantidad: ((wiz.cantidadProducir * 10) / 100) });
+          wiz.insumos.push({ productoId: '', fase: 'Paso 2 (En el medio)', porcentaje: 0, cantidad: 0, mermaEsperada: 0 });
           renderStep();
         });
       }
@@ -764,9 +730,13 @@ export const FormulasVaultModule = {
             productoTerminadoId: wiz.productoTerminadoId,
             cantidadProducir: lote,
             rendimientoLote: lote,
-            unidadMedida: wiz.unidadMedida,
+            unidadMedida: 'Unidades',
+            unidadMedidaLote: 'Unidades',
+            volumenTanda: Number(wiz.volumenTanda) || 0,
+            unidadTanda: wiz.unidadTanda,
             instruccionesFases: wiz.instruccionesFases,
             especificaciones: { ph: wiz.ph },
+            costosIndirectosEstimados: Number(wiz.cif) || 0,
             insumos: wiz.insumos.map(i => ({ ...i, materiaPrimaId: i.productoId, unidadMedida: i.unidadMedida || (rawMaterials.find(m => m.id === i.productoId) || {}).unidadMedida || '' })),
             estado: existing.estado || 'ACTIVO'
           };
@@ -804,7 +774,7 @@ export const FormulasVaultModule = {
         <form id="vault-change-form" autocomplete="off">
           <div class="form-group mb-3"><label class="font-bold text-xs">Clave actual</label>
             <input type="password" name="cur" class="form-control" required></div>
-          <div class="form-group mb-3"><label class="font-bold text-xs">Nueva clave (mínimo 6 caracteres)</label>
+          <div class="form-group mb-3"><label class="font-bold text-xs">Nuevo PIN (4 dígitos)</label>
             <input type="password" name="n1" class="form-control" required></div>
           <div class="form-group mb-3"><label class="font-bold text-xs">Repetir nueva clave</label>
             <input type="password" name="n2" class="form-control" required></div>
@@ -818,7 +788,7 @@ export const FormulasVaultModule = {
             const cur = fd.get('cur'); const n1 = fd.get('n1');
             const stored = await DB.getParam(this.pinParam(tenantId), null);
             if (!(await CryptoUtil.verifyPassword(cur, stored))) { Toast.error('La clave actual no es correcta.'); return; }
-            if (n1.length < 6) { Toast.warning('La nueva clave debe tener al menos 6 caracteres.'); return; }
+            if (!/^\d{4}$/.test(n1)) { Toast.warning('El PIN debe tener 4 dígitos numéricos.'); return; }
             if (n1 !== fd.get('n2')) { Toast.warning('Las claves no coinciden.'); return; }
             ev.target.disabled = true;
             try {

@@ -35,7 +35,12 @@ class DBService {
   constructor() {
     this.db = null;
     this.initPromise = null;
+    /** Contador de cambios: el respaldo automático lo usa para saber si hay algo nuevo que guardar. */
+    this.changeSeq = 0;
   }
+
+  /** Marca que la base de datos cambió (escrituras confirmadas). */
+  _touch() { this.changeSeq++; }
 
   /**
    * Inicializa y abre la base de datos IndexedDB
@@ -152,12 +157,25 @@ class DBService {
         resolve(this.db);
       };
 
+      // Otra pestaña con la versión anterior mantiene la base abierta: la actualización espera
+      // hasta que esa pestaña se cierre. Se avisa en pantalla (antes la app quedaba en blanco).
       request.onblocked = () => {
         console.warn('IndexedDB bloqueada: hay otra pestaña de NexaAdmin abierta con una versión anterior.');
+        if (typeof window !== 'undefined' && typeof window.__nexaBootMessage === 'function') {
+          window.__nexaBootMessage(
+            'Cierre las otras pestañas de NexaAdmin',
+            'Hay otra pestaña o ventana con NexaAdmin abierta (versión anterior) y está bloqueando la actualización de la base de datos. ' +
+            'Ciérrela y esta página continuará sola. Si no continúa, recárguela (F5).'
+          );
+        }
       };
 
       request.onerror = (event) => {
         console.error('Error al abrir IndexedDB:', event.target.error);
+        if (typeof window !== 'undefined' && window.__nexaBootMessage) {
+          window.__nexaBootMessage('El navegador no permitió abrir la base de datos',
+            `${event.target.error && event.target.error.message || 'Error desconocido'}. En Brave: haga clic en el icono del león y desactive los escudos para esta página, o use Chrome/Edge.`, true);
+        }
         this.initPromise = null;
         reject(event.target.error);
       };
@@ -237,7 +255,7 @@ class DBService {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([storeName], 'readwrite');
       const request = transaction.objectStore(storeName).put(item);
-      request.onsuccess = () => resolve(item);
+      request.onsuccess = () => { this._touch(); resolve(item); };
       request.onerror = () => reject(request.error);
     });
   }
@@ -252,7 +270,7 @@ class DBService {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([storeName], 'readwrite');
       const request = transaction.objectStore(storeName).put(item);
-      request.onsuccess = () => resolve(item);
+      request.onsuccess = () => { this._touch(); resolve(item); };
       request.onerror = () => reject(request.error);
     });
   }
@@ -265,7 +283,7 @@ class DBService {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([storeName], 'readwrite');
       const request = transaction.objectStore(storeName).delete(id);
-      request.onsuccess = () => resolve(true);
+      request.onsuccess = () => { this._touch(); resolve(true); };
       request.onerror = () => reject(request.error);
     });
   }
@@ -279,7 +297,7 @@ class DBService {
       const transaction = this.db.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
 
-      transaction.oncomplete = () => resolve(true);
+      transaction.oncomplete = () => { this._touch(); resolve(true); };
       transaction.onerror = () => reject(transaction.error);
 
       items.forEach(item => {
@@ -345,7 +363,7 @@ class DBService {
         }
       };
 
-      transaction.oncomplete = () => resolve(result);
+      transaction.oncomplete = () => { this._touch(); resolve(result); };
       transaction.onabort = () => reject(workError || transaction.error || new Error('Transacción cancelada.'));
       transaction.onerror = () => { /* se maneja en onabort */ };
 

@@ -32,6 +32,22 @@ export const ReportsModule = {
         </div>
       </div>
 
+      <!-- RENTABILIDAD POR PRODUCTO -->
+      <div class="card mb-3" id="profit-card">
+        <div class="pricing-toolbar">
+          <strong>Rentabilidad por producto</strong>
+          <select class="form-select" id="profit-period" style="max-width: 180px;">
+            <option value="mes">Mes actual</option>
+            <option value="mesAnt">Mes anterior</option>
+            <option value="anio">Año actual</option>
+            <option value="todo">Todo</option>
+          </select>
+          <span class="text-xs text-muted">Ventas sin IVA, sin cotizaciones ni anuladas. Costo = costo de producción o compra registrado al vender.</span>
+          <button class="btn btn-secondary btn-sm" id="btn-export-profit" style="margin-left: auto;">Exportar CSV</button>
+        </div>
+        <div class="table-responsive" id="profit-table"></div>
+      </div>
+
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         
         <!-- REPORTE 1: VENTAS Y FACTURACIÓN -->
@@ -143,6 +159,41 @@ export const ReportsModule = {
     `;
 
     // Exportadores
+    // Rentabilidad por producto
+    let profitRows = [];
+    const renderProfit = () => {
+      const now = new Date();
+      const per = FinanceService.periods(now);
+      const sel = container.querySelector('#profit-period').value;
+      const range = sel === 'mes' ? per.mes : sel === 'anio' ? per.anio
+        : sel === 'mesAnt' ? { from: new Date(now.getFullYear(), now.getMonth() - 1, 1), to: new Date(now.getFullYear(), now.getMonth(), 1) }
+        : { from: null, to: null };
+      profitRows = FinanceService.byProduct(sales, products, range.from, range.to);
+      const tot = profitRows.reduce((a, r) => ({ u: a.u + r.unidades, v: a.v + r.ventasNetas, c: a.c + r.costo, g: a.g + r.utilidad }), { u: 0, v: 0, c: 0, g: 0 });
+      const mg = (m) => m === null ? '—' : `<span class="mg ${m < 10 ? 'mg-bad' : m < 20 ? 'mg-warn' : 'mg-ok'}">${m}%</span>`;
+      container.querySelector('#profit-table').innerHTML = profitRows.length ? `
+        <table class="table pricing-table">
+          <thead><tr><th>Producto</th><th class="text-right">Unidades</th><th class="text-right">Ventas netas</th><th class="text-right">Costo vendido</th><th class="text-right">Utilidad bruta</th><th class="text-right">Margen</th></tr></thead>
+          <tbody>
+            ${profitRows.map(r => `<tr>
+              <td><strong>${esc(r.nombre)}</strong> <span class="text-xs text-muted">${esc(r.sku)}</span>${r.costoEstimado ? ' <span class="text-xs text-warning" title="Ventas antiguas sin costo guardado: se usó el costo promedio actual">costo estimado</span>' : ''}</td>
+              <td class="text-right">${Formatters.number(r.unidades, Number.isInteger(r.unidades) ? 0 : 2)}</td>
+              <td class="text-right">${Formatters.currency(r.ventasNetas)}</td>
+              <td class="text-right">${Formatters.currency(r.costo)}</td>
+              <td class="text-right ${r.utilidad < 0 ? 'text-danger' : ''}"><strong>${Formatters.currency(r.utilidad)}</strong></td>
+              <td class="text-right">${mg(r.margenPct)}</td></tr>`).join('')}
+            <tr><td><strong>Total</strong></td><td class="text-right">${Formatters.number(tot.u, Number.isInteger(tot.u) ? 0 : 2)}</td><td class="text-right"><strong>${Formatters.currency(tot.v)}</strong></td><td class="text-right"><strong>${Formatters.currency(tot.c)}</strong></td><td class="text-right"><strong>${Formatters.currency(tot.g)}</strong></td><td class="text-right">${mg(tot.v > 0 ? Math.round((tot.g / tot.v) * 1000) / 10 : null)}</td></tr>
+          </tbody>
+        </table>` : '<div class="p-4 text-center text-muted">No hay ventas en este periodo.</div>';
+    };
+    container.querySelector('#profit-period').addEventListener('change', renderProfit);
+    container.querySelector('#btn-export-profit').addEventListener('click', () => {
+      ExportService.exportToCSV(profitRows, 'Rentabilidad_por_producto', {
+        sku: 'SKU', nombre: 'Producto', unidades: 'Unidades', ventasNetas: 'Ventas netas (sin IVA)', costo: 'Costo vendido', utilidad: 'Utilidad bruta', margenPct: 'Margen %'
+      });
+    });
+    renderProfit();
+
     container.querySelector('#btn-export-sales-csv').addEventListener('click', () => {
       ExportService.exportToCSV(sales, 'Ventas_Facturacion', {
         consecutivo: 'Consecutivo',

@@ -7,6 +7,7 @@ import { Modal } from './components/modal.js';
 import { ROLES } from './services/auth-service.js';
 import { DB, STORES } from './services/db-service.js';
 import { esc } from './utils/formatters.js';
+import { BackupFolderService } from './services/backup-folder-service.js';
 
 // Módulos
 import { DashboardModule } from './modules/dashboard.js';
@@ -33,31 +34,19 @@ import { FormulasVaultModule } from './modules/formulas-vault.js';
 import { PricingCalculatorModule } from './modules/pricing-calculator.js';
 import { FreelancersModule } from './modules/freelancers.js';
 
-// Captura global de errores para diagnósticos inmediatos
+// Captura global de errores: siempre visible (antes solo se mostraba con la vista vacía)
+function showFatal(title, detail) {
+  if (typeof window.__nexaBootMessage === 'function') window.__nexaBootMessage(title, detail, true);
+}
 window.addEventListener('error', (e) => {
   console.error('Nexa Global Error:', e.error || e.message);
-  const container = document.getElementById('view-container');
-  if (container && (!container.children.length || container.innerHTML.includes('Cargando'))) {
-    container.innerHTML = `
-      <div style="margin: 20px; padding: 20px; background: #fef2f2; border: 1px solid #f87171; border-radius: 12px; color: #991b1b;">
-        <h3 style="margin-top:0; font-size: 16px;">⚠️ Excepción JavaScript Detectada</h3>
-        <p style="font-size: 13px;">${esc(e.message)} en <strong>${esc(e.filename)}:${esc(e.lineno)}</strong></p>
-      </div>
-    `;
-  }
+  if (!window.__nexaReady) showFatal('Error al iniciar NexaAdmin', `${e.message || 'Error desconocido'} (${e.filename || ''}:${e.lineno || ''})`);
 });
-
 window.addEventListener('unhandledrejection', (e) => {
   console.error('Nexa Unhandled Promise Rejection:', e.reason);
-  const container = document.getElementById('view-container');
-  if (container && (!container.children.length || container.innerHTML.includes('Cargando'))) {
-    container.innerHTML = `
-      <div style="margin: 20px; padding: 20px; background: #fef2f2; border: 1px solid #f87171; border-radius: 12px; color: #991b1b;">
-        <h3 style="margin-top:0; font-size: 16px;">⚠️ Error de Promesa Asíncrona</h3>
-        <p style="font-size: 13px;">${esc(e.reason && (e.reason.message || e.reason))}</p>
-      </div>
-    `;
-  }
+  const msg = (e.reason && (e.reason.message || String(e.reason))) || 'Error desconocido';
+  if (!window.__nexaReady) showFatal('Error al iniciar NexaAdmin', msg);
+  else Toast.error(msg);
 });
 
 const MODULES = {
@@ -103,7 +92,7 @@ export const MACRO_CATEGORIES = {
       { route: 'inventory', label: 'Inventario & Kardex', icon: '📑' },
       { route: 'production', label: 'Producción & BOM', icon: '⚙️' },
       { route: 'formulas-vault', label: 'Bóveda Fórmulas', icon: '🔒' },
-      { route: 'pricing-calculator', label: 'Costos & Precios IA', icon: '💡' }
+      { route: 'pricing-calculator', label: 'Precios & Márgenes', icon: '🏷️' }
     ]
   },
   finance: {
@@ -149,13 +138,21 @@ class NexaApp {
   async init() {
     this.contentContainer = document.getElementById('view-container');
 
+    const step = (t) => { window.__nexaLastStep = t; const el = document.getElementById('boot-status'); if (el) el.textContent = t; console.info('[NexaAdmin] ' + t); };
+    window.__nexaStep = step;
     try {
+      step('Abriendo base de datos…');
+      await DB.init();
+      step('Aplicando migraciones y cargando empresa…');
       // 1. Base de datos, migraciones y empresa activa
       const tenant = await TenantServiceInstance.init();
+      step('Verificando usuarios…');
 
       // 2. Autenticación (sin usuarios ni claves por defecto)
       const currentUser = await AuthServiceInstance.init();
 
+      window.__nexaReady = true;
+      if (window.__nexaBootDone) window.__nexaBootDone();
       if (AuthServiceInstance.needsSetup) {
         this.renderAuthScreen('setup', tenant);
         return;
@@ -166,9 +163,12 @@ class NexaApp {
       }
 
       this.startAuthenticatedApp(tenant);
+      window.__nexaReady = true;
+      if (window.__nexaBootDone) window.__nexaBootDone();
       console.log('⚡ Nexa ERP inicializado correctamente para:', tenant.nombreComercial);
     } catch (err) {
       console.error('Error al inicializar Nexa ERP:', err);
+      showFatal('Error al iniciar NexaAdmin', err.message || String(err));
       if (this.contentContainer) {
         this.contentContainer.innerHTML = `
           <div class="alert alert-danger">
@@ -193,14 +193,53 @@ class NexaApp {
       this.updateUserUI(newUser);
     });
 
+    EventBus.on('backup:status', () => this.updateBackupIndicator());
+    const backupBadge = document.getElementById('topbar-backup-badge');
+    if (backupBadge) {
+      backupBadge.addEventListener('click', async () => {
+        if (BackupFolderService.state === 'needs-permission') {
+          if ((await BackupFolderService.checkPermission(true)) === 'granted') {
+            const ok = await BackupFolderService.backupNow();
+            if (ok) Toast.success('Respaldo automático activo.');
+          } else {
+            Toast.warning('Sin permiso no se puede guardar el respaldo en la carpeta.');
+          }
+          return;
+        }
+        window.location.hash = '#backup';
+      });
+    }
+    BackupFolderService.start().catch(e => console.warn('[Respaldo] no se pudo iniciar:', e));
+
     this.loadCurrentRoute();
+  }
+
+  updateBackupIndicator() {
+    const el = document.getElementById('topbar-backup-badge');
+    if (!el) return;
+    const s = BackupFolderService;
+    const hhmm = s.lastOk ? new Date(s.lastOk).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '';
+    const map = {
+      ok: ['badge-success', `● Respaldo ${hhmm}`, `Copia automática en la carpeta "${s.folderName()}". Última: ${s.lastOk ? new Date(s.lastOk).toLocaleString('es-CO') : '-'}`],
+      'needs-permission': ['badge-warning', '⚠ Activar respaldo', 'Haga clic para permitir que NexaAdmin guarde en la carpeta de respaldo.'],
+      'no-folder': ['badge-warning', '⚠ Sin respaldo', 'Configure una carpeta de respaldo automático.'],
+      unsupported: ['badge-neutral', 'Respaldo diario', 'Este navegador no permite carpetas: se descarga un respaldo diario a Descargas.'],
+      error: ['badge-danger', '✕ Respaldo falló', s.lastError || 'Error en el respaldo'],
+      disabled: ['badge-neutral', 'Respaldo apagado', 'El respaldo automático está desactivado.']
+    };
+    const [cls, txt, title] = map[s.state] || map.disabled;
+    el.className = `badge ${cls} backup-badge`;
+    el.textContent = txt;
+    el.title = title;
   }
 
   /**
    * Pantallas de acceso: 'setup' (primer arranque), 'login', 'change' (cambio obligatorio),
    * 'recover' (código de recuperación) y 'code' (mostrar código de recuperación nuevo).
    */
-  renderAuthScreen(mode, tenant, ctx = {}) {
+  async renderAuthScreen(mode, tenant, ctx = {}) {
+    const loginUsers = mode === 'login' ? await AuthServiceInstance.listLoginUsers() : [];
+    const hasRecovery = mode === 'login' ? await AuthServiceInstance.hasRecoveryCode() : false;
     const initialTheme = localStorage.getItem('nexa_theme') || 'dark';
     document.body.classList.toggle('dark-mode', initialTheme === 'dark');
     const rules = AuthServiceInstance.passwordRules();
@@ -214,33 +253,36 @@ class NexaApp {
             <input class="form-control" name="nombre" required placeholder="Ej: Alexander Gómez"></div>
           <div class="form-group mb-3"><label class="form-label">Usuario</label>
             <input class="form-control" name="usuario" required value="admin" autocomplete="username"></div>
-          <div class="form-group mb-3"><label class="form-label">Contraseña</label>
-            <input type="password" class="form-control" name="pass1" required autocomplete="new-password">
+          <div class="form-group mb-3"><label class="form-label">PIN de 4 dígitos</label>
+            <input type="password" class="form-control pin-input" name="pass1" required inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="off" placeholder="••••">
             <div class="form-help">${esc(rules)}</div></div>
-          <div class="form-group mb-4"><label class="form-label">Repetir contraseña</label>
-            <input type="password" class="form-control" name="pass2" required autocomplete="new-password"></div>
+          <div class="form-group mb-4"><label class="form-label">Repetir PIN</label>
+            <input type="password" class="form-control pin-input" name="pass2" required inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="off" placeholder="••••"></div>
           <button type="submit" class="btn btn-primary w-100 auth-btn">Crear administrador</button>
         </form>`,
       login: `
         <h2 class="auth-title">Iniciar sesión</h2>
-        <p class="auth-sub">Ingrese sus credenciales para acceder.</p>
-        <form id="auth-form">
+        <p class="auth-sub">Seleccione su usuario e ingrese su PIN.</p>
+        <form id="auth-form" autocomplete="off">
           <div class="form-group mb-3"><label class="form-label">Usuario</label>
-            <input type="text" class="form-control" name="usuario" required autocomplete="username" autofocus></div>
-          <div class="form-group mb-4"><label class="form-label">Contraseña</label>
-            <input type="password" class="form-control" name="password" required autocomplete="current-password"></div>
+            <select class="form-select" name="usuario" required>
+              ${loginUsers.length > 1 ? '<option value="">— Seleccione —</option>' : ''}
+              ${loginUsers.map(u => `<option value="${esc(u.usuario)}">${esc(u.nombre)} · ${esc(u.rol)}</option>`).join('')}
+            </select></div>
+          <div class="form-group mb-4"><label class="form-label">PIN</label>
+            <input type="password" class="form-control pin-input" name="password" required inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="off" placeholder="••••" autofocus></div>
           <button type="submit" class="btn btn-primary w-100 auth-btn">Ingresar</button>
         </form>
-        <div class="text-center mt-3"><a href="#" id="link-recover" class="text-xs">¿Olvidó su contraseña? Usar código de recuperación</a></div>`,
+        ${hasRecovery ? '<div class="text-center mt-3"><a href="#" id="link-recover" class="text-xs">¿Olvidó su PIN? Usar código de recuperación</a></div>' : '<div class="text-center mt-3 text-xs text-muted">¿Olvidó su PIN? El administrador puede asignarle uno nuevo en Usuarios.</div>'}`,
       change: `
-        <h2 class="auth-title">Cambio de contraseña obligatorio</h2>
-        <p class="auth-sub">Hola <strong>${esc(ctx.user ? ctx.user.nombre : '')}</strong>. Su contraseña actual es débil o temporal; defina una nueva para continuar.</p>
+        <h2 class="auth-title">Defina su PIN</h2>
+        <p class="auth-sub">Hola <strong>${esc(ctx.user ? ctx.user.nombre : '')}</strong>. El administrador pidió que defina un PIN nuevo para continuar.</p>
         <form id="auth-form" autocomplete="off">
-          <div class="form-group mb-3"><label class="form-label">Nueva contraseña</label>
-            <input type="password" class="form-control" name="pass1" required autocomplete="new-password" autofocus>
+          <div class="form-group mb-3"><label class="form-label">Nuevo PIN</label>
+            <input type="password" class="form-control pin-input" name="pass1" required inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="off" placeholder="••••" autofocus>
             <div class="form-help">${esc(rules)}</div></div>
-          <div class="form-group mb-4"><label class="form-label">Repetir nueva contraseña</label>
-            <input type="password" class="form-control" name="pass2" required autocomplete="new-password"></div>
+          <div class="form-group mb-4"><label class="form-label">Repetir PIN</label>
+            <input type="password" class="form-control pin-input" name="pass2" required inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="off" placeholder="••••"></div>
           <button type="submit" class="btn btn-primary w-100 auth-btn">Guardar y continuar</button>
         </form>`,
       recover: `
@@ -251,12 +293,12 @@ class NexaApp {
             <input class="form-control" name="usuario" required></div>
           <div class="form-group mb-3"><label class="form-label">Código de recuperación</label>
             <input class="form-control" name="code" required placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family: monospace; letter-spacing: 1px;"></div>
-          <div class="form-group mb-3"><label class="form-label">Nueva contraseña</label>
-            <input type="password" class="form-control" name="pass1" required autocomplete="new-password">
+          <div class="form-group mb-3"><label class="form-label">Nuevo PIN</label>
+            <input type="password" class="form-control pin-input" name="pass1" required inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="off" placeholder="••••">
             <div class="form-help">${esc(rules)}</div></div>
-          <div class="form-group mb-4"><label class="form-label">Repetir nueva contraseña</label>
-            <input type="password" class="form-control" name="pass2" required autocomplete="new-password"></div>
-          <button type="submit" class="btn btn-primary w-100 auth-btn">Restablecer contraseña</button>
+          <div class="form-group mb-4"><label class="form-label">Repetir PIN</label>
+            <input type="password" class="form-control pin-input" name="pass2" required inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="off" placeholder="••••"></div>
+          <button type="submit" class="btn btn-primary w-100 auth-btn">Restablecer PIN</button>
         </form>
         <div class="text-center mt-3"><a href="#" id="link-back-login" class="text-xs">Volver al inicio de sesión</a></div>`,
       code: `
@@ -308,37 +350,37 @@ class NexaApp {
       return;
     }
 
+    form.querySelectorAll('.pin-input').forEach(inp => inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/\D/g, '').slice(0, 4);
+      if (mode === 'login' && inp.value.length === 4 && form.querySelector('[name=usuario]').value) form.requestSubmit();
+    }));
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       errBox.style.display = 'none';
       const fd = new FormData(form);
       const pass1 = fd.get('pass1');
       if (pass1 !== null && pass1 !== fd.get('pass2')) {
-        showError('Las contraseñas no coinciden.');
+        showError('Los PIN no coinciden.');
         return;
       }
       busy(true);
       try {
         if (mode === 'setup') {
-          const code = await AuthServiceInstance.createInitialAdmin({
+          await AuthServiceInstance.createInitialAdmin({
             nombre: fd.get('nombre'), usuario: fd.get('usuario'), password: pass1, tenantId: tenant ? tenant.id : null
           });
-          this.renderAuthScreen('code', tenant, { code });
+          window.location.reload();
         } else if (mode === 'login') {
           const res = await AuthServiceInstance.login(fd.get('usuario'), fd.get('password'));
           if (res.mustChange) {
-            this.renderAuthScreen('change', tenant, { user: res.user, currentPassword: fd.get('password') });
+            await this.renderAuthScreen('change', tenant, { user: res.user, currentPassword: fd.get('password') });
           } else {
             window.location.reload();
           }
         } else if (mode === 'change') {
-          const user = await AuthServiceInstance.changePassword(ctx.user.id, ctx.currentPassword, pass1);
-          if (user.rol === ROLES.DEV && !(await AuthServiceInstance.hasRecoveryCode())) {
-            const code = await AuthServiceInstance.regenerateRecoveryCode();
-            this.renderAuthScreen('code', tenant, { code });
-          } else {
-            window.location.reload();
-          }
+          await AuthServiceInstance.changePassword(ctx.user.id, ctx.currentPassword, pass1);
+          window.location.reload();
         } else if (mode === 'recover') {
           const code = await AuthServiceInstance.recoverWithCode(fd.get('usuario'), fd.get('code'), pass1);
           this.renderAuthScreen('code', tenant, { code });
@@ -346,6 +388,9 @@ class NexaApp {
       } catch (err) {
         showError(err.message || 'No fue posible completar la operación.');
         busy(false);
+        form.querySelectorAll('.pin-input').forEach(i => { i.value = ''; });
+        const first = form.querySelector('.pin-input');
+        if (first) first.focus();
       }
     });
   }
@@ -736,7 +781,7 @@ class NexaApp {
       `,
       footerButtons: [
         { label: 'Cerrar sesión', class: 'btn-danger', onClick: () => { Modal.close(); AuthServiceInstance.logout(); } },
-        { label: 'Cambiar mi contraseña', class: 'btn-secondary', onClick: () => this.openChangeOwnPasswordModal() },
+        { label: 'Cambiar mi PIN', class: 'btn-secondary', onClick: () => this.openChangeOwnPasswordModal() },
         { label: 'Cerrar', class: 'btn-secondary', onClick: () => Modal.close() }
       ]
     });
@@ -762,28 +807,28 @@ class NexaApp {
   openChangeOwnPasswordModal() {
     const user = AuthServiceInstance.getCurrentUser();
     const dialog = Modal.show({
-      title: 'Cambiar mi contraseña',
+      title: 'Cambiar mi PIN',
       size: 'sm',
       content: `
         <form id="own-pass-form" autocomplete="off">
-          <div class="form-group mb-3"><label class="form-label">Contraseña actual</label>
-            <input type="password" class="form-control" name="cur" required autocomplete="current-password"></div>
-          <div class="form-group mb-3"><label class="form-label">Nueva contraseña</label>
-            <input type="password" class="form-control" name="p1" required autocomplete="new-password">
+          <div class="form-group mb-3"><label class="form-label">PIN actual</label>
+            <input type="password" class="form-control pin-input" name="cur" required autocomplete="off"></div>
+          <div class="form-group mb-3"><label class="form-label">Nuevo PIN</label>
+            <input type="password" class="form-control pin-input" name="p1" required inputmode="numeric" maxlength="4" pattern="\\d{4}" autocomplete="off">
             <div class="form-help">${esc(AuthServiceInstance.passwordRules())}</div></div>
-          <div class="form-group mb-3"><label class="form-label">Repetir nueva contraseña</label>
-            <input type="password" class="form-control" name="p2" required autocomplete="new-password"></div>
+          <div class="form-group mb-3"><label class="form-label">Repetir nuevo PIN</label>
+            <input type="password" class="form-control pin-input" name="p2" required inputmode="numeric" maxlength="4" pattern="\\d{4}" autocomplete="off"></div>
         </form>`,
       footerButtons: [
         { label: 'Cancelar', class: 'btn-secondary', onClick: () => Modal.close() },
         {
           label: 'Guardar', class: 'btn-primary', onClick: async () => {
             const fd = new FormData(dialog.querySelector('#own-pass-form'));
-            if (fd.get('p1') !== fd.get('p2')) { Toast.warning('Las contraseñas no coinciden.'); return; }
+            if (fd.get('p1') !== fd.get('p2')) { Toast.warning('Los PIN no coinciden.'); return; }
             try {
               await AuthServiceInstance.changePassword(user.id, fd.get('cur'), fd.get('p1'));
               Modal.close();
-              Toast.success('Contraseña actualizada.');
+              Toast.success('PIN actualizado.');
             } catch (err) {
               Toast.error(err.message);
             }

@@ -5,7 +5,7 @@
 
 import { DB, STORES } from '../services/db-service.js';
 import { Formatters, esc } from '../utils/formatters.js';
-import { KardexService, MOVEMENT_TYPES, KARDEX_TX_STORES } from '../services/kardex-service.js';
+import { KardexService, MOVEMENT_TYPES, KARDEX_TX_STORES, LotService } from '../services/kardex-service.js';
 import { DataTable } from '../components/data-table.js';
 import { Modal } from '../components/modal.js';
 import { Toast } from '../components/toast.js';
@@ -25,41 +25,28 @@ export const InventoryModule = {
     container.innerHTML = `
             <div class="view-header">
         <div class="view-title-wrap">
-          <h1>Inventario & Kardex Multibodega</h1>
-          <p>Trazabilidad completa de entradas, salidas, consumos de producción y traslados</p>
+          <h1>Inventario y Kardex</h1>
+          <p>Entradas, salidas, consumos de producción y ajustes, al costo promedio</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-inventory-adjustment">⚖️ Ajuste Manual</button>
-          <button class="btn btn-primary btn-sm" id="btn-inventory-transfer">🔄 Traslado de Bodega</button>
+          <button class="btn btn-secondary btn-sm" id="btn-inventory-adjustment">Ajuste manual</button>
+          <button class="btn btn-primary btn-sm" id="btn-inventory-transfer">Traslado de bodega</button>
         </div>
       </div>
 
-      <!-- RESUMEN DE BODEGAS -->
-      <div class="kpi-grid mb-4">
-        ${warehouses.map(w => {
-          const prodsInWh = products.filter(p => p.bodegaId === w.id);
-          const totalStock = prodsInWh.reduce((acc, p) => acc + (p.stock || 0), 0);
-          return `
-            <div class="kpi-card">
-              <div class="kpi-card-header">
-                <span class="kpi-label">${esc(w.codigo)}</span>
-                <span class="badge badge-info">${w.esPrincipal ? 'Principal' : 'Secundaria'}</span>
-              </div>
-              <div class="kpi-value" style="font-size: 18px;">${esc(w.nombre)}</div>
-              <div class="kpi-footer">
-                <span><strong>${prodsInWh.length}</strong> referencias • <strong>${totalStock}</strong> unidades físicas</span>
-              </div>
-            </div>
-          `;
-        }).join('')}
+      <!-- RESUMEN -->
+      <div class="pricing-summary stat-strip mb-3">
+        <div><span class="ps-value">${Formatters.currency(products.reduce((a, p) => a + Math.max(0, Number(p.stock || 0)) * Number(p.costoPromedio || 0), 0))}</span><span class="ps-label">valor del inventario al costo</span></div>
+        <div><span class="ps-value">${products.length}</span><span class="ps-label">referencias</span></div>
+        <div><span class="ps-value ${products.some(p => Number(p.stockMinimo || 0) > 0 && Number(p.stock || 0) <= Number(p.stockMinimo || 0)) ? 'text-warning' : ''}">${products.filter(p => Number(p.stockMinimo || 0) > 0 && Number(p.stock || 0) <= Number(p.stockMinimo || 0)).length}</span><span class="ps-label">en o bajo el mínimo</span></div>
+        <div><span class="ps-value ${products.some(p => Number(p.stock || 0) <= 0) ? 'text-danger' : ''}">${products.filter(p => Number(p.stock || 0) <= 0).length}</span><span class="ps-label">sin existencias</span></div>
       </div>
 
       <!-- TABS: KARDEX VS EXISTENCIAS -->
-      <div class="card mb-3" style="padding: 6px 14px;">
-        <div class="d-flex gap-2">
-          <button class="btn btn-secondary btn-sm tab-btn active" data-tab="kardex">📑 Movimientos de Kardex (${movements.length})</button>
-          <button class="btn btn-secondary btn-sm tab-btn" data-tab="stocks">📦 Existencias Actuales (${products.length})</button>
-        </div>
+      <div class="chip-group mb-3">
+        <button type="button" class="chip-filter tab-btn active" data-tab="kardex">Movimientos <span class="chip-count">${movements.length}</span></button>
+        <button type="button" class="chip-filter tab-btn" data-tab="stocks">Existencias <span class="chip-count">${products.length}</span></button>
+        <button type="button" class="chip-filter tab-btn" data-tab="lots">Lotes y vencimientos ${(() => { const n = products.reduce((a, p) => a + (p.lotes || []).filter(l => { const d = LotService.daysToExpire(l); return d !== null && d <= 30; }).length, 0); return n ? `<span class="chip-count" style="color: var(--color-danger);">${n} por vencer o vencidos</span>` : ''; })()}</button>
       </div>
 
       <div id="inventory-content-area"></div>
@@ -128,6 +115,11 @@ export const InventoryModule = {
             render: val => Formatters.currency(val)
           },
           {
+            key: 'lotes',
+            title: 'Lote',
+            render: val => (val && val.length) ? val.map(l => `<span class="badge badge-neutral" title="${esc(l.cantidad)}">${esc(l.codigo)}</span>`).join(' ') : '<span class="text-muted">—</span>'
+          },
+          {
             key: 'observacion',
             title: 'Observaciones',
             render: val => `<span class="text-xs text-muted">${esc(val || '-')}</span>`
@@ -194,6 +186,7 @@ export const InventoryModule = {
         btn.classList.add('active');
         const tab = btn.getAttribute('data-tab');
         if (tab === 'kardex') renderKardexTable();
+        else if (tab === 'lots') this.renderLots(container.querySelector('#inventory-content-area'), tenantId, products);
         else renderStocksTable();
       });
     });
@@ -207,6 +200,75 @@ export const InventoryModule = {
     container.querySelector('#btn-inventory-transfer').addEventListener('click', () => {
       this.openTransferModal(tenantId, products, warehouses, () => this.render(container));
     });
+  },
+
+  /**
+   * Lotes en existencia, vencimientos y rastreo de un lote hasta los clientes.
+   */
+  async renderLots(target, tenantId, products) {
+    const rows = [];
+    products.forEach(p => {
+      (p.lotes || []).forEach(l => rows.push({ p, l, d: LotService.daysToExpire(l) }));
+      const sin = LotService.unlotted(p);
+      if (sin > 0 && (p.lotes || []).length) rows.push({ p, l: { codigo: 'Sin lote', cantidad: sin }, d: null, sinLote: true });
+    });
+    rows.sort((a, b) => (a.d === null ? 99999 : a.d) - (b.d === null ? 99999 : b.d));
+    const estado = (d) => d === null ? '<span class="text-muted">sin fecha</span>'
+      : d < 0 ? `<span class="mg mg-bad">vencido hace ${-d} d</span>`
+      : d <= 30 ? `<span class="mg mg-warn">vence en ${d} d</span>` : `<span class="mg mg-ok">${d} d</span>`;
+    target.innerHTML = `
+      <div class="card mb-3">
+        <div class="pricing-toolbar">
+          <strong>Rastrear un lote</strong>
+          <input type="search" class="form-control" id="lot-trace-inp" placeholder="Código de lote, p. ej. LOTE-RAYO-S-0001" style="max-width: 320px;">
+          <button class="btn btn-primary btn-sm" id="lot-trace-btn">Buscar</button>
+          <span class="text-xs text-muted">Muestra la producción y a qué clientes se vendió.</span>
+        </div>
+        <div id="lot-trace-result"></div>
+      </div>
+      <div class="card">
+        <div class="table-responsive">
+          <table class="table pricing-table">
+            <thead><tr><th>Producto</th><th>Lote</th><th class="text-right">Existencia</th><th>Producido</th><th>Vence</th><th>Estado</th></tr></thead>
+            <tbody>
+              ${rows.length ? rows.map(r => `
+                <tr>
+                  <td><strong>${esc(r.p.nombre)}</strong> <span class="text-xs text-muted">${esc(r.p.sku || '')}</span></td>
+                  <td>${r.sinLote ? '<span class="text-muted">Sin lote (inventario anterior)</span>' : `<a href="#" class="lot-link" data-lot="${esc(r.l.codigo)}">${esc(r.l.codigo)}</a>`}</td>
+                  <td class="text-right">${esc(r.l.cantidad)} ${esc(r.p.unidadMedida || '')}</td>
+                  <td>${esc(r.l.fecha || '—')}</td>
+                  <td>${esc(r.l.vence || '—')}</td>
+                  <td>${r.sinLote ? '' : estado(r.d)}</td>
+                </tr>`).join('') : '<tr><td colspan="6" class="text-center text-muted p-4">Aún no hay lotes. Se crean al registrar una producción.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    const trace = async (code) => {
+      const box = target.querySelector('#lot-trace-result');
+      code = String(code || '').trim();
+      if (!code) { box.innerHTML = ''; return; }
+      const [orders, sales] = await Promise.all([DB.getAll(STORES.PRODUCTION_ORDERS, tenantId), DB.getAll(STORES.SALES, tenantId)]);
+      const ord = orders.filter(o => String(o.loteCodigo || '').toLowerCase() === code.toLowerCase());
+      const hits = [];
+      sales.forEach(s => (s.items || []).forEach(it => (it.lotes || []).forEach(l => {
+        if (String(l.codigo).toLowerCase() === code.toLowerCase()) hits.push({ s, it, l });
+      })));
+      box.innerHTML = `
+        <div class="p-3 text-sm">
+          ${ord.length ? ord.map(o => `<div class="mb-2">Producción <strong>${esc(o.numeroOrden)}</strong> · ${esc(o.productoTerminadoNombre)} · ${esc(o.cantidadProducida)} und · ${esc(Formatters.date(o.fechaFin || o.fechaInicio))}${o.fechaVencimiento ? ` · vence ${esc(o.fechaVencimiento)}` : ''}</div>`).join('') : '<div class="mb-2 text-muted">No se encontró una orden de producción con ese lote.</div>'}
+          ${hits.length ? `
+            <table class="table table-sm pricing-table">
+              <thead><tr><th>Documento</th><th>Fecha</th><th>Cliente</th><th>NIT/CC</th><th class="text-right">Cantidad</th><th>Estado</th></tr></thead>
+              <tbody>${hits.map(h => `<tr><td>${esc(h.s.consecutivo)}</td><td>${esc(Formatters.date(h.s.fecha))}</td><td>${esc(h.s.clienteNombre)}</td><td>${esc(h.s.clienteNit || '')}</td><td class="text-right">${esc(h.l.cantidad)}</td><td>${esc(h.s.estado)}</td></tr>`).join('')}</tbody>
+            </table>` : '<div class="text-muted">Ninguna venta registrada con ese lote.</div>'}
+        </div>`;
+    };
+    target.querySelector('#lot-trace-btn').addEventListener('click', () => trace(target.querySelector('#lot-trace-inp').value));
+    target.querySelector('#lot-trace-inp').addEventListener('keydown', (e) => { if (e.key === 'Enter') trace(e.target.value); });
+    target.querySelectorAll('.lot-link').forEach(a => a.addEventListener('click', (e) => {
+      e.preventDefault(); target.querySelector('#lot-trace-inp').value = a.dataset.lot; trace(a.dataset.lot);
+    }));
   },
 
   /**
@@ -371,8 +433,9 @@ export const InventoryModule = {
               await DB.runTransaction([...KARDEX_TX_STORES, STORES.SYSTEM_PARAMS], async (tx) => {
                 const n = await tx.nextSequence(tenantId, 'TRASLADO');
                 const docNum = `TR-${String(n).padStart(6, '0')}`;
-                await KardexService.applyMovement(tx, { tenantId, productoId, bodegaId: origenId, documentoTipo: 'TRASLADO_SALIDA', documentoNumero: docNum, cantidad, observacion: `Salida por traslado. ${obs}` });
-                await KardexService.applyMovement(tx, { tenantId, productoId, bodegaId: destinoId, documentoTipo: 'TRASLADO_ENTRADA', documentoNumero: docNum, cantidad, observacion: `Entrada por traslado. ${obs}` });
+                const salida = await KardexService.applyMovement(tx, { tenantId, productoId, bodegaId: origenId, documentoTipo: 'TRASLADO_SALIDA', documentoNumero: docNum, cantidad, observacion: `Salida por traslado. ${obs}` });
+                // Los lotes viajan con la mercancía
+                await KardexService.applyMovement(tx, { tenantId, productoId, bodegaId: destinoId, documentoTipo: 'TRASLADO_ENTRADA', documentoNumero: docNum, cantidad, lotes: salida.lotes, observacion: `Entrada por traslado. ${obs}` });
               });
             } catch (err) {
               Toast.error(err.message);

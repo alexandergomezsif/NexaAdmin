@@ -334,10 +334,17 @@ export const SalesPosModule = {
   },
 
   // ------------------------------------------------------------------ carrito y totales
+  /** Tarifa de IVA del producto (19 % si no se definió). */
+  ivaOf(productoId) {
+    const p = (this._ctx.products || []).find(x => x.id === productoId);
+    const v = p && p.ivaPct !== undefined && p.ivaPct !== null && p.ivaPct !== '' ? Number(p.ivaPct) : 19;
+    return Number.isFinite(v) ? v : 19;
+  },
+
   computeTotals() {
     const cli = this.client();
     const incl = PricingService.listIncludesIva(this._ctx.priceLists, this.selectedPriceListId);
-    const items = this.cart.map(i => ({ ...i, precioIncluyeIva: incl, ivaPct: 19 }));
+    const items = this.cart.map(i => ({ ...i, precioIncluyeIva: incl, ivaPct: this.ivaOf(i.productoId) }));
     return TaxService.calculateTotals(items, 0, { aplicaIva: !cli || cli.aplicaIva !== false });
   },
 
@@ -352,7 +359,7 @@ export const SalesPosModule = {
     } else {
       tbody.innerHTML = this.cart.map((item, idx) => {
         const prod = products.find(p => p.id === item.productoId) || {};
-        const netUnit = incl ? item.precioUnitario / 1.19 : item.precioUnitario;
+        const netUnit = incl ? item.precioUnitario / (1 + this.ivaOf(item.productoId) / 100) : item.precioUnitario;
         const bajoCosto = Number(prod.costoPromedio || 0) > 0 && netUnit < Number(prod.costoPromedio);
         const sinStock = !isQuote && item.cantidad > Number(prod.stock || 0);
         return `
@@ -407,7 +414,7 @@ export const SalesPosModule = {
     const fl = this.freelancer();
     if (!fl) { panel.style.display = 'none'; return; }
     const incl = PricingService.listIncludesIva(priceLists, this.selectedPriceListId);
-    const items = this.cart.map(i => ({ ...i, precioIncluyeIva: incl, ivaPct: 19 }));
+    const items = this.cart.map(i => ({ ...i, precioIncluyeIva: incl, ivaPct: this.ivaOf(i.productoId) }));
     const com = SalesService.computeCommission(items, products, priceLists, fl, incl);
     panel.style.display = 'block';
     container.querySelector('#pos-lbl-comision').textContent = Formatters.currency(com.comision);

@@ -75,7 +75,8 @@ export const ProductionService = {
     cantidadProducida,
     loteCodigo,
     costosIndirectosReales = 0,
-    observaciones
+    observaciones,
+    fechaVencimiento = null
   }) {
     const cant = Number(cantidadProducida);
     if (!Number.isFinite(cant) || cant <= 0) throw new Error('La cantidad a producir debe ser mayor a cero.');
@@ -133,7 +134,9 @@ export const ProductionService = {
         documentoNumero: numeroOrden,
         cantidad: cant,
         costoUnitario: costoUnitarioReal,
-        observacion: `Producto terminado. Lote ${lote}`
+        lote,
+        vence: fechaVencimiento || null,
+        observacion: `Producto terminado. Lote ${lote}${fechaVencimiento ? ` · vence ${fechaVencimiento}` : ''}`
       });
 
       const ahora = new Date().toISOString();
@@ -145,6 +148,7 @@ export const ProductionService = {
         productoTerminadoId: pt.id,
         productoTerminadoNombre: pt.nombre,
         loteCodigo: lote,
+        fechaVencimiento: fechaVencimiento || null,
         fechaProgramada: ahora.split('T')[0],
         fechaInicio: ahora,
         fechaFin: ahora,

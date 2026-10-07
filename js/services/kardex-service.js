@@ -34,6 +34,65 @@ export const MOVEMENT_TYPES = {
 export const KARDEX_TX_STORES = [STORES.PRODUCTS, STORES.KARDEX, STORES.WAREHOUSES, STORES.AUDIT_LOGS];
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
+const today = () => new Date().toISOString().split('T')[0];
+
+/**
+ * LOTES Y VENCIMIENTOS
+ * - `product.lotes` = [{ codigo, cantidad, fecha, vence }]. La suma nunca supera el stock;
+ *   la diferencia es existencia "sin lote" (inventario anterior a esta función o compras sin lote).
+ * - Entradas con `lote` (producción) crean o suman a ese lote; con `lotes` (anulación, traslado)
+ *   devuelven exactamente lo que salió.
+ * - Salidas: primero lo "sin lote" (es lo más antiguo), luego lotes vigentes por fecha de vencimiento
+ *   (FEFO) y por último los vencidos. Las bajas por daño/vencimiento toman primero los vencidos.
+ * - Cada movimiento guarda `lotes: [{codigo, cantidad}]` para poder rastrear un lote hasta el cliente.
+ */
+export const LotService = {
+  isExpired(l, ref = today()) { return !!(l && l.vence && l.vence < ref); },
+  daysToExpire(l, ref = new Date()) {
+    if (!l || !l.vence) return null;
+    return Math.floor((new Date(l.vence + 'T00:00:00') - new Date(ref.toISOString().split('T')[0] + 'T00:00:00')) / 86400000);
+  },
+  lotted(product) { return round3((product.lotes || []).reduce((a, l) => a + Number(l.cantidad || 0), 0)); },
+  unlotted(product) { return Math.max(0, round3(Number(product.stock || 0) - this.lotted(product))); },
+
+  addLot(product, { codigo, cantidad, fecha, vence }) {
+    if (!codigo || !(cantidad > 0)) return;
+    product.lotes = product.lotes || [];
+    const ex = product.lotes.find(l => l.codigo === codigo);
+    if (ex) {
+      ex.cantidad = round3(Number(ex.cantidad || 0) + cantidad);
+      if (vence && !ex.vence) ex.vence = vence;
+    } else {
+      product.lotes.push({ codigo, cantidad: round3(cantidad), fecha: fecha || today(), vence: vence || null });
+    }
+  },
+
+  /** Descuenta `qty` (ya validada contra el stock previo) y devuelve la asignación por lote. */
+  consume(product, qty, { expiredFirst = false } = {}) {
+    const lots = product.lotes || [];
+    const prevStock = Number(product.stock || 0);
+    const alloc = [];
+    let rest = qty;
+    const sinLote = Math.max(0, round3(prevStock - this.lotted(product)));
+    if (sinLote > 0 && rest > 0 && !expiredFirst) {
+      const take = Math.min(sinLote, rest); rest = round3(rest - take);
+    }
+    const ref = today();
+    const key = (l) => [this.isExpired(l, ref) === expiredFirst ? 0 : 1, l.vence || '9999-12-31', l.fecha || ''].join('|');
+    for (const l of [...lots].sort((a, b) => key(a).localeCompare(key(b)))) {
+      if (rest <= 0) break;
+      const take = Math.min(Number(l.cantidad || 0), rest);
+      if (take <= 0) continue;
+      l.cantidad = round3(Number(l.cantidad) - take);
+      rest = round3(rest - take);
+      alloc.push({ codigo: l.codigo, cantidad: round3(take), vence: l.vence || null });
+    }
+    if (rest > 0 && expiredFirst && sinLote > 0) rest = round3(rest - Math.min(sinLote, rest));
+    product.lotes = lots.filter(l => Number(l.cantidad) > 0);
+    return alloc;
+  }
+};
 
 export const KardexService = {
   /**
@@ -49,7 +108,10 @@ export const KardexService = {
     cantidad,
     costoUnitario,
     observacion,
-    permitirNegativo = false
+    permitirNegativo = false,
+    lote = null,          // entrada: código de lote nuevo (producción)
+    vence = null,         // entrada: fecha de vencimiento AAAA-MM-DD
+    lotes = null          // entrada: devolver lotes exactos [{codigo, cantidad, vence}]
   }) {
     const def = MOVEMENT_TYPES[documentoTipo];
     if (!def) throw new Error(`Tipo de movimiento desconocido: ${documentoTipo}`);
@@ -86,6 +148,20 @@ export const KardexService = {
       newAvg = round2((prevValue + qty * unitCost) / newStock);
     }
 
+    // Lotes
+    let lotesMov = [];
+    if (isEntry) {
+      if (Array.isArray(lotes) && lotes.length) {
+        lotes.forEach(l => LotService.addLot(product, { codigo: l.codigo, cantidad: Number(l.cantidad), vence: l.vence }));
+        lotesMov = lotes.map(l => ({ codigo: l.codigo, cantidad: Number(l.cantidad), vence: l.vence || null }));
+      } else if (lote) {
+        LotService.addLot(product, { codigo: lote, cantidad: qty, vence });
+        lotesMov = [{ codigo: lote, cantidad: qty, vence: vence || null }];
+      }
+    } else if ((product.lotes || []).length) {
+      lotesMov = LotService.consume(product, qty, { expiredFirst: documentoTipo === 'DANO' });
+    }
+
     product.stock = newStock;
     product.costoPromedio = newAvg;
     if (isEntry && unitCost > 0 && (documentoTipo === 'COMPRA' || documentoTipo === 'PRODUCCION_ENTRADA')) {
@@ -109,6 +185,7 @@ export const KardexService = {
       costoUnitario: unitCost,
       costoTotal: round2(qty * unitCost),
       costoPromedioResultante: newAvg,
+      lotes: lotesMov,
       usuarioId: Session.userId(),
       usuarioNombre: Session.userName(),
       observacion: observacion || ''

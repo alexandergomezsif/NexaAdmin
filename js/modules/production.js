@@ -29,30 +29,19 @@ export const ProductionModule = {
     container.innerHTML = `
       <div class="view-header">
         <div class="view-title-wrap">
-          <div class="d-flex items-center gap-2">
-            <h1>Módulo de Producción & Fórmulas (BOM)</h1>
-            <span class="badge-demo">FABRICACIÓN AUTOMOTRIZ</span>
-          </div>
-          <p>Control de recetas químicas, explosión de insumos, costeo por lote y fabricación en planta</p>
+          <h1>Producción</h1>
+          <p>Órdenes de fabricación con consumo de insumos y costo real por lote</p>
         </div>
         <div class="view-actions">
-          <a href="#formulas-vault" class="btn btn-secondary btn-sm" id="btn-new-recipe" style="text-decoration: none;">🧪 Nueva fórmula (en la Bóveda)</a>
-          <button class="btn btn-primary btn-sm" id="btn-execute-production">⚡ Ejecutar Orden de Producción</button>
+          <a href="#formulas-vault" class="btn btn-secondary btn-sm" id="btn-new-recipe" style="text-decoration: none;">Nueva fórmula</a>
+          <button class="btn btn-primary btn-sm" id="btn-execute-production">Producir</button>
         </div>
       </div>
 
       <!-- TABS: ÓRDENES REALIZADAS VS FÓRMULAS ACTIVAS + BÓVEDA + COSTOS -->
-      <div class="card mb-3" style="padding: 6px 14px;">
-        <div class="d-flex justify-between items-center" style="flex-wrap: wrap; gap: 8px;">
-          <div class="d-flex gap-2">
-            <button class="btn btn-secondary btn-sm tab-prod-btn active" data-tab="orders">📋 Órdenes de Producción (${orders.length})</button>
-            <button class="btn btn-secondary btn-sm tab-prod-btn" data-tab="recipes">🧪 Fórmulas Maestras BOM (${recipes.length})</button>
-          </div>
-          <div class="d-flex gap-2">
-            <a href="#formulas-vault" class="btn btn-secondary btn-sm" style="border-color: #6366f1; color: #6366f1; text-decoration: none;">🔒 Bóveda de Fórmulas</a>
-            <a href="#pricing-calculator" class="btn btn-secondary btn-sm" style="border-color: var(--brand-primary); color: var(--brand-primary); text-decoration: none;">💡 Costos & Precios IA</a>
-          </div>
-        </div>
+      <div class="chip-group mb-3">
+        <button type="button" class="chip-filter tab-prod-btn active" data-tab="orders">Órdenes <span class="chip-count">${orders.length}</span></button>
+        <button type="button" class="chip-filter tab-prod-btn" data-tab="recipes">Fórmulas <span class="chip-count">${recipes.length}</span></button>
       </div>
 
       <div id="production-content-area"></div>
@@ -232,6 +221,20 @@ export const ProductionModule = {
     }
 
     const selectedRecipe = preselectedRecipeId ? recipes.find(r => r.id === preselectedRecipeId) : recipes[0];
+    const ptOf = (r) => finishedGoods.find(p => p.id === r.productoTerminadoId) || null;
+    const venceFor = (r) => {
+      const pt = ptOf(r); const m = Number(pt && pt.vidaUtilMeses) || 0;
+      if (!m) return '';
+      const d = new Date(); d.setMonth(d.getMonth() + m); return d.toISOString().split('T')[0];
+    };
+    const rindeTxt = (r) => {
+      const lote = Number(r.rendimientoLote || r.cantidadProducir) || 1;
+      const pt = ptOf(r);
+      const u = r.unidadMedidaLote || r.unidadMedida || '';
+      const enUnidades = !u || /^(unidad|unidades|botellas?|und|u)$/i.test(u);
+      return `La fórmula rinde <strong>${lote}</strong> ${esc(pt ? (pt.unidadMedida || 'unidades') : 'unidades')} de ${esc(pt ? pt.nombre : 'producto sin vincular')} por lote.` +
+        (enUnidades ? '' : ` <span class="mg mg-warn">Revise la fórmula: el rendimiento está en "${esc(u)}" y debe estar en unidades del producto.</span>`);
+    };
 
     const content = `
       <form id="execute-production-form">
@@ -245,11 +248,12 @@ export const ProductionModule = {
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Cantidad a Fabricar (Unidades)</label>
+            <label class="form-label">Cantidad a fabricar (unidades del producto)</label>
             <input type="number" step="1" min="1" class="form-control" id="inp-prod-qty" name="cantidad" value="${esc(selectedRecipe.rendimientoLote || selectedRecipe.cantidadProducir || 1)}" required>
           </div>
         </div>
 
+        <div class="text-xs text-muted mb-3" id="prod-rinde">${rindeTxt(selectedRecipe)}</div>
         <div class="form-row mb-3">
           <div class="form-group">
             <label class="form-label">Código de Lote</label>
@@ -257,7 +261,11 @@ export const ProductionModule = {
           </div>
           <div class="form-group">
             <label class="form-label">Costos Indirectos Adicionales (CIF COP)</label>
-            <input type="number" class="form-control" id="inp-prod-cif" name="costosIndirectos" value="${selectedRecipe.costosIndirectosEstimados || 35000}">
+            <input type="number" class="form-control" id="inp-prod-cif" name="costosIndirectos" value="${Math.round(Number(selectedRecipe.costosIndirectosEstimados) || 0)}" min="0" step="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vence (opcional)</label>
+            <input type="date" class="form-control" id="inp-prod-vence" name="fechaVencimiento" value="${venceFor(selectedRecipe)}">
           </div>
         </div>
 
@@ -301,6 +309,7 @@ export const ProductionModule = {
             const loteCodigo = formData.get('loteCodigo');
             const cif = Number(formData.get('costosIndirectos') || 0);
             const observaciones = formData.get('observaciones');
+            const fechaVencimiento = formData.get('fechaVencimiento') || null;
 
             const receta = recipes.find(r => r.id === recetaId);
 
@@ -315,7 +324,8 @@ export const ProductionModule = {
                 cantidadProducida: cantidad,
                 loteCodigo,
                 costosIndirectosReales: cif,
-                observaciones
+                observaciones,
+                fechaVencimiento
               });
 
               Toast.success('Orden de producción registrada: se consumieron los insumos e ingresó el producto terminado.');
@@ -341,6 +351,12 @@ export const ProductionModule = {
 
       try {
         const est = await ProductionService.calculateEstimatedCost(recId, qty);
+        // Los costos indirectos (CIF) siguen a la receta y a la cantidad, salvo que el usuario los haya escrito a mano
+        const cifInp = dialog.querySelector('#inp-prod-cif');
+        if (!cifInp.dataset.manual) cifInp.value = Math.round(est.costosIndirectos || 0);
+        const cif = Number(cifInp.value) || 0;
+        const totalReal = est.costoTotalInsumos + cif;
+        const unitReal = qty > 0 ? Math.round(totalReal / qty) : 0;
         
         previewArea.innerHTML = `
           <div class="table-responsive mb-2">
@@ -372,8 +388,8 @@ export const ProductionModule = {
 
           <div class="d-flex justify-between items-center text-xs mt-2" style="border-top: 1px dashed #cbd5e1; padding-top: 8px;">
             <div>
-              <span>Costo Total Estimado: <strong>${Formatters.currency(est.costoTotalEstimado)}</strong></span>
-              <span class="ml-2 text-muted">| Costo Unitario: <strong class="text-success">${Formatters.currency(est.costoUnitarioEstimado)} / un</strong></span>
+              <span>Insumos ${Formatters.currency(est.costoTotalInsumos)} + indirectos ${Formatters.currency(cif)} = <strong>${Formatters.currency(totalReal)}</strong></span>
+              <span class="ml-2 text-muted">| Costo por unidad: <strong class="text-success">${Formatters.currency(unitReal)}</strong></span>
             </div>
             ${!est.todosConStock ? `
               <span class="badge badge-danger">⚠️ Stock insuficiente en uno o más insumos</span>
@@ -394,7 +410,17 @@ export const ProductionModule = {
       }
     };
 
-    dialog.querySelector('#sel-production-recipe').addEventListener('change', updateExplosion);
+    const cifField = dialog.querySelector('#inp-prod-cif');
+    cifField.addEventListener('input', () => { cifField.dataset.manual = '1'; updateExplosion(); });
+    dialog.querySelector('#sel-production-recipe').addEventListener('change', (e) => {
+      delete cifField.dataset.manual;
+      const r = recipes.find(x => x.id === e.target.value);
+      if (r) {
+        dialog.querySelector('#prod-rinde').innerHTML = rindeTxt(r);
+        dialog.querySelector('#inp-prod-vence').value = venceFor(r);
+      }
+      updateExplosion();
+    });
     dialog.querySelector('#inp-prod-qty').addEventListener('input', updateExplosion);
     updateExplosion();
   }

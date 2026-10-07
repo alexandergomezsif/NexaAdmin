@@ -27,24 +27,22 @@ export const ProductsModule = {
     container.innerHTML = `
             <div class="view-header">
         <div class="view-title-wrap">
-          <h1>Catálogo de Productos & Insumos</h1>
-          <p>Control de materias primas, productos terminados, 5 listas de precios y niveles de stock</p>
+          <h1>Catálogo</h1>
+          <p>Productos a la venta, materias primas, existencias y precios</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary btn-sm" id="btn-export-products">📊 Exportar</button>
-          <button class="btn btn-primary btn-sm" id="btn-new-product">➕ Nuevo Producto</button>
+          <button class="btn btn-secondary btn-sm" id="btn-export-products">Exportar</button>
+          <button class="btn btn-primary btn-sm" id="btn-new-product">Nuevo producto</button>
         </div>
       </div>
 
-      <!-- FILTROS DE TIPO -->
-      <div class="card mb-3" style="padding: 10px 16px;">
-        <div class="d-flex items-center gap-2 flex-wrap">
-          <span class="text-xs font-bold text-muted">FILTRAR POR TIPO:</span>
-          <button class="btn btn-secondary btn-sm filter-type-btn active" data-type="ALL">Todos (${products.length})</button>
-          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="PRODUCTO_TERMINADO">⚡ Terminados Fabricados (${products.filter(p => p.tipoItem === 'PRODUCTO_TERMINADO').length})</button>
-          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="MATERIA_PRIMA">🧪 Materias Primas Químicas (${products.filter(p => p.tipoItem === 'MATERIA_PRIMA').length})</button>
-          <button class="btn btn-secondary btn-sm filter-type-btn" data-type="MERCANCIA">🛍️ Mercancía Reventa (${products.filter(p => p.tipoItem === 'MERCANCIA').length})</button>
-        </div>
+      <!-- FILTROS -->
+      <div class="chip-group mb-3">
+        <button type="button" class="chip-filter filter-type-btn active" data-type="ALL">Todos <span class="chip-count">${products.length}</span></button>
+        <button type="button" class="chip-filter filter-type-btn" data-type="PRODUCTO_TERMINADO">Terminados <span class="chip-count">${products.filter(p => p.tipoItem === 'PRODUCTO_TERMINADO').length}</span></button>
+        <button type="button" class="chip-filter filter-type-btn" data-type="MATERIA_PRIMA">Materias primas <span class="chip-count">${products.filter(p => p.tipoItem === 'MATERIA_PRIMA').length}</span></button>
+        <button type="button" class="chip-filter filter-type-btn" data-type="MERCANCIA">Reventa <span class="chip-count">${products.filter(p => p.tipoItem === 'MERCANCIA').length}</span></button>
+        <button type="button" class="chip-filter filter-type-btn" data-type="LOW_STOCK">Bajo mínimo <span class="chip-count">${products.filter(p => Number(p.stock || 0) <= Number(p.stockMinimo || 0) && Number(p.stockMinimo || 0) > 0).length}</span></button>
       </div>
 
       <div id="products-table-container"></div>
@@ -120,7 +118,7 @@ export const ProductsModule = {
           title: 'Precio 1 (Público)',
           render: (val, row) => {
             const p1 = PricingService.priceFor(row, (PricingService.findByCode(priceLists, 'P1') || {}).id);
-            return `<strong>${Formatters.currency(p1)}</strong>`;
+            return p1 ? `<strong>${Formatters.currency(p1)}</strong>` : '<span class="text-muted">—</span>';
           }
         },
         {
@@ -142,6 +140,8 @@ export const ProductsModule = {
         const type = btn.getAttribute('data-type');
         if (type === 'ALL') {
           currentFiltered = [...products];
+        } else if (type === 'LOW_STOCK') {
+          currentFiltered = products.filter(p => Number(p.stock || 0) <= Number(p.stockMinimo || 0) && Number(p.stockMinimo || 0) > 0);
         } else {
           currentFiltered = products.filter(p => p.tipoItem === type);
         }
@@ -230,8 +230,14 @@ export const ProductsModule = {
             ${isEdit && Number(product.stock || 0) !== 0 ? '<div class="form-help">Con existencias, el costo lo calcula el Kardex.</div>' : ''}
           </div>
           <div class="form-group">
-            <label class="form-label">Margen Esperado (%)</label>
-            <input type="number" class="form-control" name="margenEsperado" value="${product ? product.margenEsperado : 50}">
+            <label class="form-label">IVA del producto</label>
+            <select class="form-select" name="ivaPct">
+              ${[[19, '19 % (general)'], [5, '5 %'], [0, 'Exento / excluido (0 %)']].map(([v, l]) => `<option value="${v}" ${Number(product && product.ivaPct !== undefined && product.ivaPct !== null ? product.ivaPct : 19) === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vida útil (meses, opcional)</label>
+            <input type="number" min="0" step="1" class="form-control" name="vidaUtilMeses" value="${product && product.vidaUtilMeses ? esc(product.vidaUtilMeses) : ''}" placeholder="Para calcular el vencimiento del lote">
           </div>
         </div>
 
@@ -312,7 +318,8 @@ export const ProductsModule = {
               categoria: formData.get('categoria'),
               unidadMedida: formData.get('unidadMedida'),
               costoPromedio: isEdit && Number(product.stock || 0) !== 0 ? Number(product.costoPromedio || 0) : Number(formData.get('costoPromedio') || 0),
-              margenEsperado: Number(formData.get('margenEsperado') || 0),
+              ivaPct: Number(formData.get('ivaPct') ?? 19),
+              vidaUtilMeses: Number(formData.get('vidaUtilMeses') || 0) || null,
               stockMinimo: Number(formData.get('stockMinimo') || 0),
               bodegaId: formData.get('bodegaId'),
               descripcion: formData.get('descripcion'),

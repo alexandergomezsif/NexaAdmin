@@ -38,22 +38,11 @@
          ==================================================================== -->
         <aside class="app-sidebar" id="app-sidebar" style="background: var(--bg-sidebar); border-right: 1px solid var(--border-color); width: 250px;">
       
-      <!-- Controles de Ventana macOS -->
-      <div class="mac-window-controls">
-        <span class="mac-dot mac-dot-close"></span>
-        <span class="mac-dot mac-dot-minimize"></span>
-        <span class="mac-dot mac-dot-expand"></span>
-      </div>
-
-      <!-- Encabezado de Marca Dinámico -->
-      <div class="sidebar-brand" style="border-bottom: 1px solid var(--border-color); padding: 8px 18px 16px 18px; height: auto;">
-        <div class="d-flex items-center gap-3">
-          <div class="brand-icon" id="sidebar-brand-icon" style="background: #182231; border: 1px solid #303C4D; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;">⚡</div>
-          <div class="brand-info">
-            <div class="brand-title" id="sidebar-brand-name" style="font-size: 16px; font-weight: 800; color: #F5F7FA; letter-spacing: -0.02em;">Rayo Pro</div>
-            <div class="brand-subtitle" style="font-size: 11px; color: #4C7DFF; font-weight: 600;">ERP & POS Business</div>
-          </div>
-        </div>
+      <!-- Marca del desarrollador del software (NEXA CORP). La empresa activa se muestra en la barra superior. -->
+      <div class="sidebar-brand sidebar-brand-nexa">
+        <img src="icons/nexa-corp-light.png" alt="NEXA Corporación S.A.S" class="nexa-logo nexa-logo-light">
+        <img src="icons/nexa-corp-dark.png" alt="NEXA Corporación S.A.S" class="nexa-logo nexa-logo-dark">
+        <div class="nexa-logo-caption">ERP &amp; POS</div>
       </div>
 
       <!-- Menú de Navegación por Módulos (5 Macro-Secciones con Cajas de Icono) -->
@@ -81,13 +70,13 @@
       </nav>
 
       <!-- Pie del Sidebar con Estado del Sistema -->
-      <div class="sidebar-footer" style="padding: 12px 18px; border-top: 1px solid var(--border-color); background: rgba(8, 15, 28, 0.5);">
+      <div class="sidebar-footer" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
         <div class="d-flex items-center justify-between">
           <div class="d-flex items-center gap-2">
             <div style="width: 8px; height: 8px; border-radius: 50%; background: #4FC58A; box-shadow: 0 0 8px #4FC58A;"></div>
-            <span style="font-size: 11px; color: #929BAA; font-weight: 600;" title="La información se guarda solo en este navegador">Datos locales</span>
+            <span style="font-size: 11px; color: var(--text-secondary); font-weight: 600;" title="La información se guarda solo en este navegador">Datos locales</span>
           </div>
-          <span style="font-size: 10px; color: #64748B; font-family: monospace;">v3.0.0</span>
+          <span style="font-size: 10px; color: var(--text-secondary); font-family: monospace;">v3.4.0</span>
         </div>
       </div>
     </aside>
@@ -109,7 +98,7 @@
           <!-- Conmutador Rápido de Empresa Multi-tenant -->
           <div class="tenant-selector" id="topbar-tenant-selector" title="Clic para cambiar de empresa">
             <span id="topbar-brand-icon" style="display: inline-flex; align-items: center; justify-content: center;"></span>
-            <span id="topbar-brand-name">Rayo Pro</span>
+            <span id="topbar-brand-name"></span>
             <span style="font-size: 10px; color: var(--text-muted);">▾</span>
           </div>
 
@@ -129,6 +118,9 @@
 
           <!-- Indicador de Turno de Caja -->
           <span class="badge badge-neutral hide-on-mobile" id="topbar-cash-badge">…</span>
+
+          <!-- Estado del respaldo automático -->
+          <button type="button" class="badge badge-neutral backup-badge" id="topbar-backup-badge" title="Respaldo automático">…</button>
 
           <!-- Botón de Acción Rápida POS -->
           <button class="quick-action-btn" id="btn-topbar-quick-sale">
@@ -154,14 +146,35 @@
 
       <!-- CONTENEDOR DINÁMICO DE VISTAS MODULARES SPA -->
       <div class="app-content" id="view-container">
-        <!-- Renderizado dinámico vía JavaScript por módulo -->
+        <div id="boot-status" style="padding: 40px; text-align: center; color: var(--text-muted, #94a3b8); font-size: 14px;">Cargando NexaAdmin…</div>
       </div>
 
     </main>
 
   </div>
 
-  <script src="js/bundle.js?v=3.0.0"></script>
+  <!-- Mensajes de arranque: si algo falla, se ve en pantalla (antes quedaba en blanco) -->
+  <script>
+    (function () {
+      function box(title, detail, isError) {
+        var html = '<div style="max-width:640px;margin:60px auto;padding:24px;border-radius:12px;font-family:system-ui,sans-serif;' +
+          'background:' + (isError ? '#fef2f2' : '#fffbeb') + ';border:1px solid ' + (isError ? '#f87171' : '#f59e0b') + ';color:#1f2937;">' +
+          '<h2 style="margin:0 0 8px 0;font-size:18px;">' + title + '</h2>' +
+          '<p style="margin:0;font-size:14px;line-height:1.5;">' + String(detail).replace(/</g, '&lt;') + '</p></div>';
+        var c = document.getElementById('view-container');
+        if (c) c.innerHTML = html; else document.body.innerHTML = html;
+      }
+      window.__nexaBootMessage = box;
+      window.__nexaBootDone = function () { clearTimeout(window.__nexaBootTimer); };
+      window.__nexaBootTimer = setTimeout(function () {
+        if (!window.__nexaReady) box('NexaAdmin no terminó de cargar',
+          'Último paso alcanzado: «' + (window.__nexaLastStep || 'ninguno (el programa no arrancó)') + '». Posibles causas: 1) hay otra pestaña de NexaAdmin abierta (ciérrela y recargue con F5); ' +
+          '2) el navegador bloquea el almacenamiento local para archivos (en Brave: icono del león → desactive los escudos para esta página); ' +
+          '3) falta el archivo js/bundle.js. Presione F12 → Consola para ver el detalle.', true);
+      }, 12000);
+    })();
+  </script>
+  <script src="js/bundle.js" onerror="window.__nexaBootMessage('No se pudo cargar js/bundle.js', 'Verifique que la carpeta js contiene bundle.js y que abrió el index.html de la carpeta correcta.', true)"></script>
 
   <!-- PWA: Registro del Service Worker -->
   <script>

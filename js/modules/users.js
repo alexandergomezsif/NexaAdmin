@@ -41,7 +41,7 @@ export const UsersModule = {
       <div class="view-header">
         <div class="view-title-wrap">
           <h1>Usuarios y Control de Accesos</h1>
-          <p>Cuentas, roles y permisos. Las contraseñas se almacenan cifradas (hash) y nunca se muestran.</p>
+          <p>Cuentas, roles y permisos. Cada usuario ingresa con un PIN de 4 dígitos.</p>
         </div>
         <div class="view-actions">
           ${isDev ? `
@@ -71,8 +71,8 @@ export const UsersModule = {
         {
           key: 'estado', title: 'Estado', render: (val, row) => `
             <span class="badge ${val === 'INACTIVO' ? 'badge-danger' : 'badge-success'}">${esc(val || 'ACTIVO')}</span>
-            ${row.sinClave || !row.claveHash ? '<span class="badge badge-warning" style="font-size: 10px;">sin contraseña</span>' : ''}
-            ${row.debeCambiarClave ? '<span class="badge badge-warning" style="font-size: 10px;">debe cambiar clave</span>' : ''}`
+            ${row.sinClave || !row.claveHash ? '<span class="badge badge-warning" style="font-size: 10px;">sin PIN</span>' : ''}
+            ${row.debeCambiarClave ? '<span class="badge badge-warning" style="font-size: 10px;">debe cambiar PIN</span>' : ''}`
         }
       ],
       actions: (row) => isDev ? `
@@ -162,8 +162,8 @@ export const UsersModule = {
               </select></div>
           </div>
           <div class="form-row mb-3">
-            <div class="form-group"><label class="form-label">${isEdit ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña inicial'}</label>
-              <input type="password" class="form-control" name="clave" ${isEdit ? '' : 'required'} autocomplete="new-password">
+            <div class="form-group"><label class="form-label">${isEdit ? 'Nuevo PIN (vacío = no cambiar)' : 'PIN de 4 dígitos'}</label>
+              <input type="password" class="form-control pin-input" name="clave" ${isEdit ? '' : 'required'} inputmode="numeric" maxlength="4" pattern="\\d{4}" autocomplete="off">
               <div class="form-help">${esc(AuthServiceInstance.passwordRules())}</div></div>
             <div class="form-group"><label class="form-label">Estado</label>
               <select class="form-select" name="estado">
@@ -171,7 +171,7 @@ export const UsersModule = {
                 <option value="INACTIVO" ${user && user.estado === 'INACTIVO' ? 'selected' : ''}>INACTIVO (sin acceso)</option>
               </select></div>
           </div>
-          <label class="d-flex items-center gap-2 text-xs mb-3"><input type="checkbox" name="forzarCambio" ${!isEdit ? 'checked' : ''}> Pedir que cambie la contraseña en el próximo ingreso</label>
+          <label class="d-flex items-center gap-2 text-xs mb-3"><input type="checkbox" name="forzarCambio" ${!isEdit ? 'checked' : ''}> Pedir que cambie el PIN en el próximo ingreso</label>
           <div class="card mb-0" style="border: 1px solid var(--border-color);">
             <div class="card-header" style="padding: 10px 14px;"><div class="card-title" style="font-size: 13px;">Permisos</div></div>
             <div class="card-body" style="padding: 12px;">

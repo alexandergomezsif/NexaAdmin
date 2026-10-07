@@ -109,4 +109,40 @@ export const FinanceService = {
     return Object.entries(acc).map(([metodo, valor]) => ({ metodo, valor: Math.round(valor), pct: total ? (valor / total) * 100 : 0 }))
       .sort((a, b) => b.valor - a.valor);
   }
+
+  ,
+
+  /**
+   * Rentabilidad por producto: unidades, ventas netas (sin IVA), costo de lo vendido, utilidad y margen.
+   * Costo: el guardado en cada línea al vender (Kardex). Si falta, se estima con el costo promedio actual.
+   */
+  byProduct(sales, products, from = null, to = null) {
+    const acc = {};
+    sales.filter(s => SalesService.isEffectiveSale(s) && inRange(s.fecha, from, to)).forEach(s => {
+      (s.items || []).forEach(it => {
+        const p = products.find(x => x.id === it.productoId);
+        const row = acc[it.productoId] || (acc[it.productoId] = {
+          productoId: it.productoId, sku: it.sku || (p && p.sku) || '', nombre: it.nombre || (p && p.nombre) || 'Producto',
+          unidades: 0, ventasNetas: 0, costo: 0, costoEstimado: false
+        });
+        const qty = Number(it.cantidad || 0);
+        let net;
+        if (it.base !== undefined) net = Number(it.base);
+        else {
+          const iva = Number(it.ivaPct ?? 19) / 100;
+          const incl = it.precioIncluyeIva ?? s.preciosIncluyenIva;
+          net = qty * Number(it.precioUnitario || 0) / (incl ? 1 + iva : 1);
+        }
+        let cost;
+        if (it.costoUnitario !== undefined) cost = Number(it.costoUnitario) * qty;
+        else { cost = Number((p && p.costoPromedio) || 0) * qty; row.costoEstimado = true; }
+        row.unidades += qty; row.ventasNetas += net; row.costo += cost;
+      });
+    });
+    return Object.values(acc).map(r => {
+      const utilidad = r.ventasNetas - r.costo;
+      return { ...r, ventasNetas: Math.round(r.ventasNetas), costo: Math.round(r.costo), utilidad: Math.round(utilidad),
+        margenPct: r.ventasNetas > 0 ? Math.round((utilidad / r.ventasNetas) * 1000) / 10 : null };
+    }).sort((a, b) => b.utilidad - a.utilidad);
+  }
 };

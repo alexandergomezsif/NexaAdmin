@@ -47,12 +47,12 @@ export const ROLE_ALLOWED_MODULES = {
   ],
 
   // GERENCIA: Enfoque estratégico, comercial, financiero y operativo completo.
-  // Protege la propiedad intelectual: NO tiene acceso a 'users' (Módulo 13) ni 'audit' (Módulo 14).
+  // NO tiene acceso a 'users', 'audit' ni 'settings' (Parámetros & Empresa: solo el Desarrollador).
   [ROLES.GERENTE]: [
     'dashboard', 'sales-pos', 'clients', 'freelancers', 'shipping',
     'products', 'inventory', 'production',
     'purchases', 'cash', 'expenses', 'cxc', 'cxp',
-    'reports', 'settings', 'backup', 'importer', 'integrations', 'documents',
+    'reports', 'backup', 'importer', 'integrations', 'documents',
     'formulas-vault', 'pricing-calculator'
   ],
 
@@ -85,8 +85,6 @@ const LOCK_KEY = 'nexa_login_lock';
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 60 * 1000;
 
-/** Claves que se consideran débiles y obligan a cambiarlas */
-const WEAK_PASSWORDS = ['1234', '12345', '123456', '12345678', 'admin', 'password', 'nexa.2026', 'admin.2026', 'gerente.2026', 'carlos.2026', 'dev.nexa.2026'];
 
 class AuthService {
   constructor() {
@@ -124,6 +122,12 @@ class AuthService {
 
   /** Convierte claves en texto plano (versiones anteriores y respaldos antiguos) a hash PBKDF2 */
   async migrateUsers() {
+    if (!(await DB.getParam('auth_pin4_v1', false))) {
+      for (const u of await DB.getAll(STORES.USERS)) {
+        if (u.debeCambiarClave) { u.debeCambiarClave = false; await DB.update(STORES.USERS, u); }
+      }
+      await DB.setParam('auth_pin4_v1', true);
+    }
     const users = await DB.getAll(STORES.USERS);
     for (const u of users) {
       if (!Object.prototype.hasOwnProperty.call(u, 'clave')) continue;
@@ -131,22 +135,40 @@ class AuthService {
       delete u.clave;
       if (plain) {
         u.claveHash = await CryptoUtil.hashPassword(plain);
-        if (!this.isStrongPassword(plain)) u.debeCambiarClave = true;
+
       } else if (!u.claveHash) {
         u.sinClave = true;
       }
       if (!u.estado) u.estado = 'ACTIVO';
       await DB.update(STORES.USERS, u);
     }
+
+    // Decisión del propietario (2026-10-06): todos los usuarios existentes quedan con PIN 1234.
+    // Se aplica UNA sola vez; los cambios de PIN posteriores se respetan.
+    if (!(await DB.getParam('auth_pin_reset_1234_v1', false))) {
+      const all = await DB.getAll(STORES.USERS);
+      if (all.length) {
+        const hash = await CryptoUtil.hashPassword('1234');
+        for (const u of all) {
+          u.claveHash = hash;
+          delete u.clave;
+          delete u.sinClave;
+          u.debeCambiarClave = false;
+          await DB.update(STORES.USERS, u);
+        }
+        localStorage.removeItem(LOCK_KEY);
+      }
+      await DB.setParam('auth_pin_reset_1234_v1', true);
+    }
   }
 
+  /** Regla simplificada (decisión del propietario): PIN de exactamente 4 dígitos numéricos */
   isStrongPassword(p) {
-    const v = String(p || '');
-    return v.length >= 8 && !WEAK_PASSWORDS.includes(v.toLowerCase());
+    return /^\d{4}$/.test(String(p || ''));
   }
 
   passwordRules() {
-    return 'Mínimo 8 caracteres y que no sea una clave común (1234, admin, etc.).';
+    return 'El PIN debe tener exactamente 4 dígitos numéricos.';
   }
 
   // ---------------------------------------------------------------- sesión
@@ -224,10 +246,18 @@ class AuthService {
       permisos: Object.values(PERMISSIONS)
     };
     await DB.add(STORES.USERS, u);
-    const code = await this.regenerateRecoveryCode(true);
     this.startSession(u);
     await AuditService.log({ modulo: 'Seguridad', accion: 'CREAR', registroId: u.id, campoModificado: 'Configuración inicial', valorNuevo: u.usuario });
-    return code;
+    return null;
+  }
+
+  /** Usuarios que pueden iniciar sesión (para el desplegable del login) */
+  async listLoginUsers() {
+    const users = await DB.getAll(STORES.USERS);
+    return users
+      .filter(u => u.estado !== 'INACTIVO' && u.claveHash && !u.sinClave)
+      .map(u => ({ usuario: u.usuario, nombre: u.nombre, rol: u.rol }))
+      .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
   }
 
   // ---------------------------------------------------------------- login

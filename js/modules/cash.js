@@ -3,6 +3,7 @@
  * Apertura de turno, movimientos de ingresos/egresos y conciliación de diferencias
  */
 
+import { BackupFolderService } from '../services/backup-folder-service.js';
 import { DB, STORES } from '../services/db-service.js';
 import { Formatters } from '../utils/formatters.js';
 import { CashService } from '../services/cash-service.js';
@@ -392,7 +393,7 @@ export const CashModule = {
             });
 
             // Auto-Respaldo obligatorio al Cierre de Caja
-            await DB.downloadAutoBackup('CierreCaja');
+            await BackupFolderService.backupEvent('CierreCaja');
 
             Toast.success('Turno de caja cerrado exitosamente.');
             Modal.close();

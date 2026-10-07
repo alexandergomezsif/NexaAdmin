@@ -169,6 +169,7 @@ export const Migrations = {
     const log = [];
     for (const m of MIGRATIONS) {
       if (done.has(m.id)) continue;
+      if (typeof window !== 'undefined' && window.__nexaStep) window.__nexaStep(`Migración: ${m.descripcion}`);
       const resultado = await m.run();
       applied.push({ id: m.id, fecha: new Date().toISOString(), resultado });
       await DB.setParam(PARAM_ID, applied);

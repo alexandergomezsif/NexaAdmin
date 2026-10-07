@@ -950,7 +950,7 @@
 }
 
 /* ==========================================================================
-   /* NEXA WIZARD SYSTEM */ - ASISTENTE GUIADO PASO A PASO EN MODALES
+   NEXA WIZARD SYSTEM - ASISTENTE GUIADO PASO A PASO EN MODALES
    ========================================================================== */
 .wizard-stepper {
   display: flex;
@@ -1067,3 +1067,107 @@
 .table.table-sm th, .table.table-sm td { padding: 6px 8px; }
 .table .text-right { text-align: right; }
 .table .text-center { text-align: center; }
+
+/* Campo PIN de 4 dígitos */
+.pin-input { text-align: center; font-size: 22px; letter-spacing: 12px; font-weight: 800; font-family: ui-monospace, Consolas, monospace; }
+
+/* ===================== v3.1 — Ajustes de diseño ===================== */
+/* Las alertas con texto mixto (texto + <strong>) se veían partidas en columnas */
+.alert { display: block; }
+.alert-warning { color: var(--alert-warning-text, #9a3412); }
+body.dark-mode .alert-warning { color: #fdba74; }
+body.dark-mode .alert-info { color: #93c5fd; }
+body.dark-mode .alert-danger { color: #fca5a5; }
+
+/* Diseño adaptable: rejillas definidas en línea pasan a una columna en pantallas pequeñas */
+@media (max-width: 900px) {
+  .app-content [style*="grid-template-columns"]:not([style*="auto-fill"]):not([style*="auto-fit"]) {
+    grid-template-columns: 1fr !important;
+  }
+  .view-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .view-actions { flex-wrap: wrap; }
+  .modal-dialog { width: calc(100vw - 24px) !important; max-width: none !important; }
+  .table-responsive, .card-body { overflow-x: auto; }
+}
+
+/* Foco visible para teclado (accesibilidad) */
+:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+
+/* Botones deshabilitados claramente distinguibles */
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Indicador de respaldo automático (barra superior) */
+.backup-badge { border: none; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.backup-badge:hover { filter: brightness(1.1); }
+.backup-file-list { max-height: 260px; overflow-y: auto; }
+.backup-file-list td, .backup-file-list th { font-size: 12px; padding: 6px 8px; }
+
+/* ==========================================================================
+   PRECIOS Y MÁRGENES (v3.3)
+   ========================================================================== */
+.pricing-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.pricing-summary > div { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px; display: flex; align-items: baseline; gap: 8px; }
+.pricing-summary .ps-value { font-size: 20px; font-weight: 800; color: var(--text-main); }
+.pricing-summary .ps-label { font-size: 12px; color: var(--text-secondary); }
+.pricing-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; border-bottom: 1px solid var(--border-color); }
+.pricing-legend { margin-left: auto; }
+.chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-filter { border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); border-radius: var(--radius-full); padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.chip-filter.active { background: var(--brand-primary); border-color: var(--brand-primary); color: #fff; }
+.chip-count { opacity: .8; font-weight: 700; }
+.pricing-table th .th-sub { display: block; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-secondary); }
+.pricing-table td { vertical-align: middle; padding-top: 8px; padding-bottom: 8px; }
+.pricing-table .pt-name { font-weight: 600; color: var(--text-main); }
+.price-cell { width: 96px; text-align: right; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); border-radius: var(--radius-sm); padding: 4px 6px; font: inherit; font-size: 13px; }
+.price-cell:focus { outline: none; border-color: var(--brand-primary); }
+.price-cell.dirty { border-color: var(--color-warning); }
+.mg { display: inline-block; min-width: 38px; text-align: center; font-size: 11px; font-weight: 700; border-radius: var(--radius-full); padding: 1px 6px; margin-left: 4px; }
+.mg-ok { background: var(--color-success-bg); color: var(--color-success); }
+.mg-warn { background: var(--color-warning-bg); color: var(--color-warning); }
+.mg-bad { background: var(--color-danger-bg); color: var(--color-danger); }
+.mg-none { color: var(--text-secondary); }
+.nowrap { white-space: nowrap; }
+.calc-grid { display: grid; grid-template-columns: 260px 1fr; gap: 20px; align-items: start; }
+.calc-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.calc-total { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px; border-radius: var(--radius-md); background: var(--brand-primary-light); color: var(--brand-primary); font-size: 13px; }
+.calc-total strong { font-size: 20px; }
+.calc-table td, .calc-table th { padding: 6px 8px; vertical-align: middle; }
+.calc-margin { width: 64px; text-align: right; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); border-radius: var(--radius-sm); padding: 3px 6px; font: inherit; }
+@media (max-width: 900px) {
+  .pricing-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pricing-legend { margin-left: 0; }
+  .calc-grid { grid-template-columns: 1fr; }
+}
+
+/* Marca NEXA CORP en el menú lateral */
+.sidebar-brand-nexa { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px 18px 14px; height: auto; border-bottom: 1px solid var(--border-color); }
+.sidebar-brand-nexa .nexa-logo { width: 150px; max-width: 100%; height: auto; display: block; }
+.sidebar-brand-nexa .nexa-logo-dark { display: none; }
+body.dark-mode .sidebar-brand-nexa .nexa-logo-light { display: none; }
+body.dark-mode .sidebar-brand-nexa .nexa-logo-dark { display: block; }
+.sidebar-brand-nexa .nexa-logo-caption { font-size: 10px; letter-spacing: .12em; font-weight: 700; color: var(--text-secondary); }
+.btn[hidden] { display: none !important; }
+.pricing-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding: 10px 8px; }
+.pricing-table td:not(:first-child) { white-space: nowrap; }
+.pricing-table td:first-child { min-width: 200px; }
+.pricing-table .price-cell { width: 84px; }
+.pricing-table td { font-size: 13px; }
+.pricing-table .pt-name { font-size: 13.5px; line-height: 1.3; }
+.calc-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+.calc-table td { font-size: 13px; }
+
+/* Bóveda: tarjetas de fórmula compactas */
+.recipe-card { padding: 14px 16px; margin-bottom: 0; }
+.recipe-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: center; }
+.recipe-title { font-size: 15px; font-weight: 700; margin: 0 0 2px; color: var(--text-main); }
+.recipe-costs { display: flex; gap: 18px; }
+.recipe-costs > div { display: flex; flex-direction: column; align-items: flex-end; }
+.recipe-costs .ps-label { font-size: 11px; color: var(--text-secondary); }
+.recipe-costs strong { font-size: 14px; color: var(--text-main); }
+.recipe-actions { display: flex; gap: 6px; }
+.recipe-details { margin-top: 10px; }
+.recipe-details summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--brand-primary); }
+.recipe-details .table { margin: 8px 0 0; }
+.recipe-protocol { margin-top: 8px; padding: 8px 10px; border-left: 3px solid var(--brand-primary); background: var(--brand-primary-subtle); border-radius: var(--radius-sm); font-size: 12.5px; }
+.recipe-protocol div { white-space: pre-line; margin-top: 2px; line-height: 1.4; }
+@media (max-width: 900px) { .recipe-head { grid-template-columns: 1fr; } .recipe-costs > div { align-items: flex-start; } }

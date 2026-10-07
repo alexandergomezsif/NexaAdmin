@@ -13,6 +13,17 @@ echo [1/4] Compilando bundle.js...
 call build.bat
 if %ERRORLEVEL% NEQ 0 goto :fallo
 
+:: 1b. Pruebas automaticas (recomendado antes de subir)
+echo.
+set "probar="
+set /p "probar=Ejecutar las pruebas automaticas antes de subir? (S/N, recomendado S): "
+if /I "%probar%"=="S" (
+    set "NEXA_NOPAUSE=1"
+    call probar.bat
+    if errorlevel 1 goto :fallo
+    set "NEXA_NOPAUSE="
+)
+
 :: 2. Mostrar cambios y confirmar
 echo.
 echo [2/4] Cambios detectados:
